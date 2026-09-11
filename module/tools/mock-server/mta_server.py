@@ -199,7 +199,7 @@ def die(message: str, code: int = 1) -> None:
 
 
 def load_cli():
-    sys.path.insert(0, str(SERVER_DIR.parent / "tools" / "mta"))
+    sys.path.insert(0, str(SERVER_DIR.parent / "mta"))
     import cli  # noqa: PLC0415 (local import keeps CLI coupling explicit)
 
     return cli
@@ -474,7 +474,7 @@ def cmd_test(args) -> int:
 
     out("Building the module ...")
     build = subprocess.run(
-        [sys.executable, str(SERVER_DIR.parent / "tools" / "mta" / "cli.py"), "build"],
+        [sys.executable, str(SERVER_DIR.parent / "mta" / "cli.py"), "build"],,
         cwd=str(PROJECT_ROOT),
     )
     if build.returncode != 0:
