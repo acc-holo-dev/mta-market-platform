@@ -2,12 +2,14 @@ name: Module
 
 # Native module (module/): Linux build is the blocking gate; the header-drift
 # gate keeps the two vendored Lua header sets byte-identical; the real-server
-# integration suite is best-effort (downloads a pinned MTA server build).
+# integration suite remains best-effort because it depends on an external MTA
+# server download.
 
 on:
   push:
     branches: [main, develop]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -17,7 +19,7 @@ jobs:
     name: Linux (GCC) — build + tests + CLI
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y ninja-build g++ libssl-dev
       - name: Verify vendored Lua headers stay byte-identical
@@ -45,31 +47,25 @@ jobs:
         run: python3 -m unittest discover -s tests/module
 
   linux-clang:
-    # Report-only: clang18 + libstdc++-14 enforces complete-type instantiation
-    # of Json::Members inside json.cpp (self-referential JSON class) — a latent
-    # issue GCC tolerates. Tracked in documents/history/MIGRATION.md §5.
-    name: Linux (Clang) build (best-effort)
+    name: Linux (Clang) build (report-only)
     continue-on-error: true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y ninja-build g++ clang libssl-dev
-      # Unity is disabled for the clang leg: clang18+libstdc++-14 instantiates
-      # Json::Members while Json is incomplete inside the unity blob (latent
-      # incomplete-type issue; standalone TUs compile clean).
       - run: cmake -B build/linux-clang -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDK_UNITY=OFF -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
       - run: cmake --build build/linux-clang
 
   windows:
     name: Windows (${{ matrix.toolchain }})
     runs-on: windows-latest
-    continue-on-error: true # best-effort (verified locally on Linux x64 only)
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
         toolchain: [mingw, msvc]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - if: matrix.toolchain == 'mingw'
         uses: msys2/setup-msys2@v2
         with:
@@ -84,14 +80,14 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
       - if: matrix.toolchain == 'msvc'
         run: choco install ninja -y --no-progress
-      - name: Configure + build
+      - name: Configure + build (MinGW)
         shell: msys2 {0}
         if: matrix.toolchain == 'mingw'
         working-directory: module
         run: |
           cmake --preset win-mingw
           cmake --build --preset win-mingw
-      - name: Configure + build
+      - name: Configure + build (MSVC)
         if: matrix.toolchain == 'msvc'
         working-directory: module
         run: |
@@ -99,14 +95,12 @@ jobs:
           cmake --build --preset win-msvc
 
   integration-linux:
-    # Real-server integration against a pinned MTA server build (network
-    # dependent — report-only so a flaky upstream download never blocks).
     name: Real-server integration (Linux, best-effort)
     runs-on: ubuntu-latest
     continue-on-error: true
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y ninja-build g++ libncursesw6 zlib1g libssl-dev
       - name: Build the module
         working-directory: module
