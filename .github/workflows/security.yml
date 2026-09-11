@@ -1,13 +1,9 @@
 name: Security
 
-# Secret scan + dependency audit gate (PLAN-004 G-002/K-002 policy kept:
-# HIGH/CRITICAL production advisories fail; waivers in
-# .github/audit-exceptions.txt with review dates).
+# Reusable secret and dependency security gate. Platform CI is the public
+# entry point.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
   workflow_call:
 
 permissions:
