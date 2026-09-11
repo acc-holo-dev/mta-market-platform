@@ -38,31 +38,39 @@ RUN pnpm --filter @mta-market/server build
 
 # Stage 3: Runner
 FROM node:22-alpine AS runner
-WORKDIR /app
+# Runtime layout mirrors the pnpm workspace topology the code was compiled
+# against: /app/site/server/{package.json,node_modules,dist} + the root
+# virtual store at /app/node_modules/.pnpm. PLAN-014 caught that the previous
+# flat layout copied only the workspace-level symlink dir without the store,
+# so every ESM import from dist/ resolved to a dangling symlink
+# (ERR_MODULE_NOT_FOUND 'dotenv' at container start).
+WORKDIR /app/site/server
 
 RUN apk add --no-cache dumb-init
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nodejs
 
-# Copy built application
+# Copy built application and BOTH node_modules levels of the pnpm workspace:
+# the workspace symlink dir (server -> store) and the root .pnpm store.
 COPY --from=builder --chown=nodejs:nodejs /app/site/server/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/site/server/package.json ./
+COPY --from=builder --chown=nodejs:nodejs /app/site/server/package.json ./package.json
 COPY --from=deps --chown=nodejs:nodejs /app/site/server/node_modules ./node_modules
-
-# Compiled server imports Prisma runtime from dist/prisma
-COPY --from=builder --chown=nodejs:nodejs /app/site/server/dist/prisma ./dist/prisma
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules /app/node_modules
 
 # PLAN-004 L-002 (audit P0): pre-create the uploads mount point owned by the
 # runtime user so a root-owned auto-created mount never breaks uploads.
+# upload.ts defaults to a CWD-relative './uploads'; the container pins the
+# absolute, volume-mount-friendly path instead.
 RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
 
 USER nodejs
 
 EXPOSE 3001
 
-ENV NODE_ENV production
-ENV PORT 3001
+ENV NODE_ENV=production
+ENV PORT=3001
+ENV UPLOAD_DIR=/app/uploads
 
 ENTRYPOINT ["dumb-init", "--"]
 
