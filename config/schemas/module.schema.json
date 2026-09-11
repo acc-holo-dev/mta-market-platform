@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/schemas/module.schema.json",
+  "title": "module config manifest (any environment)",
+  "type": "object",
+  "required": ["module"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+        "title": { "type": "string" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "preset": { "type": "string" },
+        "cxxStandard": { "type": "integer", "minimum": 17, "maximum": 23 },
+        "unity": { "type": "boolean" },
+        "lto": { "type": "boolean" }
+      }
+    },
+    "drm": {
+      "type": "object",
+      "properties": {
+        "marketApiBase": { "type": "string" },
+        "keyStoreHome": { "type": "string" },
+        "allowSelfSigned": { "type": "boolean", "const": false }
+      }
+    }
+  }
+}

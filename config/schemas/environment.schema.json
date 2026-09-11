@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/schemas/environment.schema.json",
+  "title": "MTA Market environment config manifest",
+  "type": "object",
+  "required": ["api"],
+  "properties": {
+    "api": {
+      "type": "object",
+      "properties": {
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "nodeEnv": { "enum": ["development", "production"] },
+        "baseUrl": { "type": "string" },
+        "frontendUrl": { "type": "string" },
+        "corsOrigins": { "type": "array", "items": { "type": "string" } },
+        "cookieSameSite": { "enum": ["lax", "strict", "none"] },
+        "trustProxy": { "type": "boolean" },
+        "logFormat": { "enum": ["pretty", "json"] }
+      }
+    },
+    "web": { "type": "object" },
+    "database": { "type": "object" },
+    "redis": { "type": "object" },
+    "storage": { "type": "object" },
+    "payments": { "type": "object" },
+    "email": { "type": "object" },
+    "rateLimits": {
+      "type": "object",
+      "properties": {
+        "auth": { "type": "integer", "minimum": 1 },
+        "standard": { "type": "integer", "minimum": 1 },
+        "strict": { "type": "integer", "minimum": 1 },
+        "login": { "type": "integer", "minimum": 1 },
+        "refresh": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "jobs": { "type": "object" }
+  }
+}

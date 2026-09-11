@@ -1,0 +1,8 @@
+if(MSVC)
+  foreach(_target sdk_base sdk_tests)
+    if(TARGET ${_target})
+      set_property(TARGET ${_target} PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+      target_link_options(${_target} PRIVATE /INCREMENTAL:NO)
+    endif()
+  endforeach()
+endif()

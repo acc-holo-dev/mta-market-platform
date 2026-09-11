@@ -1,0 +1,47 @@
+# Development infrastructure (host-run dev stack for site/web + site/server).
+# Usage: docker compose -f infrastructure/docker/compose/development.yml up -d
+#
+# The application itself runs on the host in dev mode (python startup.py dev
+# or pnpm dev). Only the stateful services are containerized. This mirrors
+# the original mta-market-site docker-compose.yml infra services; the
+# build-based backend/frontend services moved to production.yml (images come
+# from CI) and to the host dev runner.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mta-market-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mtamarket
+      POSTGRES_USER: mtamarket
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mtamarket']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mta-market-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

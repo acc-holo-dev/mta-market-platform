@@ -1,0 +1,12 @@
+node_modules/
+.next/
+dist/
+.turbo/
+site/server/.agents/
+site/server/.claude/
+site/server/.cursor/
+site/server/.devin/
+site/server/src/prisma/contract.d.ts
+site/server/src/prisma/contract.json
+module/build/
+module/third_party/

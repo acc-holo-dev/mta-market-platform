@@ -1,0 +1,12 @@
+# CODEOWNERS — MTA Market Platform
+
+# Default: platform owner reviews everything.
+*       @acc-holo-dev
+
+# Security-sensitive zones require the owner.
+/.github/            @acc-holo-dev
+/config/             @acc-holo-dev
+/infrastructure/     @acc-holo-dev
+/site/server/src/lib/drm/   @acc-holo-dev
+/module/src/drm/            @acc-holo-dev
+/contracts/          @acc-holo-dev

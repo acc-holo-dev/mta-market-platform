@@ -1,0 +1,106 @@
+name: Module
+
+# Native module (module/): Linux build is the blocking gate; the header-drift
+# gate keeps the two vendored Lua header sets byte-identical; the real-server
+# integration suite is best-effort (downloads a pinned MTA server build).
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux (GCC) — build + tests + CLI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build g++ libssl-dev
+      - name: Verify vendored Lua headers stay byte-identical
+        run: |
+          for h in lua.h luaconf.h lauxlib.h lualib.h; do
+            cmp -s "module/third_party/mta-sdk/lua/$h" "module/third_party/lua/src/$h" \
+              || { echo "ERROR: module/third_party/mta-sdk/lua/$h differs from module/third_party/lua/src/$h"; exit 1; }
+          done
+          echo "Lua headers: OK"
+      - name: Configure
+        run: cmake --preset linux-gcc -S module
+      - name: Build
+        run: cmake --build --preset linux-gcc -S module
+      - name: Test (ctest: sdk_tests + config parser)
+        run: ctest --preset linux-gcc --test-dir module --output-on-failure
+      - name: Standalone DRM tests
+        run: make -f module/src/drm/Makefile test
+      - name: CLI smoke (docs, unit, lua filters)
+        run: |
+          python3 module/tools/mta/cli.py docs
+          python3 module/tools/mta/cli.py test unit
+          python3 module/tools/mta/cli.py test lua
+      - name: Python harness unit tests
+        run: python3 -m unittest discover -s tests/module
+
+  linux-clang:
+    name: Linux (Clang) build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build g++ clang libssl-dev
+      - run: cmake -S module -B module/build/linux-clang -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+      - run: cmake --build module/build/linux-clang
+
+  windows:
+    name: Windows (${{ matrix.toolchain }})
+    runs-on: windows-latest
+    continue-on-error: true # best-effort (verified locally on Linux x64 only)
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [mingw, msvc]
+    steps:
+      - uses: actions/checkout@v4
+      - if: matrix.toolchain == 'mingw'
+        uses: msys2/setup-msys2@v2
+        with:
+          msys2: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-openssl
+      - if: matrix.toolchain == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+      - if: matrix.toolchain == 'msvc'
+        run: choco install ninja -y --no-progress
+      - name: Configure + build
+        shell: msys2 {0}
+        if: matrix.toolchain == 'mingw'
+        run: |
+          cmake --preset win-mingw -S module
+          cmake --build --preset win-mingw -S module
+      - name: Configure + build
+        if: matrix.toolchain == 'msvc'
+        run: |
+          cmake --preset win-msvc -S module
+          cmake --build --preset win-msvc -S module
+
+  integration-linux:
+    # Real-server integration against a pinned MTA server build (network
+    # dependent — report-only so a flaky upstream download never blocks).
+    name: Real-server integration (Linux, best-effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build g++ libncursesw6 zlib1g libssl-dev
+      - name: Build the module
+        run: python3 module/tools/mta/cli.py build --preset linux-gcc
+      - name: Install pinned server and run the integration
+        run: |
+          python3 module/tools/mta/cli.py server install
+          python3 module/tools/mta/cli.py test integration

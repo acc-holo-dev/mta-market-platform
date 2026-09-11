@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * MTA Market design tokens (PLAN-002 B-002).
+ * Единый тёмный marketplace-язык: глубокий navy background, контрастные
+ * surfaces, один blue accent. Значения читаются через tailwind-маппинг
+ * в tailwind.config.ts (bg-surface, text-secondary, border-line, ...).
+ */
+:root {
+  color-scheme: dark;
+
+  /* backgrounds */
+  --background: 223 45% 5%;
+  --surface: 222 42% 8%;
+  --surface-hover: 221 36% 12%;
+  --surface-raised: 221 40% 10%;
+
+  /* lines */
+  --line: 220 28% 15%;
+  --line-strong: 220 26% 22%;
+
+  /* text */
+  --text-primary: 213 38% 96%;
+  --text-secondary: 217 18% 72%;
+  --muted: 217 14% 52%;
+
+  /* accents */
+  --primary: 217 91% 57%;
+  --primary-strong: 217 91% 63%;
+  --primary-soft: 217 60% 16%;
+  --success: 152 55% 45%;
+  --warning: 38 92% 55%;
+  --danger: 0 70% 57%;
+
+  /* shape */
+  --radius-card: 0.75rem;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--text-primary));
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.35);
+}
+
+/* L-004: заметный focus по умолчанию для всех интерактивных элементов. */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary-strong));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Аккуратный скроллбар в тёмной теме */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--line-strong)) transparent;
+}

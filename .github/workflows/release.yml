@@ -1,0 +1,64 @@
+name: Release
+
+# Tag-driven release: full gate (tests + e2e + module), publish ghcr images
+# pinned to the release tag and attach the packaged module ZIP.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  gate:
+    name: Release gate (tests + e2e)
+    uses: ./.github/workflows/tests.yml
+    permissions:
+      contents: read
+
+  release-images:
+    name: Publish images + module package
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Backend image (release tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/site/server.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/backend:${{ github.ref_name }}
+          labels: org.opencontainers.image.version=${{ github.ref_name }}
+      - name: Frontend image (release tag)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/site/web.Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/frontend:${{ github.ref_name }}
+          labels: org.opencontainers.image.version=${{ github.ref_name }}
+      - name: Package the module (CPack ZIP)
+        run: |
+          sudo apt-get update && sudo apt-get install -y ninja-build g++ libssl-dev
+          cmake --preset linux-gcc -S module
+          cmake --build --preset linux-gcc -S module
+          ctest --preset linux-gcc --test-dir module --output-on-failure
+          cd module/build/linux-gcc && cpack
+      - name: Attach module package to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: module/build/linux-gcc/package/*.zip
+          generate_release_notes: true

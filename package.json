@@ -1,0 +1,50 @@
+{
+  "name": "mta-market-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MTA Market Platform — unified monorepo (site + module + documents + contracts)",
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "pnpm --filter @mta-market/web dev",
+    "dev:server": "pnpm --filter @mta-market/server dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
+    "type-check": "turbo run type-check && tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:concurrency": "vitest run tests/concurrency",
+    "db:emit": "pnpm --filter @mta-market/server contract:emit",
+    "test:e2e:admin": "pnpm --filter @mta-market/server exec tsx scripts/dev-admin.ts --email e2e-admin@mtamarket.local --username e2e-admin --password e2e-admin-password-123",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "pg": "^8.23.0",
+    "prettier": "^3.4.2",
+    "supertest": "^7.2.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "hono": "^4.13.5",
+      "@hono/node-server": "^1.19.15",
+      "lodash": "^4.17.23",
+      "qs": "^6.16.0",
+      "valibot": "^1.4.2",
+      "postcss": "^8.5.23",
+      "sharp": "^0.35.4"
+    }
+  }
+}

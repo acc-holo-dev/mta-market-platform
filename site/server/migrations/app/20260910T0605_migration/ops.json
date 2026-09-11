@@ -1,0 +1,203 @@
+[
+  {
+    "id": "table.resourceMedia",
+    "label": "Create table \"resourceMedia\"",
+    "summary": "Creates table \"resourceMedia\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "resourceMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"resourceMedia\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceMedia\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"resourceMedia\"",
+        "sql": "CREATE TABLE \"public\".\"resourceMedia\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"mimeType\" text,\n  \"position\" int4 DEFAULT 0 NOT NULL,\n  \"resourceId\" text NOT NULL,\n  \"sizeBytes\" int4,\n  \"url\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"resourceMedia\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceMedia\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.resource.coverUrl",
+    "label": "Add column \"coverUrl\" to \"resource\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "coverUrl",
+        "table": "resource"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"coverUrl\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "resource",
+          "coverUrl"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"coverUrl\"",
+        "sql": "ALTER TABLE \"public\".\"resource\" ADD COLUMN \"coverUrl\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"coverUrl\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "resource",
+          "coverUrl"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.resourceMedia.resourceMedia_resourceId_idx_72964925",
+    "label": "Create index \"resourceMedia_resourceId_idx_72964925\" on \"resourceMedia\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "resourceMedia_resourceId_idx_72964925",
+        "table": "resourceMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"resourceMedia_resourceId_idx_72964925\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceMedia_resourceId_idx_72964925\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"resourceMedia_resourceId_idx_72964925\"",
+        "sql": "CREATE INDEX \"resourceMedia_resourceId_idx_72964925\" ON \"public\".\"resourceMedia\" (\"resourceId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"resourceMedia_resourceId_idx_72964925\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceMedia_resourceId_idx_72964925\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.resourceMedia.resourceMedia_resourceId_kind_idx_bf2cb113",
+    "label": "Create index \"resourceMedia_resourceId_kind_idx_bf2cb113\" on \"resourceMedia\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "resourceMedia_resourceId_kind_idx_bf2cb113",
+        "table": "resourceMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"resourceMedia_resourceId_kind_idx_bf2cb113\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceMedia_resourceId_kind_idx_bf2cb113\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"resourceMedia_resourceId_kind_idx_bf2cb113\"",
+        "sql": "CREATE INDEX \"resourceMedia_resourceId_kind_idx_bf2cb113\" ON \"public\".\"resourceMedia\" (\"resourceId\", \"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"resourceMedia_resourceId_kind_idx_bf2cb113\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceMedia_resourceId_kind_idx_bf2cb113\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.resourceMedia.resourceMedia_resourceId_fkey",
+    "label": "Add foreign key \"resourceMedia_resourceId_fkey\" on \"resourceMedia\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "resourceMedia_resourceId_fkey",
+        "table": "resourceMedia"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"resourceMedia_resourceId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceMedia_resourceId_fkey",
+          "public",
+          "\"public\".\"resourceMedia\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"resourceMedia_resourceId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"resourceMedia\"\nADD CONSTRAINT \"resourceMedia_resourceId_fkey\"\nFOREIGN KEY (\"resourceId\")\nREFERENCES \"public\".\"resource\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"resourceMedia_resourceId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceMedia_resourceId_fkey",
+          "public",
+          "\"public\".\"resourceMedia\""
+        ]
+      }
+    ]
+  }
+]

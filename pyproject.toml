@@ -1,0 +1,14 @@
+[project]
+name = "mta-market-platform"
+version = "0.1.0"
+description = "MTA Market Platform — development automation (startup.py, scripts)"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]

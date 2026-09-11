@@ -1,0 +1,10 @@
+# Verified compatibility — DRM Protocol v2
+version: 1
+last_verified: 2026-09-11
+rows:
+  - server: site/server (protocol.ts, routes/drm/v2.ts)
+    client: module (module/src/drm/license_client.cpp, protocol v2)
+    status: verified (unit vectors + DRM integration tests)
+  - legacy v1: 410 Gone, no bridge
+frozenConstants: contracts/drm/v2/protocol.yaml
+changePolicy: bump protocol to v3; never edit constants in place

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/module/capabilities.schema.json",
+  "title": "Lease capabilities recognized by the module",
+  "type": "array",
+  "items": { "enum": ["run", "update"] },
+  "uniqueItems": true,
+  "$comment": "run = execute the decrypted chunk; update = fetch newer encrypted versions. A lease without 'run' must not decrypt (DRM_INSUFFICIENT_CAPABILITIES)."
+}

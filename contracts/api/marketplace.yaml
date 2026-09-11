@@ -1,0 +1,40 @@
+# Marketplace domain inventory (routes: resources, versions, reviews, seller,
+# sellers, upload, media, search — site/server/src/routes/)
+domain: marketplace
+endpoints:
+  resources:
+    - { method: GET,    path: /resources, note: q/type/price/sort/page/limit }
+    - { method: GET,    path: /resources/homepage, note: newest/popular/free aggregates }
+    - { method: POST,   path: /resources }
+    - { method: GET,    path: /resources/my }
+    - { method: GET,    path: /resources/:slug }
+    - { method: PATCH,  path: /resources/:slug, note: seller transitions DRAFT<->PENDING_REVIEW }
+    - { method: DELETE, path: /resources/:slug }
+    - { method: POST,   path: /resources/:slug/view, note: PLAN-010 honest view counter }
+  media:
+    - { method: GET,    path: /resources/:slug/media }
+    - { method: PUT,    path: /resources/:slug/media/cover }
+    - { method: DELETE, path: /resources/:slug/media/cover }
+    - { method: POST,   path: /resources/:slug/media/screenshots }
+    - { method: DELETE, path: /resources/:slug/media/screenshots/:mediaId }
+    - { method: PUT,    path: /resources/:slug/media/screenshots/order }
+  versions:
+    - { method: GET,  path: /resources/:slug/versions }
+    - { method: POST, path: /resources/:slug/versions, note: artifact upload pipeline; sandbox validation }
+  reviews:
+    - { method: GET,    path: /resources/:slug/reviews, note: purchase-gated posting }
+    - { method: POST,   path: /resources/:slug/reviews }
+    - { method: PATCH,  path: /resources/:slug/reviews }
+  seller:
+    - { method: GET,  path: /seller/profile }
+    - { method: POST, path: /seller/apply }
+    - { method: GET,  path: /seller/list,      auth: admin }
+    - { method: GET,  path: /seller/analytics, note: PLAN-010 views/purchases/conversion 30d }
+    - { method: POST, path: /seller/:userId/approve, auth: admin }
+    - { method: POST, path: /seller/:userId/reject,  auth: admin }
+    - { method: GET,  path: /sellers/:username, note: public storefront }
+  upload:
+    - { method: POST, path: /upload/resource, note: multipart; checksum server-side }
+    - { method: POST, path: /upload/media,    note: magic-byte validation; opaque names }
+  search:
+    - { method: GET,  path: /search, note: resources/servers/threads/articles groups }

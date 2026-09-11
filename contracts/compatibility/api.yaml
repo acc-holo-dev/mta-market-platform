@@ -1,0 +1,10 @@
+# Verified compatibility — REST API consumers (web)
+version: 1
+last_verified: 2026-09-11
+rows:
+  - consumer: site/web (Next.js 15 / React 19, axios client)
+    api: REST v1 (this contracts/api inventory) + /drm/v2
+    evidence: backend 378/378 + browser E2E 59/59 (PLAN-010 acceptance)
+notes:
+  - web never imports server source (PLAN-010 Rule 006); coupling via contracts + shared DTO types
+  - refresh rotation changes must keep the single-flight retry in site/web/src/lib/api.ts working

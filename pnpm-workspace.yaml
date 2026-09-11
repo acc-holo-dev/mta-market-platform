@@ -1,0 +1,5 @@
+packages:
+  - "site/web"
+  - "site/server"
+  - "site/shared"
+  - "site/packages/*"

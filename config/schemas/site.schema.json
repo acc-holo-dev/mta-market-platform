@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/schemas/site.schema.json",
+  "title": "site config manifest (any environment)",
+  "allOf": [{ "$ref": "environment.schema.json" }]
+}

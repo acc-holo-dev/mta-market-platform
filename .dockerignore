@@ -1,0 +1,67 @@
+# Root .dockerignore — applies to every build whose context is the
+# repository root (infrastructure/docker/site/*.Dockerfile).
+# Secrets must never enter build layers or the GHA cache (PLAN-004 G-001).
+
+# Dependencies
+node_modules
+**/node_modules
+.pnpm-store
+
+# Build output
+dist
+**/dist
+.next
+**/.next
+out
+build
+**/build
+.turbo
+
+# Environment & secrets — ANY depth
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.crt
+.keys
+secrets
+
+# Logs
+logs
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage
+test-results
+playwright-report
+blob-report
+
+# Module artifacts (built inside the image, not shipped from the context)
+module/build
+module/third_party/lua/src/*.o
+
+# IDE / OS
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Git & CI
+.git
+.gitignore
+.gitattributes
+.github
+
+# Docs (never needed in images)
+documents
+
+# Misc runtime state
+tmp
+temp
+cache
+uploads
+backups

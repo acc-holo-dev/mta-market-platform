@@ -1,0 +1,8 @@
+# Production — module ships as a release ZIP (mta package --release-name);
+# keys only in the machine key store (see documents/drm/KEY-MANAGEMENT.md).
+module:
+  name: base
+drm:
+  marketApiBase: https://<production-domain>
+  keyStoreHome: ~/.mta-market
+  allowSelfSigned: false

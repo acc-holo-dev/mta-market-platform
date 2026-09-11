@@ -1,0 +1,16 @@
+# Servers domain events (activity read-layer + monitoring)
+version: 1
+producers:
+  - server.verified           # first valid integration heartbeat
+  - server.news_published     # optional discussion thread
+  - server.update_published   # version + changelog
+  - server.heartbeat          # ServerStatusSample; aggregates only
+  - server.monitoring_sweep   # ONLINE -> UNKNOWN decay (never fake OFFLINE)
+activityTypes:
+  - SERVER_VERIFIED
+  - SERVER_NEWS_PUBLISHED
+  - SERVER_UPDATE_PUBLISHED
+liveAggregates:
+  endpoint: GET /activity/live
+  cache: Redis TTL 45s
+  filter: VERIFIED/ACTIVE + ONLINE + showStats

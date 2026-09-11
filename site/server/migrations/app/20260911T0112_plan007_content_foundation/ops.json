@@ -1,0 +1,899 @@
+[
+  {
+    "id": "dropCheckConstraint.report.report_targetType_check_64e7cffc",
+    "label": "Drop check constraint \"report_targetType_check_64e7cffc\" on \"report\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "report_targetType_check_64e7cffc",
+        "table": "report"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"report_targetType_check_64e7cffc\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "report_targetType_check_64e7cffc",
+          "public",
+          "\"public\".\"report\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"report_targetType_check_64e7cffc\"",
+        "sql": "ALTER TABLE \"public\".\"report\" DROP CONSTRAINT \"report_targetType_check_64e7cffc\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"report_targetType_check_64e7cffc\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "report_targetType_check_64e7cffc",
+          "public",
+          "\"public\".\"report\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.article",
+    "label": "Create table \"article\"",
+    "summary": "Creates table \"article\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "article"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"article\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"article\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"article\"",
+        "sql": "CREATE TABLE \"public\".\"article\" (\n  \"authorId\" text NOT NULL,\n  \"category\" text DEFAULT 'GUIDES' NOT NULL,\n  \"content\" text NOT NULL,\n  \"coverUrl\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"excerpt\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"publishedAt\" timestamptz,\n  \"reviewNote\" text,\n  \"slug\" text NOT NULL,\n  \"status\" text DEFAULT 'DRAFT' NOT NULL,\n  \"tags\" text,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"article_category_check_b147cc2f\" CHECK (\"category\" IN ('GUIDES', 'NEWS', 'REVIEWS', 'OPINION')),\n  CONSTRAINT \"article_status_check_b0fc567a\" CHECK (\"status\" IN ('DRAFT', 'PENDING_REVIEW', 'PUBLISHED', 'ARCHIVED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"article\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"article\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.articleResourceLink",
+    "label": "Create table \"articleResourceLink\"",
+    "summary": "Creates table \"articleResourceLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "articleResourceLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"articleResourceLink\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"articleResourceLink\"",
+        "sql": "CREATE TABLE \"public\".\"articleResourceLink\" (\n  \"articleId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"position\" int4 DEFAULT 0 NOT NULL,\n  \"resourceId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"articleResourceLink\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.articleServerLink",
+    "label": "Create table \"articleServerLink\"",
+    "summary": "Creates table \"articleServerLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "articleServerLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"articleServerLink\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"articleServerLink\"",
+        "sql": "CREATE TABLE \"public\".\"articleServerLink\" (\n  \"articleId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"position\" int4 DEFAULT 0 NOT NULL,\n  \"serverId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"articleServerLink\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.forumThread.articleId",
+    "label": "Add column \"articleId\" to \"forumThread\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "articleId",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"articleId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "forumThread",
+          "articleId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"articleId\"",
+        "sql": "ALTER TABLE \"public\".\"forumThread\" ADD COLUMN \"articleId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"articleId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "forumThread",
+          "articleId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.article.article_slug_key",
+    "label": "Add unique constraint on \"article\" (slug)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "article_slug_key",
+        "table": "article"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"article_slug_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "article_slug_key",
+          "public",
+          "\"public\".\"article\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"article_slug_key\"",
+        "sql": "ALTER TABLE \"public\".\"article\" ADD CONSTRAINT \"article_slug_key\" UNIQUE (\"slug\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"article_slug_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "article_slug_key",
+          "public",
+          "\"public\".\"article\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.articleResourceLink.articleResourceLink_articleId_resourceId_key",
+    "label": "Add unique constraint on \"articleResourceLink\" (articleId, resourceId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "articleResourceLink_articleId_resourceId_key",
+        "table": "articleResourceLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"articleResourceLink_articleId_resourceId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleResourceLink_articleId_resourceId_key",
+          "public",
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"articleResourceLink_articleId_resourceId_key\"",
+        "sql": "ALTER TABLE \"public\".\"articleResourceLink\" ADD CONSTRAINT \"articleResourceLink_articleId_resourceId_key\" UNIQUE (\"articleId\", \"resourceId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"articleResourceLink_articleId_resourceId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleResourceLink_articleId_resourceId_key",
+          "public",
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.articleServerLink.articleServerLink_articleId_serverId_key",
+    "label": "Add unique constraint on \"articleServerLink\" (articleId, serverId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "articleServerLink_articleId_serverId_key",
+        "table": "articleServerLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"articleServerLink_articleId_serverId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleServerLink_articleId_serverId_key",
+          "public",
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"articleServerLink_articleId_serverId_key\"",
+        "sql": "ALTER TABLE \"public\".\"articleServerLink\" ADD CONSTRAINT \"articleServerLink_articleId_serverId_key\" UNIQUE (\"articleId\", \"serverId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"articleServerLink_articleId_serverId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleServerLink_articleId_serverId_key",
+          "public",
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.forumThread.forumThread_articleId_key",
+    "label": "Add unique constraint on \"forumThread\" (articleId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "forumThread_articleId_key",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"forumThread_articleId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_articleId_key",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"forumThread_articleId_key\"",
+        "sql": "ALTER TABLE \"public\".\"forumThread\" ADD CONSTRAINT \"forumThread_articleId_key\" UNIQUE (\"articleId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"forumThread_articleId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_articleId_key",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.report.report_targetType_check_093d505b",
+    "label": "Add check constraint \"report_targetType_check_093d505b\" on \"report\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "report_targetType_check_093d505b",
+        "table": "report"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"report_targetType_check_093d505b\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "report_targetType_check_093d505b",
+          "public",
+          "\"public\".\"report\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"report_targetType_check_093d505b\"",
+        "sql": "ALTER TABLE \"public\".\"report\" ADD CONSTRAINT \"report_targetType_check_093d505b\" CHECK (\"targetType\" IN ('THREAD', 'POST', 'REVIEW', 'NEWS', 'SERVER', 'PROFILE', 'ARTICLE'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"report_targetType_check_093d505b\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "report_targetType_check_093d505b",
+          "public",
+          "\"public\".\"report\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.article.article_authorId_idx_e47547ed",
+    "label": "Create index \"article_authorId_idx_e47547ed\" on \"article\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "article_authorId_idx_e47547ed",
+        "table": "article"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"article_authorId_idx_e47547ed\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"article_authorId_idx_e47547ed\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"article_authorId_idx_e47547ed\"",
+        "sql": "CREATE INDEX \"article_authorId_idx_e47547ed\" ON \"public\".\"article\" (\"authorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"article_authorId_idx_e47547ed\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"article_authorId_idx_e47547ed\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.article.article_status_publishedAt_idx_4d4b1960",
+    "label": "Create index \"article_status_publishedAt_idx_4d4b1960\" on \"article\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "article_status_publishedAt_idx_4d4b1960",
+        "table": "article"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"article_status_publishedAt_idx_4d4b1960\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"article_status_publishedAt_idx_4d4b1960\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"article_status_publishedAt_idx_4d4b1960\"",
+        "sql": "CREATE INDEX \"article_status_publishedAt_idx_4d4b1960\" ON \"public\".\"article\" (\"status\", \"publishedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"article_status_publishedAt_idx_4d4b1960\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"article_status_publishedAt_idx_4d4b1960\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.articleResourceLink.articleResourceLink_articleId_idx_3dd188a0",
+    "label": "Create index \"articleResourceLink_articleId_idx_3dd188a0\" on \"articleResourceLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "articleResourceLink_articleId_idx_3dd188a0",
+        "table": "articleResourceLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"articleResourceLink_articleId_idx_3dd188a0\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleResourceLink_articleId_idx_3dd188a0\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"articleResourceLink_articleId_idx_3dd188a0\"",
+        "sql": "CREATE INDEX \"articleResourceLink_articleId_idx_3dd188a0\" ON \"public\".\"articleResourceLink\" (\"articleId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"articleResourceLink_articleId_idx_3dd188a0\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleResourceLink_articleId_idx_3dd188a0\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.articleResourceLink.articleResourceLink_resourceId_idx_72964925",
+    "label": "Create index \"articleResourceLink_resourceId_idx_72964925\" on \"articleResourceLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "articleResourceLink_resourceId_idx_72964925",
+        "table": "articleResourceLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"articleResourceLink_resourceId_idx_72964925\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleResourceLink_resourceId_idx_72964925\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"articleResourceLink_resourceId_idx_72964925\"",
+        "sql": "CREATE INDEX \"articleResourceLink_resourceId_idx_72964925\" ON \"public\".\"articleResourceLink\" (\"resourceId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"articleResourceLink_resourceId_idx_72964925\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleResourceLink_resourceId_idx_72964925\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.articleServerLink.articleServerLink_articleId_idx_3dd188a0",
+    "label": "Create index \"articleServerLink_articleId_idx_3dd188a0\" on \"articleServerLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "articleServerLink_articleId_idx_3dd188a0",
+        "table": "articleServerLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"articleServerLink_articleId_idx_3dd188a0\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleServerLink_articleId_idx_3dd188a0\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"articleServerLink_articleId_idx_3dd188a0\"",
+        "sql": "CREATE INDEX \"articleServerLink_articleId_idx_3dd188a0\" ON \"public\".\"articleServerLink\" (\"articleId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"articleServerLink_articleId_idx_3dd188a0\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleServerLink_articleId_idx_3dd188a0\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.articleServerLink.articleServerLink_serverId_idx_cfc44675",
+    "label": "Create index \"articleServerLink_serverId_idx_cfc44675\" on \"articleServerLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "articleServerLink_serverId_idx_cfc44675",
+        "table": "articleServerLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"articleServerLink_serverId_idx_cfc44675\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleServerLink_serverId_idx_cfc44675\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"articleServerLink_serverId_idx_cfc44675\"",
+        "sql": "CREATE INDEX \"articleServerLink_serverId_idx_cfc44675\" ON \"public\".\"articleServerLink\" (\"serverId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"articleServerLink_serverId_idx_cfc44675\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"articleServerLink_serverId_idx_cfc44675\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.article.article_authorId_fkey",
+    "label": "Add foreign key \"article_authorId_fkey\" on \"article\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "article_authorId_fkey",
+        "table": "article"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"article_authorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "article_authorId_fkey",
+          "public",
+          "\"public\".\"article\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"article_authorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"article\"\nADD CONSTRAINT \"article_authorId_fkey\"\nFOREIGN KEY (\"authorId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"article_authorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "article_authorId_fkey",
+          "public",
+          "\"public\".\"article\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.articleResourceLink.articleResourceLink_articleId_fkey",
+    "label": "Add foreign key \"articleResourceLink_articleId_fkey\" on \"articleResourceLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "articleResourceLink_articleId_fkey",
+        "table": "articleResourceLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"articleResourceLink_articleId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleResourceLink_articleId_fkey",
+          "public",
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"articleResourceLink_articleId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"articleResourceLink\"\nADD CONSTRAINT \"articleResourceLink_articleId_fkey\"\nFOREIGN KEY (\"articleId\")\nREFERENCES \"public\".\"article\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"articleResourceLink_articleId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleResourceLink_articleId_fkey",
+          "public",
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.articleResourceLink.articleResourceLink_resourceId_fkey",
+    "label": "Add foreign key \"articleResourceLink_resourceId_fkey\" on \"articleResourceLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "articleResourceLink_resourceId_fkey",
+        "table": "articleResourceLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"articleResourceLink_resourceId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleResourceLink_resourceId_fkey",
+          "public",
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"articleResourceLink_resourceId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"articleResourceLink\"\nADD CONSTRAINT \"articleResourceLink_resourceId_fkey\"\nFOREIGN KEY (\"resourceId\")\nREFERENCES \"public\".\"resource\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"articleResourceLink_resourceId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleResourceLink_resourceId_fkey",
+          "public",
+          "\"public\".\"articleResourceLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.articleServerLink.articleServerLink_articleId_fkey",
+    "label": "Add foreign key \"articleServerLink_articleId_fkey\" on \"articleServerLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "articleServerLink_articleId_fkey",
+        "table": "articleServerLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"articleServerLink_articleId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleServerLink_articleId_fkey",
+          "public",
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"articleServerLink_articleId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"articleServerLink\"\nADD CONSTRAINT \"articleServerLink_articleId_fkey\"\nFOREIGN KEY (\"articleId\")\nREFERENCES \"public\".\"article\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"articleServerLink_articleId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleServerLink_articleId_fkey",
+          "public",
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.articleServerLink.articleServerLink_serverId_fkey",
+    "label": "Add foreign key \"articleServerLink_serverId_fkey\" on \"articleServerLink\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "articleServerLink_serverId_fkey",
+        "table": "articleServerLink"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"articleServerLink_serverId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleServerLink_serverId_fkey",
+          "public",
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"articleServerLink_serverId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"articleServerLink\"\nADD CONSTRAINT \"articleServerLink_serverId_fkey\"\nFOREIGN KEY (\"serverId\")\nREFERENCES \"public\".\"server\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"articleServerLink_serverId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "articleServerLink_serverId_fkey",
+          "public",
+          "\"public\".\"articleServerLink\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.forumThread.forumThread_articleId_fkey",
+    "label": "Add foreign key \"forumThread_articleId_fkey\" on \"forumThread\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "forumThread_articleId_fkey",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"forumThread_articleId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_articleId_fkey",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"forumThread_articleId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"forumThread\"\nADD CONSTRAINT \"forumThread_articleId_fkey\"\nFOREIGN KEY (\"articleId\")\nREFERENCES \"public\".\"article\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"forumThread_articleId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_articleId_fkey",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ]
+  }
+]

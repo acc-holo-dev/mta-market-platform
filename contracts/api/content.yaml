@@ -1,0 +1,20 @@
+# Content + daily experience inventory (routes: content, news, activity,
+# dashboard, admin content)
+domain: content
+endpoints:
+  articles:
+    - { method: GET,  path: /content, note: hub; category filter }
+    - { method: POST, path: /content }
+    - { method: GET,  path: /content/mine }
+    - { method: GET,  path: /content/articles/:slug }
+    - { method: PATCH,  path: /content/:id }
+    - { method: POST,   path: /content/:id/submit,    note: DRAFT -> PENDING_REVIEW }
+    - { method: POST,   path: /content/:id/discussion, note: attach a forum thread }
+    - { method: POST,   path: /admin/content/:id/approve|reject|hide, auth: admin }
+  activity:
+    - { method: GET, path: /activity, note: derived read-layer, 9 types, 7d window }
+    - { method: GET, path: /activity/live, note: LIVE aggregates (Redis TTL 45s) }
+  dashboard:
+    - { method: GET, path: /dashboard/now, note: «Сейчас / За ночь» summary }
+    - { method: GET, path: /dashboard/community }
+events_domain: contracts/events/

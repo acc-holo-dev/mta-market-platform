@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/module/review-token.schema.json",
+  "title": "Module review-token request (POST /integration/review-tokens)",
+  "type": "object",
+  "required": ["token"],
+  "properties": {
+    "token": { "type": "string", "pattern": "^smk_" },
+    "note": { "type": ["string", "null"] },
+    "ttlMinutes": { "type": "integer", "minimum": 1, "default": 1440, "description": "token lifetime; default 24h" }
+  },
+  "additionalProperties": false,
+  "$comment": "Response: { reviewToken, expiresAt }. One-time, server-bound, replay-protected, self-review banned, 1 review per user. Claim -> Verified Interaction badge."
+}

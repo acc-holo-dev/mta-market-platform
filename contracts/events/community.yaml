@@ -1,0 +1,9 @@
+# Community domain events (activity read-layer sources)
+version: 1
+producers:
+  - forum.thread_created
+  - forum.post_replied        # FORUM_REPLY to thread followers (PLAN-009)
+  - thread.followed
+activityTypes:
+  - FORUM_THREAD_CREATED
+  - FORUM_REPLY

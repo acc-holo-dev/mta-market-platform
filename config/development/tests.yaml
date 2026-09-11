@@ -1,0 +1,13 @@
+# Test environment wiring (vitest.config.ts + infrastructure compose files).
+database:
+  testUrl: postgresql://postgres:postgres@127.0.0.1:5433/postgres?schema=public
+  composeFile: infrastructure/docker/compose/tests.yml
+redis:
+  testUrl: redis://127.0.0.1:6379
+vitest:
+  fileParallelism: false
+  testTimeout: 30000
+e2e:
+  baseURL: http://localhost:3000
+  apiUrl: http://localhost:3001
+  adminEmail: e2e-admin@mtamarket.local

@@ -1,0 +1,53 @@
+name: Tests
+
+# Blocking gate: unit + integration (+ concurrency foundation) against a real
+# PostgreSQL, plus type-check of every workspace package.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  vitest:
+    name: Tests (unit + integration)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --frozen-lockfile
+      - name: Apply contract schema (quick path, test DB)
+        working-directory: site/server
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5433/postgres?schema=public
+        run: npx prisma contract emit && npx prisma db update --confirm postgres
+      - name: Type check (workspaces + tests)
+        run: pnpm type-check
+      - name: Run vitest suite
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5433/postgres?schema=public
+          JWT_SECRET: ci_secret_min_32_chars_long_xxxxxxxxxxxx
+        run: pnpm exec vitest run

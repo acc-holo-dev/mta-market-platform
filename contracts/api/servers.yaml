@@ -1,0 +1,31 @@
+# Servers domain inventory (routes: servers, serverNews, serverReviews)
+domain: servers
+endpoints:
+  - { method: GET,    path: /servers }
+  - { method: POST,   path: /servers }
+  - { method: GET,    path: /servers/my }
+  - { method: GET,    path: /servers/:slug }
+  - { method: PATCH,  path: /servers/:slug }
+  - { method: PATCH,  path: /servers/:slug/privacy }
+  - { method: DELETE, path: /servers/:slug, note: archive }
+  - { method: GET,    path: /servers/:slug/manage }
+  - { method: GET,    path: /servers/:slug/statistics }
+  - { method: GET,    path: /servers/:slug/staff }
+  - { method: POST,   path: /servers/:slug/integration-token, note: smk_ possession token }
+  - { method: GET,    path: /servers/:slug/verification }
+  - { method: POST,   path: /integration/heartbeat,      note: module client; see contracts/module/heartbeat.schema.json }
+  - { method: POST,   path: /integration/review-tokens,  note: see contracts/module/review-token.schema.json }
+news_updates:
+    - { method: GET,    path: /servers/:slug/news }
+    - { method: POST,   path: /servers/:slug/news }
+    - { method: PATCH,  path: /servers/:slug/news/:id }
+    - { method: POST,   path: /servers/:slug/news/:id/publish, note: optional discussion thread }
+    - { method: GET,    path: /servers/:slug/updates }
+    - { method: POST,   path: /servers/:slug/updates }
+    - { method: GET,    path: /news, note: global feed (NEWS|UPDATE) }
+reviews:
+    - { method: GET,    path: /servers/:slug/reviews }
+    - { method: POST,   path: /servers/:slug/reviews, note: one-time token verified }
+    - { method: DELETE, path: /servers/:slug/reviews }
+    - { method: GET,    path: /servers/:slug/reviews/eligibility }
+    - { method: POST,   path: /servers/:slug/review-token/claim }

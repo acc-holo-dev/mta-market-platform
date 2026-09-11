@@ -1,0 +1,48 @@
+# MTA Market API — OpenAPI entry point (formalization in progress).
+# The authoritative route wiring lives in site/server/src/app.ts; the
+# per-domain inventories in this directory mirror it (derived 2026-09-11,
+# PLAN-011). Human-readable docs: documents/api/.
+openapi: 3.1.0
+info:
+  title: MTA Market API
+  version: 1.0.0
+  description: |
+    Express API of the MTA Market platform (marketplace + community + servers
+    + content + DRM v2). Dev: http://localhost:3001. Production: behind nginx
+    with the /api/ prefix stripped to the backend (see
+    infrastructure/nginx/nginx.conf).
+servers:
+  - url: http://localhost:3001
+    description: development
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        Short-lived access token (15m) in the Authorization header; the
+        refresh token is an HttpOnly cookie handled by /auth/refresh
+        (rotation + reuse detection).
+  responses:
+    ErrorEnvelope:
+      description: Error envelope
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: object
+                properties: { error: { type: string } }
+              - type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      code: { type: string }
+                      message: { type: string }
+paths: {}
+# Domain endpoint inventories: see authentication.yaml, marketplace.yaml,
+# commerce.yaml, servers.yaml, community.yaml, content.yaml and the frozen
+# DRM map (../drm/v2/protocol.yaml).

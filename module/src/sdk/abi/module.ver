@@ -1,0 +1,13 @@
+# Module export list for GNU ld on Linux: only the six MTA entry points are
+# visible from the module .so, everything else stays local to the shared
+# object (the Windows counterpart is generated from src/module/module.def.in).
+{
+  global:
+    InitModule;
+    RegisterFunctions;
+    DoPulse;
+    ShutdownModule;
+    ResourceStopping;
+    ResourceStopped;
+  local: *;
+};

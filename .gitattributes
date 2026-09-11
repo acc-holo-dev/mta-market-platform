@@ -1,0 +1,42 @@
+# MTA Market Platform — line endings and archive behavior
+* text=auto eol=lf
+
+# Windows-only files keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binaries — never normalize
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.zip binary
+*.gz binary
+*.tgz binary
+*.7z binary
+*.pdf binary
+*.wasm binary
+*.node binary
+*.dll binary
+*.exe binary
+*.so binary
+*.dylib binary
+*.a binary
+*.lib binary
+*.o binary
+*.obj binary
+
+# Sources that must never appear in archives/diffs by accident
+*.pem -diff -merge
+*.key -diff -merge
+*.crt -diff -merge
+
+# Reduce noise in language stats
+site/server/src/prisma/contract.json linguist-generated=true
+pnpm-lock.yaml linguist-generated=true

@@ -1,0 +1,1814 @@
+// MTA Market Schema - Prisma 8 (contract.prisma)
+// Stage 2: Database & Authentication
+
+// use prisma-next
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  passwordHash  String? // bcrypt; null = OAuth-only account (PLAN A-001)
+  emailVerified TimestamptzString?
+  username      String?      @unique
+  displayName   String?
+  avatar        String?
+  role          UserRole     @default(USER)
+  status        UserStatus   @default(ACTIVE)
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+  // PLAN-006 I-002: last dashboard visit — the "Сейчас / За ночь" summary
+  // measures new activity since this moment. Null = never visited.
+  dashboardSeenAt TimestamptzString?
+
+  accounts      Account[]
+  sessions      Session[]
+  resources     Resource[]
+  services      Service[]
+  purchases     Purchase[]
+  servicePurchases ServicePurchase[]
+  reviews       Review[]
+  sellerBalance SellerBalance?
+  transactions  FinancialTransaction[]
+  publisherKeys PublisherKey[]
+  orders        Order[]
+  discountCampaigns DiscountCampaign[]
+  sellerProfile SellerProfile?
+  balance       UserBalance?
+  // PLAN-005: Community & Server Foundation
+  ownedServers  Server[]
+  serverMemberships ServerMember[]
+  serverFollows ServerFollow[]
+  serverReviewEligibilities ServerReviewEligibility[]
+  serverReviews ServerReview[]
+  serverNews    ServerNews[]
+  serverUpdates ServerUpdate[]
+  forumThreads  ForumThread[]
+  forumPosts    ForumPost[]
+  forumReactions ForumReaction[]
+  notifications Notification[]
+  reports       Report[]
+  // PLAN-007: Content Foundation
+  articles      Article[]
+  // PLAN-008: Follow Expansion
+  creatorFollowsGiven  SellerFollow[] @relation("sellerFollowsFollower")
+  creatorFollowsRecvd  SellerFollow[] @relation("sellerFollowsSeller")
+  resourceFollowsGiven ResourceFollow[]
+  // PLAN-009: Thread Follow
+  threadFollows        ForumThreadFollow[]
+
+  @@index([email])
+  @@index([username])
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id                 String    @id @default(uuid())
+  userId             String
+  refreshTokenHash   String    @unique  // SHA-256 hash of refresh token
+  tokenFamily        String?   // For rotation: identifies token lineage
+  reuseDetected      Boolean   @default(false)  // Flag for token reuse attacks
+  expiresAt          TimestamptzString
+  createdAt          TimestamptzString @default(now())
+  lastRotatedAt      TimestamptzString?  // Track rotation for security audit
+  ipAddress          String?
+  userAgent          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([refreshTokenHash])
+  @@index([tokenFamily])
+}
+
+enum ResourceType {
+  SCRIPT
+  MAP
+  MODEL
+  TEXTURE
+  SOUND
+  GAMEMODE
+}
+
+enum ResourceStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  SUSPENDED
+}
+
+model Resource {
+  id          String         @id @default(uuid())
+  sellerId    String
+  slug        String         @unique
+  title       String
+  description String
+  type        ResourceType
+  status      ResourceStatus @default(DRAFT)
+  price       Int
+  // PLAN-003 A-002: one main cover per resource. Nullable — existing
+  // resources without media keep working with the typographic fallback.
+  coverUrl    String?
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  seller     User              @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  versions   ResourceVersion[]
+  reviews    Review[]
+  media      ResourceMedia[]
+  moderationEvents ModerationEvent[]
+  articleLinks ArticleResourceLink[]
+  follows      ResourceFollow[]
+  viewDays     ResourceViewDaily[]
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([slug])
+}
+
+// PLAN-003 A-003: resource media (screenshots). Cover lives on Resource.coverUrl;
+// this table holds the screenshot collection with a stable manual order.
+// kind: "SCREENSHOT" (extensible without a dedicated enum for now).
+model ResourceMedia {
+  id         String   @id @default(uuid())
+  resourceId String
+  kind       String
+  url        String
+  mimeType   String?
+  sizeBytes  Int?
+  position   Int      @default(0)
+  createdAt  TimestamptzString @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId, kind])
+}
+
+enum ServiceType {
+  CUSTOM_DEVELOPMENT  // Custom resource development
+  CONFIGURATION       // Server configuration service
+  SUPPORT            // Technical support package
+  CONSULTATION       // Consulting hours
+  OTHER
+}
+
+enum ServiceStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  SUSPENDED
+}
+
+model Service {
+  id           String        @id @default(uuid())
+  sellerId     String
+  slug         String        @unique
+  title        String
+  description  String
+  type         ServiceType
+  status       ServiceStatus @default(DRAFT)
+  price        Int           // Fixed price in kopecks
+  deliveryDays Int           // Estimated delivery time (days)
+  requirements String?       // What buyer needs to provide
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  seller           User                @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  serviceOrderItems ServiceOrderItem[]
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([slug])
+}
+
+model ServiceOrderItem {
+  id                String  @id @default(uuid())
+  orderId           String
+  orderItemId       String? @unique // Phase C bridge: link to the OrderItem aggregate (C-010/C-012)
+  serviceId         String
+  quantity          Int     @default(1)
+  priceSnapshot     Int     // Service price at time of order
+  discountId        String?
+  discountSnapshot  Int     @default(0)
+  finalPrice        Int
+  buyerNotes        String? // Special requirements from buyer
+  createdAt         TimestamptzString @default(now())
+
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  servicePurchase ServicePurchase?
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([serviceId])
+}
+
+enum ServicePurchaseStatus {
+  PENDING      // Payment not yet completed
+  IN_PROGRESS  // Seller working on it
+  DELIVERED    // Seller submitted the delivery (C-009/C-011)
+  ACCEPTED     // Buyer accepted the delivery; revenue is settled
+  CLOSED       // Final terminal state
+  CANCELLED    // Cancelled by buyer/seller
+  DISPUTED     // Dispute opened (freezes the order)
+}
+
+model ServicePurchase {
+  id                  String                @id @default(uuid())
+  serviceOrderItemId  String                @unique
+  buyerId             String
+  serviceId           String
+  status              ServicePurchaseStatus @default(PENDING)
+  priceSnapshot       Int
+  discountSnapshot    Int                   @default(0)
+  finalPrice          Int
+  platformFee         Int
+  sellerRevenue       Int
+  deliveryDeadline    TimestamptzString?    // Expected completion date
+  completedAt         TimestamptzString?
+  cancelledAt         TimestamptzString?
+  createdAt           TimestamptzString     @default(now())
+
+  serviceOrderItem ServiceOrderItem @relation(fields: [serviceOrderItemId], references: [id], onDelete: Restrict)
+  buyer            User             @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  service          Service          @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  messages         ServiceOrderMessage[]
+  deliveries       ServiceDelivery[]
+  disputes         Dispute[]
+
+  @@index([buyerId])
+  @@index([serviceId])
+  @@index([status])
+}
+
+model ResourceVersion {
+  id           String @id @default(uuid())
+  resourceId   String
+  version      String
+  changelog    String?
+  fileUrl      String
+  fileSize     Int
+  fileChecksum String
+  publishedAt  TimestamptzString @default(now())
+
+  releaseStatus VersionReleaseStatus @default(CANDIDATE)
+
+  resource  Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  licenses  License[]
+  purchases Purchase[]
+  signature ArtifactSignature?
+  encryption ArtifactEncryption?
+  sandboxRuns SandboxRun[]
+  compatibilityReports CompatibilityReport[]
+
+  @@unique([resourceId, version])
+  @@index([resourceId])
+  // PLAN-006: activity window queries (RESOURCE_UPDATE ordering).
+  @@index([releaseStatus, publishedAt])
+}
+
+enum PurchaseStatus {
+  PENDING    // Awaiting payment
+  COMPLETED  // Payment successful, entitlement granted
+  REFUNDED   // Payment refunded
+  DISPUTED   // Payment/order in dispute
+  FAILED     // Payment failed
+}
+
+
+model Purchase {
+  id                 String         @id @default(uuid())
+  orderItemId        String?        @unique // Phase C bridge: link to OrderItem when commerce rewrite lands
+  buyerId            String
+  resourceId         String
+  versionId          String
+  status             PurchaseStatus @default(PENDING)
+  priceSnapshot      Int            // Copied from OrderItem
+  discountSnapshot   Int            @default(0) // Copied from OrderItem
+  finalPrice         Int            // Copied from OrderItem
+  platformFee        Int            // Platform's share
+  sellerRevenue      Int            // Seller's share
+  createdAt          TimestamptzString @default(now())
+  completedAt        TimestamptzString?
+  refundedAt         TimestamptzString?
+
+  buyer     User            @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  version   ResourceVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  orderItem OrderItem?      @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  license   License?
+  disputes  Dispute[]
+
+  @@index([buyerId])
+  @@index([resourceId])
+  @@index([orderItemId])
+}
+
+enum LicenseStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model License {
+  id           String        @id @default(uuid())
+  purchaseId   String        @unique
+  versionId    String
+  serverSerial String?
+  status       LicenseStatus @default(ACTIVE)
+  activatedAt  TimestamptzString?
+  revokedAt    TimestamptzString?
+  expiresAt    TimestamptzString?
+  createdAt    TimestamptzString @default(now())
+
+  purchase      Purchase       @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  version       ResourceVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  installations Installation[]
+
+  @@index([serverSerial])
+  @@index([status])
+}
+
+enum InstallationStatus {
+  PENDING_VERIFICATION  // Awaiting challenge response
+  ACTIVE
+  REVOKED
+}
+
+model Installation {
+  id            String             @id @default(uuid())
+  licenseId     String
+  publicKey     String             @unique // Ed25519 public key (client-side generated)
+  challenge     String?            // Pending verification challenge
+  serverSerial  String?            // MTA server serial (optional metadata)
+  serverName    String?
+  mtaVersion    String?            // MTA:SA version
+  moduleVersion String?            // mta-market-module version
+  status        InstallationStatus @default(PENDING_VERIFICATION)
+  verifiedAt    TimestamptzString? // When challenge was verified
+  installedAt   TimestamptzString @default(now())
+  lastHeartbeat TimestamptzString?
+  revokedAt     TimestamptzString?
+  revokedBy     String?
+  revocationReason String?
+
+  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  leases  Lease[]
+
+  @@index([licenseId])
+  @@index([publicKey])
+  @@index([serverSerial])
+  @@index([status])
+}
+
+enum PaymentProvider {
+  YUKASSA
+  STRIPE
+  TEST
+}
+
+enum PaymentStatus {
+  PENDING             // Created, awaiting provider result (E-003)
+  SUCCEEDED           // Provider confirmed capture
+  SETTLEMENT_PENDING  // Captured; ledger settlement in progress/retryable
+  SETTLED             // Settled into the ledger
+  FAILED
+  CANCELED
+  REFUNDED            // Fully refunded
+  PARTIALLY_REFUNDED  // Partially refunded; may be refunded further
+}
+
+model Payment {
+  id                String          @id @default(uuid())
+  purchaseId        String?         @unique // Resource payments (Phase C bridge); null for service payments
+  orderItemId       String?         @unique // C-012: service/other payments attach to their OrderItem
+  provider          PaymentProvider
+  providerPaymentId String          @unique
+  status            PaymentStatus   @default(PENDING)
+  amount            Int             // Total order amount
+  currency          String          @default("RUB")
+  metadata          Json?
+  createdAt         TimestamptzString @default(now())
+  succeededAt       TimestamptzString?
+  failedAt          TimestamptzString?
+
+  refunds Refund[]
+
+  @@index([providerPaymentId])
+  @@index([status])
+}
+
+enum ProviderEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+// Immutable/idempotent record of every payment-provider webhook.
+model PaymentProviderEvent {
+  id              String              @id @default(uuid())
+  provider        PaymentProvider
+  providerEventId String
+  objectId        String
+  eventType       String
+  objectType      String?
+  payloadHash     String
+  payload         Json?
+  status          ProviderEventStatus @default(RECEIVED)
+  attempts        Int                 @default(0)
+  lastError       String?
+  receivedAt      TimestamptzString   @default(now())
+  processedAt     TimestamptzString?
+
+  @@unique([provider, providerEventId, eventType])
+  @@index([objectId])
+  @@index([status])
+}
+
+enum TransactionType {
+  PAYMENT_RECEIVED
+  PLATFORM_FEE
+  SELLER_REVENUE
+  SELLER_PAYOUT
+  REFUND_TO_BUYER
+  REFUND_FROM_SELLER
+  ADJUSTMENT
+}
+
+model FinancialTransaction {
+  id                String          @id @default(uuid())
+  userId            String
+  type              TransactionType
+  amount            Int
+  balanceAfter      Int
+  relatedPurchaseId String?
+  relatedPayoutId   String?
+  metadata          Json?
+  createdAt         TimestamptzString @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model SellerBalance {
+  userId          String @id
+  availableAmount Int @default(0)
+  inEscrowAmount  Int @default(0)
+  totalEarned     Int @default(0)
+  updatedAt       temporal.updatedAtString()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String @id @default(uuid())
+  resourceId String
+  buyerId    String
+  rating     Int
+  comment    String?
+  createdAt  TimestamptzString @default(now())
+  updatedAt  temporal.updatedAtString()
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  buyer    User     @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, buyerId])
+  @@index([resourceId])
+  @@index([buyerId])
+  // PLAN-006: activity window queries (NEW_REVIEW ordering).
+  @@index([createdAt])
+}
+
+// ============================================
+// TASK-019: Artifact Signing Models
+// ============================================
+
+enum KeyStatus {
+  ACTIVE      // signs new leases
+  PREVIOUS    // no longer signs, still trusted for verification (G-007)
+  REVOKED
+  EXPIRED
+}
+
+// Publisher cryptographic keys for signing artifacts
+model PublisherKey {
+  id          String    @id @default(uuid())
+  sellerId    String
+  keyType     String    @default("ED25519") // ED25519, RSA
+  publicKey   String    // Base64 encoded public key
+  algorithm   String    @default("EdDSA")   // EdDSA, RS256
+  status      KeyStatus @default(ACTIVE)
+  createdAt   TimestamptzString @default(now())
+  revokedAt   TimestamptzString?
+  revokedBy   String?
+  revocationReason String?
+
+  seller    User                @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  signatures ArtifactSignature[]
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([publicKey])
+}
+
+// Cryptographic signatures for resource artifacts
+model ArtifactSignature {
+  id           String @id @default(uuid())
+  versionId    String @unique
+  keyId        String
+  signature    String  // Base64 encoded signature
+  algorithm    String  // EdDSA, RS256
+  manifestHash String  // SHA-256 of canonical manifest JSON
+  artifactHash String  // SHA-256 of artifact file
+  manifest     Json    // Complete artifact manifest
+  signedAt     TimestamptzString @default(now())
+  verifiedAt   TimestamptzString? // Last verification timestamp
+
+  version ResourceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  key     PublisherKey    @relation(fields: [keyId], references: [id], onDelete: Restrict)
+
+  @@index([versionId])
+  @@index([keyId])
+  @@index([artifactHash])
+}
+
+// ============================================
+// TASK-020: DRM Protocol v2 Models
+// ============================================
+
+// Server cryptographic keys for signing DRM leases
+model ServerSigningKey {
+  id         String    @id @default(uuid())
+  keyType    String    @default("ED25519") // ED25519, RSA
+  publicKey  String    // Base64 encoded public key
+  algorithm  String    @default("EdDSA")   // EdDSA, RS256
+  status     KeyStatus @default(ACTIVE)
+  createdAt  TimestamptzString @default(now())
+  revokedAt  TimestamptzString?
+  revokedBy  String?
+  revocationReason String?
+
+  leases Lease[]
+
+  @@index([status])
+}
+
+// DRM lease issued to installation for resource access
+model Lease {
+  id               String @id @default(uuid())
+  installationId   String
+  licenseId        String
+  resourceId       String
+  resourceVersionId String
+  artifactHash     String          // SHA-256 of artifact
+  nonce            String @unique  // Replay protection
+  protocolVersion  Int    @default(2)
+  serverKeyId      String          // ServerSigningKey used
+  signature        String          // Base64 encoded signature
+  capabilities     Json            // ["run", "update", etc]
+  issuedAt         TimestamptzString @default(now())
+  expiresAt        TimestamptzString
+  lastVerifiedAt   TimestamptzString?
+
+  installation Installation     @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  serverKey    ServerSigningKey @relation(fields: [serverKeyId], references: [id], onDelete: Restrict)
+
+  @@index([installationId])
+  @@index([licenseId])
+  @@index([nonce])
+  @@index([expiresAt])
+  @@index([issuedAt])
+}
+
+// ============================================
+// TASK-022: Upload Sandbox Models
+// ============================================
+
+enum SandboxStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  TIMEOUT
+  SECURITY_VIOLATION
+}
+
+// Sandbox execution run for artifact validation
+model SandboxRun {
+  id                 String        @id @default(uuid())
+  versionId          String
+  status             SandboxStatus @default(PENDING)
+  startedAt          TimestamptzString @default(now())
+  completedAt        TimestamptzString?
+  timeoutSeconds     Int           @default(60)
+  cpuLimit           Int           @default(1)
+  memoryLimitMb      Int           @default(512)
+  exitCode           Int?
+  stdout             String?       // Execution output
+  stderr             String?       // Error output
+  staticValidation   Json?         // Static validation results
+  compatibilityReport Json?        // Compatibility report
+  securityReport     Json?         // Security issues found
+  containerId        String?       // Docker container ID
+  
+  version ResourceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  
+  @@index([versionId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+// ============================================
+// TASK-018: Reconciliation Models
+// ============================================
+
+enum ReconciliationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ReconciliationReportType {
+  PAYMENT
+  REFUND
+  PAYOUT
+}
+
+enum MismatchType {
+  MISSING_INTERNAL     // Transaction exists in provider but not internal
+  MISSING_PROVIDER     // Transaction exists internally but not in provider
+  AMOUNT_MISMATCH      // Same transaction, different amounts
+  STATUS_MISMATCH      // Same transaction, different status
+}
+
+// Reconciliation report for comparing internal vs provider records
+model ReconciliationReport {
+  id                String                 @id @default(uuid())
+  provider          String                 // YUKASSA, STRIPE, etc.
+  reportType        ReconciliationReportType
+  periodStart       TimestamptzString
+  periodEnd         TimestamptzString
+  internalCount     Int
+  internalTotal     Int                    // Total amount in internal records
+  providerCount     Int
+  providerTotal     Int                    // Total amount in provider records
+  mismatchCount     Int
+  status            ReconciliationStatus   @default(PENDING)
+  createdAt         TimestamptzString      @default(now())
+  completedAt       TimestamptzString?
+  errorMessage      String?
+
+  mismatches ReconciliationMismatch[]
+
+  @@index([provider])
+  @@index([reportType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Individual mismatch found during reconciliation
+model ReconciliationMismatch {
+  id               String        @id @default(uuid())
+  reportId         String
+  type             MismatchType
+  internalId       String?       // Internal transaction ID
+  providerId       String?       // Provider transaction ID
+  expectedAmount   Int?          // Amount we expected
+  actualAmount     Int?          // Amount provider reports
+  description      String
+  resolved         Boolean       @default(false)
+  resolvedAt       TimestamptzString?
+  resolvedBy       String?
+  resolution       String?       // How it was resolved
+  createdAt        TimestamptzString @default(now())
+
+  report ReconciliationReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([type])
+  @@index([resolved])
+}
+
+// ---------------------------------------------------------------------------
+// PLAN Block 4 / C-012: Order is the checkout aggregate.
+// Order     = commercial checkout intent (one or more immutable priced lines)
+// OrderItem = immutable priced line (snapshot of base price, discount, fees)
+// Purchase  = completed RESOURCE purchase (existing model, stays compatible)
+// Migration path: resources keep Purchase as the completion record (Payment
+// webhooks are bound to purchaseId); new checkouts create Order+OrderItem and
+// link the Purchase via Purchase.orderItemId. Services use ServiceOrderItem
+// linked via ServiceOrderItem.orderItemId.
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  PENDING    // Checkout created, awaiting payment/free completion
+  COMPLETED  // All items fulfilled
+  CANCELLED  // Cancelled before completion
+}
+
+enum OrderItemType {
+  RESOURCE
+  SERVICE
+}
+
+enum DiscountType {
+  PERCENT // value = whole percent (1..100)
+  FIXED   // value = kopecks
+}
+
+enum DiscountScope {
+  ALL
+  RESOURCE
+  SERVICE
+}
+
+// C-004: seller-owned discount campaign.
+model DiscountCampaign {
+  id             String        @id @default(uuid())
+  sellerId       String
+  name           String
+  code           String? // optional promo code; unique per seller when set
+  type           DiscountType
+  value          Int // PERCENT: 1..100; FIXED: kopecks
+  currency       String        @default("RUB")
+  scope          DiscountScope @default(ALL)
+  scopeId        String? // resourceId or serviceId when scope != ALL
+  startsAt       TimestamptzString?
+  endsAt         TimestamptzString?
+  isActive       Boolean       @default(true)
+  usageLimit     Int? // max total uses; null = unlimited
+  perUserLimit   Int? // MVP: null (unlimited) or 1
+  minOrderAmount Int? // kopecks; item base price must be >= this
+  exclusive      Boolean       @default(true) // MVP: a campaign is exclusive (one per item)
+  usedCount      Int           @default(0) // atomic CAS counter for usageLimit (C-007)
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+
+  seller User             @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  usages DiscountUsage[]
+  items  OrderItem[]
+
+  @@unique([sellerId, code])
+  @@index([sellerId])
+  @@index([isActive])
+}
+
+// C-007: usage records are created atomically at order completion —
+// failed orders never increment usage (INV-014).
+model DiscountUsage {
+  id          String @id @default(uuid())
+  campaignId  String
+  userId      String
+  orderId     String
+  orderItemId String
+  amount      Int // kopecks actually discounted for this line
+  createdAt   TimestamptzString @default(now())
+
+  campaign DiscountCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, orderItemId]) // idempotent completion
+  @@index([campaignId, userId])
+  @@index([orderId])
+}
+
+// C-012: checkout aggregate.
+model Order {
+  id            String      @id @default(uuid())
+  buyerId       String
+  status        OrderStatus @default(PENDING)
+  currency      String      @default("RUB")
+  subtotal      Int         @default(0) // sum of item base prices (kopecks)
+  discountTotal Int         @default(0)
+  finalTotal    Int         @default(0)
+  completedAt   TimestamptzString?
+  cancelledAt   TimestamptzString?
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  buyer User        @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  items OrderItem[]
+
+  @@index([buyerId])
+  @@index([status])
+}
+
+// C-006: immutable price/discount snapshot on the priced line.
+model OrderItem {
+  id                 String        @id @default(uuid())
+  orderId            String
+  itemType           OrderItemType
+  resourceId         String? // audit snapshot; not an FK (historical orders survive product edits/removal)
+  serviceId          String?
+  sellerId           String
+  titleSnapshot      String
+  currency           String        @default("RUB")
+  basePrice          Int // kopecks at checkout time
+  discountCampaignId String?
+  discountCode       String?
+  discountAmount     Int           @default(0)
+  finalPrice         Int
+  platformFee        Int
+  sellerNet          Int
+  createdAt          TimestamptzString @default(now())
+
+  order            Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  discountCampaign DiscountCampaign? @relation(fields: [discountCampaignId], references: [id], onDelete: SetNull)
+  purchase         Purchase?
+  serviceOrderItem ServiceOrderItem?
+
+  @@index([orderId])
+  @@index([discountCampaignId])
+  @@index([sellerId])
+}
+
+// C-011: buyer/seller communication inside a service order.
+model ServiceOrderMessage {
+  id                 String @id @default(uuid())
+  servicePurchaseId  String
+  senderId           String
+  senderRole         String // BUYER | SELLER | ADMIN
+  body               String
+  createdAt          TimestamptzString @default(now())
+
+  servicePurchase ServicePurchase @relation(fields: [servicePurchaseId], references: [id], onDelete: Cascade)
+
+  @@index([servicePurchaseId])
+}
+
+// C-011: seller's delivery submission for a service order.
+model ServiceDelivery {
+  id                String @id @default(uuid())
+  servicePurchaseId String
+  sellerId          String
+  notes             String
+  deliverableRef    String? // reference to uploaded deliverable (storage key / URL)
+  createdAt         TimestamptzString @default(now())
+
+  servicePurchase ServicePurchase    @relation(fields: [servicePurchaseId], references: [id], onDelete: Cascade)
+  revisions       ServiceRevision[]
+
+  @@index([servicePurchaseId])
+}
+
+// C-011: buyer's revision request against a delivery.
+model ServiceRevision {
+  id                String @id @default(uuid())
+  servicePurchaseId String
+  deliveryId        String
+  requestedBy       String
+  reason            String
+  status            String @default("OPEN") // OPEN | ADDRESSED
+  createdAt         TimestamptzString @default(now())
+  resolvedAt        TimestamptzString?
+
+  delivery ServiceDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@index([servicePurchaseId])
+  @@index([deliveryId])
+}
+
+// ---------------------------------------------------------------------------
+// PLAN Block 5 / E-008: refund is an independent lifecycle.
+// INV-013: the sum of successful refunds on a payment can never exceed the
+// captured amount.
+// ---------------------------------------------------------------------------
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+model Refund {
+  id               String       @id @default(uuid())
+  paymentId        String
+  providerRefundId String?      @unique
+  amount           Int // kopecks; partial refunds supported
+  currency         String       @default("RUB")
+  status           RefundStatus @default(PENDING)
+  reason           String?
+  createdAt        TimestamptzString @default(now())
+  processedAt      TimestamptzString?
+  lastError        String?
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// PLAN Block 5 / F-001..F-003: append-only double-entry ledger.
+// Source of truth = LedgerEntry rows; balances (SellerBalance etc.) are
+// derived caches. Every posted transaction must balance:
+// sum(debits) == sum(credits) (INV-012).
+// ---------------------------------------------------------------------------
+
+enum LedgerAccountKind {
+  PLATFORM_CASH     // money actually captured at the platform
+  SELLER_PENDING    // seller revenue awaiting settlement/payout
+  SELLER_AVAILABLE  // seller revenue available for payout
+  PLATFORM_REVENUE  // platform fees
+  PROVIDER_FEES     // provider processing fees (when known)
+  REFUND_RESERVE    // funds reserved for refunds
+  ADJUSTMENTS       // manual corrections
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+model LedgerAccount {
+  id        String            @id @default(uuid())
+  code      String            @unique // e.g. platform_cash, seller_available:<userId>
+  kind      LedgerAccountKind
+  currency  String            @default("RUB")
+  userId    String? // owner for seller-scoped accounts
+  createdAt TimestamptzString @default(now())
+
+  entries LedgerEntry[]
+
+  @@index([kind])
+}
+
+model LedgerEntry {
+  id            String          @id @default(uuid())
+  transactionId String // groups balanced entries together (INV-012)
+  accountId     String
+  direction     LedgerDirection
+  amount        Int // kopecks, always positive; direction carries the sign
+  currency      String          @default("RUB")
+  orderId       String?
+  paymentId     String?
+  userId        String? // seller/buyer the entry relates to
+  memo          String?
+  createdAt     TimestamptzString @default(now())
+
+  account LedgerAccount @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([transactionId])
+  @@index([accountId])
+  @@index([userId])
+}
+
+// PLAN G-005: per-resource-version DEK, stored wrapped under the server
+// master key (envelope encryption). The raw master key never leaves the
+// server; the unwrapped DEK is only released to installations holding a
+// valid lease for the version.
+model ArtifactEncryption {
+  id         String @id @default(uuid())
+  versionId  String @unique
+  dekId      String @unique
+  // display default kept uppercase for legacy rows; the value is always
+  // passed explicitly from DEK_ALGORITHM (lowercase) by the service layer
+  algorithm  String @default("AES-256-GCM")
+  wrappedDek String // base64 DEK ciphertext (wrapped by the master key)
+  wrapNonce  String // base64 GCM nonce for the wrapping
+  wrapTag    String // base64 GCM auth tag for the wrapping
+  createdAt  TimestamptzString @default(now())
+
+  version ResourceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([dekId])
+}
+
+// ---------------------------------------------------------------------------
+// PLAN Block 7: artifact pipeline (I-004/I-005), moderation (J-002),
+// disputes (K-002/K-003) and seller onboarding (L-001).
+// ---------------------------------------------------------------------------
+
+// I-005: release lifecycle. YANKED blocks NEW lease issuance; existing
+// licenses/leases stay valid (documented in ADR-002).
+enum VersionReleaseStatus {
+  CANDIDATE
+  VERIFIED
+  PUBLISHED
+  DEPRECATED
+  YANKED
+}
+
+// I-004: compatibility verification outcome with evidence timestamp.
+enum CompatibilityStatus {
+  VERIFIED
+  PARTIALLY_VERIFIED
+  UNKNOWN
+  FAILED
+}
+
+model CompatibilityReport {
+  id           String             @id @default(uuid())
+  versionId    String
+  status       CompatibilityStatus
+  mtaVersion   String?
+  os           String? // windows-x64 | linux-x64
+  architecture String?
+  notes        String?
+  verifiedBy   String
+  verifiedAt   TimestamptzString  @default(now())
+  createdAt    TimestamptzString  @default(now())
+
+  version ResourceVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+}
+
+// I-002: declared dependency of a resource on another resource (by slug).
+model ResourceDependency {
+  id            String   @id @default(uuid())
+  resourceId    String
+  dependsOnSlug String
+  minVersion    String?
+  type          String?
+  createdAt     TimestamptzString @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, dependsOnSlug])
+  @@index([resourceId])
+}
+
+// J-002: immutable moderation event log.
+model ModerationEvent {
+  id        String @id @default(uuid())
+  resourceId String
+  actorId   String
+  fromStatus String
+  toStatus  String
+  reason    String?
+  createdAt TimestamptzString @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@index([resourceId])
+  // PLAN-006: activity window queries (RESOURCE_RELEASE via publish events).
+  @@index([toStatus, createdAt])
+}
+
+// K-002: dispute state machine.
+// OPEN -> WAITING_BUYER -> WAITING_SELLER -> UNDER_REVIEW -> RESOLVED_BUYER |
+// RESOLVED_SELLER | PARTIAL_REFUND -> CLOSED
+enum DisputeStatus {
+  OPEN
+  WAITING_BUYER
+  WAITING_SELLER
+  UNDER_REVIEW
+  RESOLVED_BUYER
+  RESOLVED_SELLER
+  PARTIAL_REFUND
+  CLOSED
+}
+
+enum DisputeTargetType {
+  PURCHASE
+  SERVICE_PURCHASE
+}
+
+model Dispute {
+  id               String          @id @default(uuid())
+  targetType       DisputeTargetType
+  purchaseId       String? // resource purchase dispute
+  servicePurchaseId String? // service order dispute
+  openedById       String
+  status           DisputeStatus   @default(OPEN)
+  reason           String
+  resolution       String?
+  resolvedById     String?
+  closedAt         TimestamptzString?
+  createdAt        TimestamptzString @default(now())
+  updatedAt        temporal.updatedAtString()
+
+  purchase        Purchase?        @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  servicePurchase ServicePurchase? @relation(fields: [servicePurchaseId], references: [id], onDelete: Cascade)
+  messages        DisputeMessage[]
+  events          DisputeEvent[]
+  attachments     DisputeAttachment[]
+
+  @@index([purchaseId])
+  @@index([servicePurchaseId])
+  @@index([status])
+}
+
+// K-003: dispute communication.
+model DisputeMessage {
+  id        String @id @default(uuid())
+  disputeId String
+  senderId  String
+  senderRole String // BUYER | SELLER | ADMIN
+  body      String
+  createdAt TimestamptzString @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+}
+
+// K-003: dispute attachments (files go through the regular upload storage).
+model DisputeAttachment {
+  id          String @id @default(uuid())
+  disputeId   String
+  uploadedById String
+  fileName    String
+  fileRef     String // upload storage reference
+  mimeType    String?
+  sizeBytes   Int?
+  createdAt   TimestamptzString @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+}
+
+// K-003: append-only dispute audit events.
+model DisputeEvent {
+  id        String @id @default(uuid())
+  disputeId String
+  actorId   String
+  event     String
+  fromStatus String?
+  toStatus  String?
+  createdAt TimestamptzString @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+}
+
+// L-001: seller onboarding.
+enum SellerProfileStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model SellerProfile {
+  id              String             @id @default(uuid())
+  userId          String             @unique
+  status          SellerProfileStatus @default(PENDING)
+  displayName     String?
+  supportInfo     String?
+  payoutEnabled   Boolean            @default(false)
+  appliedAt       TimestamptzString  @default(now())
+  reviewedAt      TimestamptzString?
+  reviewedBy      String?
+  rejectionReason String?
+  updatedAt       temporal.updatedAtString()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// PLAN Q-004: append-only audit log, separate from application logs.
+// Records who did WHAT to WHICH target, from where, under which request_id.
+model AuditLog {
+  id         String @id @default(uuid())
+  actorId    String
+  action     String // e.g. moderation.transition, seller.approve, refund.create
+  targetType String
+  targetId   String
+  before     String? // JSON snapshot where safe
+  after      String? // JSON snapshot where safe
+  ip         String?
+  requestId  String?
+  createdAt  TimestamptzString @default(now())
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+// PLAN-001 / C-001: persisted per-user balance. Independent from
+// SellerBalance (seller revenue): this is the user's spendable balance.
+// Top-up arrives in a later plan; every account starts at 0 (C-002).
+model UserBalance {
+  userId         String            @id
+  available      Int               @default(0) // kopecks
+  currency       String            @default("RUB")
+  updatedAt      temporal.updatedAtString()
+  createdAt      TimestamptzString @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// PLAN-005: Community & Server Foundation
+// ============================================================
+
+// A-003: conceptual lifecycle. CREATED -> PENDING_VERIFICATION -> VERIFIED ->
+// ACTIVE. SUSPENDED/ARCHIVED are moderation/owner states. OFFLINE is NOT a
+// lifecycle state — offline is operational (see ServerMonitoringState).
+enum ServerLifecycleState {
+  CREATED
+  PENDING_VERIFICATION
+  VERIFIED
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+// E-001/E-006: operational state reported by real monitoring data only.
+// UNKNOWN means "the system does not know" — never silently mapped to OFFLINE.
+enum ServerMonitoringState {
+  ONLINE
+  OFFLINE
+  UNKNOWN
+}
+
+// C-002/C-003: verification state. VERIFIED means only
+// "ownership/control verified" — nothing about quality or honesty.
+enum ServerVerificationState {
+  PENDING
+  VERIFIED
+  FAILED
+  EXPIRED
+}
+
+// G-003/A-004: staff membership. Audience follows are ServerFollow.
+enum ServerMemberRole {
+  OWNER
+  ADMIN
+  MODERATOR
+}
+
+enum ServerReviewTokenStatus {
+  ACTIVE
+  CONSUMED
+  EXPIRED
+}
+
+enum ServerReviewStatus {
+  VISIBLE
+  HIDDEN
+}
+
+enum ServerNewsStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// F-005: minimal thread states. Finer moderation state is a later system.
+enum ForumThreadState {
+  OPEN
+  LOCKED
+  ARCHIVED
+}
+
+// M-002: PLAN-005 notification types.
+enum NotificationType {
+  SERVER_NEWS
+  SERVER_UPDATE
+  FORUM_REPLY
+  REVIEW_EVENT
+  MODERATION
+  // PLAN-008: Follow Expansion (Creator + Resource).
+  CREATOR_RESOURCE
+  CREATOR_ARTICLE
+  RESOURCE_UPDATE
+}
+
+// R: reportable surfaces.
+enum ReportTargetType {
+  THREAD
+  POST
+  REVIEW
+  NEWS
+  SERVER
+  PROFILE
+  // PLAN-007: articles are a reportable content surface.
+  ARTICLE
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// A-002: the hub entity of PLAN-005. Server is the identity + monitoring +
+// news + community + reviews anchor of a game server.
+model Server {
+  id          String @id @default(uuid())
+  ownerId     String
+  slug        String @unique
+  name        String
+  description String
+
+  // D-004/U: visual identity (validated /media/<name> references only).
+  logoUrl     String?
+  bannerUrl   String?
+  accentColor String?
+
+  // D-002 hero actions — rendered only when actually present.
+  websiteUrl  String?
+  discordUrl  String?
+
+  // B-003/S: connection data. Private by default — never in public payloads
+  // unless the owner explicitly opts in.
+  host  String?
+  port  Int?
+  region String?
+
+  lifecycle    ServerLifecycleState    @default(CREATED)
+  verification ServerVerificationState @default(PENDING)
+  monitoring   ServerMonitoringState   @default(UNKNOWN)
+
+  // E: real monitoring data only (no fabricated values).
+  playerCount Int?
+  maxPlayers  Int?
+  lastSeenAt  TimestamptzString?
+  verifiedAt  TimestamptzString?
+  verificationNote String? // human-readable pending/failed/expired reason (C-003)
+
+  // S/T: privacy switches — private by default. Backend authorization layer,
+  // not a frontend checkbox.
+  showResources Boolean @default(false)
+  showStaff     Boolean @default(false)
+  showTechStack Boolean @default(false)
+  showStats     Boolean @default(true)
+  showCommunity Boolean @default(false)
+
+  // C-001: proof-of-control secret (module configures it; sha256 stored).
+  integrationTokenHash String?
+  integrationTokenIssuedAt TimestamptzString?
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  owner    User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members  ServerMember[]
+  follows  ServerFollow[]
+  news     ServerNews[]
+  updates  ServerUpdate[]
+  reviews  ServerReview[]
+  reviewTokens ServerReviewToken[]
+  reviewEligibilities ServerReviewEligibility[]
+  statusSamples ServerStatusSample[]
+  resources ServerResource[]
+  threads  ForumThread[]
+  articleLinks ArticleServerLink[]
+
+  @@index([ownerId])
+  @@index([lifecycle])
+  @@index([monitoring])
+  // PLAN-006: activity window queries (NEW_SERVER ordering).
+  @@index([lifecycle, verifiedAt])
+}
+
+// Staff membership (owner/admin/moderator capabilities).
+model ServerMember {
+  id        String @id @default(uuid())
+  serverId  String
+  userId    String
+  role      ServerMemberRole @default(OWNER)
+  createdAt TimestamptzString @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+  @@index([userId])
+}
+
+// L: audience subscription. Follower count is public; the member list is not.
+model ServerFollow {
+  id        String @id @default(uuid())
+  serverId  String
+  userId    String
+  createdAt TimestamptzString @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+  @@index([userId])
+}
+
+// PLAN-008 B-001: creator follow. Target = a User with an APPROVED
+// SellerProfile. Private relationship: only the aggregate count is public —
+// follower lists are never exposed (DAILY-EXPERIENCE §42).
+model SellerFollow {
+  id           String @id @default(uuid())
+  followerId   String
+  sellerUserId String
+  createdAt    TimestamptzString @default(now())
+
+  follower User @relation("sellerFollowsFollower", fields: [followerId], references: [id], onDelete: Cascade)
+  seller   User @relation("sellerFollowsSeller", fields: [sellerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, sellerUserId])
+  @@index([sellerUserId])
+  @@index([followerId])
+}
+
+// PLAN-008 B-002: resource follow. Private relationship; aggregate count
+// public on the resource page; the list is never exposed.
+model ResourceFollow {
+  id         String @id @default(uuid())
+  userId     String
+  resourceId String
+  createdAt  TimestamptzString @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resourceId])
+  @@index([resourceId])
+  @@index([userId])
+}
+
+// PLAN-010: resource page views — honest aggregate (resource × day × count).
+// No viewer identities are ever stored (privacy principle); views are shown
+// only to the resource's seller (not a public metric).
+model ResourceViewDaily {
+  id         String @id @default(uuid())
+  resourceId String
+  day        String // UTC date, YYYY-MM-DD
+  views      Int    @default(0)
+
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, day])
+  @@index([resourceId])
+}
+
+// PLAN-009: thread follow — the Follow step of the Community Loop
+// (DAILY-EXPERIENCE §10). Private relationship: only the aggregate count is
+// public on the thread page; the follower list is never exposed (§42).
+model ForumThreadFollow {
+  id       String @id @default(uuid())
+  userId   String
+  threadId String
+  createdAt TimestamptzString @default(now())
+
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, threadId])
+  @@index([threadId])
+  @@index([userId])
+}
+
+// T: the server<->resource relationship. Created only by explicit owner
+// action; publicly rendered only while server.showResources is enabled.
+model ServerResource {
+  id          String  @id @default(uuid())
+  serverId    String
+  resourceId  String? // marketplace Resource link (optional)
+  displayName String  // fallback label for non-marketplace resources
+  note        String?
+  createdAt   TimestamptzString @default(now())
+
+  server Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  resource Resource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+
+  @@index([serverId])
+  @@index([resourceId])
+}
+
+// E-005: raw monitoring samples for last-seen/peak/uptime/history.
+// Written exclusively by the integration heartbeat — never fabricated.
+model ServerStatusSample {
+  id         String @id @default(uuid())
+  serverId   String
+  state      ServerMonitoringState
+  players    Int
+  maxPlayers Int?
+  sampledAt  TimestamptzString @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, sampledAt])
+}
+
+// J-002: one-time review token bound to a server. Issued by the server
+// integration, claimed by a player. Expiry + single consumption = replay
+// protection. Plaintext is shown once; only the sha256 hash is stored.
+model ServerReviewToken {
+  id        String @id @default(uuid())
+  serverId  String
+  tokenHash String @unique
+  status    ServerReviewTokenStatus @default(ACTIVE)
+  issuedAt  TimestamptzString @default(now())
+  expiresAt TimestamptzString
+  consumedAt TimestamptzString?
+  consumedBy String?
+  note      String? // optional in-game context chosen by the server owner
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, status])
+}
+
+// J-001: eligibility to review a server, granted by claiming a valid token.
+// Survives review deletion so moderation cannot be circumvented by re-review.
+model ServerReviewEligibility {
+  id        String @id @default(uuid())
+  serverId  String
+  userId    String
+  tokenId   String?
+  grantedAt TimestamptzString @default(now())
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+  @@index([userId])
+}
+
+// J-003/J-004: server review. verifiedInteraction marks "the system confirmed
+// an interaction" — it does not endorse the review's content.
+model ServerReview {
+  id        String @id @default(uuid())
+  serverId  String
+  userId    String
+  rating    Int
+  comment   String?
+  verifiedInteraction Boolean @default(false)
+  status    ServerReviewStatus @default(VISIBLE)
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([serverId, userId])
+  @@index([serverId, status])
+  // PLAN-006: activity window queries (NEW_REVIEW ordering).
+  @@index([createdAt])
+}
+
+// H: server news — one object, many surfaces (server page, global feed,
+// follower feed). Optional discussion thread lives on ForumThread.newsId.
+model ServerNews {
+  id        String @id @default(uuid())
+  serverId  String
+  authorId  String
+  title     String
+  content   String
+  coverUrl  String?
+  status    ServerNewsStatus @default(DRAFT)
+  publishedAt TimestamptzString?
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  thread ForumThread?
+
+  @@index([serverId, status, publishedAt])
+  @@index([authorId])
+  // PLAN-006: activity window queries (global SERVER_NEWS ordering).
+  @@index([status, publishedAt])
+}
+
+// I: server updates are distinct from news — a versioned changelog entry.
+model ServerUpdate {
+  id          String @id @default(uuid())
+  serverId    String
+  authorId    String
+  version     String
+  title       String
+  changelog   String
+  publishedAt TimestamptzString @default(now())
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, publishedAt])
+  // PLAN-006: activity window queries (global SERVER_UPDATE ordering).
+  @@index([publishedAt])
+}
+
+// F-002: forum categories (global community).
+model ForumCategory {
+  id          String @id @default(uuid())
+  slug        String @unique
+  name        String
+  description String?
+  position    Int @default(0)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  threads ForumThread[]
+
+  @@index([position])
+}
+
+// F-003/F-005/G-004: threads live in a category and may be explicitly linked
+// to a Server (server discussion) or a ServerNews item (news discussion).
+// PLAN-007: also to an Article (article discussion).
+model ForumThread {
+  id         String @id @default(uuid())
+  categoryId String
+  authorId   String
+  serverId   String?
+  newsId     String? @unique
+  articleId  String? @unique
+  title      String
+  state      ForumThreadState @default(OPEN)
+  pinned     Boolean @default(false)
+  views      Int @default(0)
+  replyCount Int @default(0)
+  lastPostAt TimestamptzString?
+  createdAt  TimestamptzString @default(now())
+  updatedAt  temporal.updatedAtString()
+
+  category ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  server   Server? @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  news     ServerNews? @relation(fields: [newsId], references: [id], onDelete: SetNull)
+  article  Article?  @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  posts    ForumPost[]
+  follows  ForumThreadFollow[]
+
+  @@index([categoryId, lastPostAt])
+  @@index([serverId])
+  @@index([authorId])
+  @@index([newsId])
+  // PLAN-006: activity window queries (NEW_DISCUSSION ordering).
+  @@index([createdAt])
+}
+
+// F-004: posts (first post of a thread is position 0). Soft delete where
+// permitted; content stays queryable for moderation.
+model ForumPost {
+  id        String @id @default(uuid())
+  threadId  String
+  authorId  String
+  content   String
+  position  Int @default(0)
+  deletedAt TimestamptzString?
+  editedAt  TimestamptzString?
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  thread    ForumThread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions ForumReaction[]
+
+  @@index([threadId, position])
+  @@index([authorId])
+  // PLAN-006: activity window queries (DISCUSSION_REPLY ordering).
+  @@index([createdAt])
+}
+
+// F-004: reactions on posts. kind stays a string so new reaction kinds do
+// not require schema churn; uniqueness prevents double-tapping.
+model ForumReaction {
+  id        String @id @default(uuid())
+  postId    String
+  userId    String
+  kind      String @default("LIKE")
+  createdAt TimestamptzString @default(now())
+
+  post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId, kind])
+  @@index([postId])
+}
+
+// M: minimal notification object. Recipient-owned; read state is explicit.
+model Notification {
+  id          String @id @default(uuid())
+  recipientId String
+  type        NotificationType
+  title       String
+  body        String?
+  entityType  String?
+  entityId    String?
+  readAt      TimestamptzString?
+  createdAt   TimestamptzString @default(now())
+
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, readAt])
+  @@index([recipientId, createdAt])
+}
+
+// R: user reports flow into the moderation queue. No automatic bans —
+// every action is a human moderation decision recorded in the audit log.
+model Report {
+  id           String @id @default(uuid())
+  reporterId   String
+  targetType   ReportTargetType
+  targetId     String
+  reason       String
+  status       ReportStatus @default(OPEN)
+  resolution   String?
+  resolvedById String?
+  resolvedAt   TimestamptzString?
+  createdAt    TimestamptzString @default(now())
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+// ============================================
+// PLAN-007: Content Foundation (articles)
+// ============================================
+
+enum ArticleStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ArticleCategory {
+  GUIDES
+  NEWS
+  REVIEWS
+  OPINION
+}
+
+// B: article — the CONTENT pillar entity. Plain-text content (no raw HTML),
+// moderation before publication, explicit links only (B-002).
+model Article {
+  id          String @id @default(uuid())
+  authorId    String
+  slug        String @unique
+  title       String
+  content     String
+  excerpt     String // auto-derived from content (≤300), rendered in lists
+  coverUrl    String?
+  category    ArticleCategory @default(GUIDES)
+  tags        String? // comma-separated display tags (no tag table at this stage)
+  status      ArticleStatus @default(DRAFT)
+  publishedAt TimestamptzString?
+  reviewNote  String? // human-readable reject/hide reason (like verificationNote)
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  author     User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  thread     ForumThread?
+  resources  ArticleResourceLink[]
+  servers    ArticleServerLink[]
+
+  @@index([status, publishedAt])
+  @@index([authorId])
+}
+
+// B-002: explicit editorial link to a PUBLISHED resource (public context).
+model ArticleResourceLink {
+  id         String @id @default(uuid())
+  articleId  String
+  resourceId String
+  position   Int @default(0)
+
+  article  Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, resourceId])
+  @@index([resourceId])
+}
+
+// B-002: explicit link to a server — only its staff may attach it (G-004
+// precedent). Deleted/hidden servers simply stop rendering in «Связанном».
+model ArticleServerLink {
+  id        String @id @default(uuid())
+  articleId String
+  serverId  String
+  position  Int @default(0)
+
+  article Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  server  Server  @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, serverId])
+  @@index([serverId])
+}

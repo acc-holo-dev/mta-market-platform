@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/drm/v2/errors.schema.json",
+  "title": "DRM v2 error codes (envelope {\"error\":{\"code\",\"message\"}})",
+  "type": "object",
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": [
+            "DRM_INVALID_LICENSE",
+            "DRM_LICENSE_NOT_OWNED",
+            "DRM_LICENSE_INSTALLATION_MISMATCH",
+            "DRM_INSTALLATION_NOT_FOUND",
+            "DRM_INSTALLATION_NOT_VERIFIED",
+            "DRM_INSTALLATION_REVOKED",
+            "DRM_INVALID_CHALLENGE_RESPONSE",
+            "DRM_NONCE_ALREADY_USED",
+            "DRM_INVALID_SIGNATURE",
+            "DRM_ARTIFACT_HASH_MISMATCH",
+            "DRM_INSUFFICIENT_CAPABILITIES",
+            "DRM_SERVER_KEY_REVOKED",
+            "DRM_PROTOCOL_DEPRECATED"
+          ]
+        },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$comment": "HTTP mapping: *_NOT_FOUND 404; *_NOT_OWNED / *_MISMATCH / *_REVOKED / *_INSUFFICIENT_CAPABILITIES 403; INVALID_CHALLENGE_RESPONSE / INVALID_SIGNATURE 401; NONCE_ALREADY_USED 409; v1 endpoints 410 Gone."
+}

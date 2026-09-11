@@ -1,0 +1,15 @@
+# Notification types (site/server notification service; consumers: web)
+version: 1
+transport: polling (GET /notifications)
+types:
+  - SERVER_NEWS        # followed server published news
+  - SERVER_UPDATE      # followed/new server release
+  - FORUM_REPLY        # reply in followed thread (dedup with author+participants)
+  - REVIEW_EVENT       # review on owned/followed target
+  - MODERATION         # moderation decision notifications
+  - CREATOR_RESOURCE   # followed creator published a resource (PLAN-008)
+  - CREATOR_ARTICLE    # followed creator published an article (PLAN-008)
+  - RESOURCE_UPDATE    # followed/purchased resource released a version (PLAN-008)
+payload:
+  common: [id, type, title, body, entityType, entityId, readAt, createdAt]
+  behavior: deep links; unread count; mark one / mark all

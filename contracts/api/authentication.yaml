@@ -1,0 +1,19 @@
+# /auth domain inventory (routes: site/server/src/routes/auth.ts)
+domain: auth
+auth: mixed (register/login/refresh/logout/OAuth public; me/profile token)
+endpoints:
+  - { method: POST,   path: /auth/register }
+  - { method: POST,   path: /auth/login }
+  - { method: POST,   path: /auth/refresh, note: HttpOnly refresh cookie; rotation + reuse detection }
+  - { method: POST,   path: /auth/logout }
+  - { method: GET,    path: /auth/me,      returns: profile + balance }
+  - { method: PATCH,  path: /auth/me,      note: displayName/avatar only }
+  - { method: GET,    path: /auth/identities }
+  - { method: DELETE, path: /auth/identities/:id }
+  - { method: GET,    path: /auth/:provider,          note: OAuth start (discord|yandex|google) }
+  - { method: GET,    path: /auth/:provider/callback }
+  - { method: GET,    path: /auth/:provider/link,     note: link identity to a session }
+sessions:
+  accessTokenTtl: 15m
+  refreshTokenTtl: 7d
+  storage: HttpOnly cookie (refresh) + memory (access)

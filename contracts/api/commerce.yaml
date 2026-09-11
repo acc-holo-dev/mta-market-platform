@@ -1,0 +1,30 @@
+# Commerce domain inventory (routes: purchases, payments, services, disputes)
+domain: commerce
+endpoints:
+  purchases:
+    - { method: POST, path: /purchases, note: checkout; optional discountCode; free = instant license }
+    - { method: GET,  path: /purchases/my }
+  payments:
+    - { method: POST, path: /payments/create, note: YooKassa when enabled; else dev-completion }
+    - { method: POST, path: /payments/webhook, note: provider webhook; idempotent (paymentProviderEvent) }
+    - { method: POST, path: /payments/:id/simulate, note: DEV-ONLY; 404 in production-like env (A-005) }
+  services:
+    - { method: GET,  path: /services }
+    - { method: GET,  path: /services/:slug }
+    - { method: GET,  path: /services/my }
+    - { method: POST, path: /services }
+    - { method: POST, path: /services/:slug/order }
+    - { method: GET,  path: /services/orders/my }
+    - { method: POST, path: /services/orders/:id/accept|cancel|close|deliver|dispute|revision }
+    - { method: POST, path: /services/orders/:id/messages }
+    - { method: GET,  path: /services/orders/:id/messages }
+  disputes:
+    - { method: POST, path: /disputes }
+    - { method: GET,  path: /disputes/my }
+    - { method: GET,  path: /disputes/:id }
+    - { method: POST, path: /disputes/:id/messages }
+    - { method: GET,  path: /disputes/admin/all, auth: admin }
+ledger:
+  model: double-entry (LedgerAccount/LedgerEntry), platform fee on settlement
+  transactions: [PAYMENT_RECEIVED, PLATFORM_FEE, SELLER_REVENUE, SELLER_PAYOUT, REFUND_TO_BUYER, REFUND_FROM_SELLER, ADJUSTMENT]
+  reconciliation: daily job + ReconciliationReport/Mismatch

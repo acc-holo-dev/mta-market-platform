@@ -1,0 +1,140 @@
+status: minimal runbook
+version: 1.0
+last_verified: 2026-09-11
+
+# INCIDENT-RESPONSE — минимальный runbook
+
+Это **минимальный, честный** runbook: он фиксирует диагностику и первую
+реакцию, но часть процедур ни разу не прогонялась на живой системе
+(см. «Что прогонялось» внизу). Эскалация по всем инцидентам — владелец
+репозитория (единственный оператор инфраструктуры на текущий момент).
+
+## 1. Точки здоровья
+
+Бэкенд (`site/server/src/app.ts`; через nginx — префикс `/api/`):
+
+| Endpoint | Что проверяет | Коды |
+|---|---|---|
+| `/health` | Процесс отвечает (статический ответ). Nginx-проба `/health` — nginx-внутренняя, к БД не относится. | 200 |
+| `/live` | Живость процесса, без зависимостей. | 200 |
+| `/ready` | Обязательные зависимости: **DB ping обязателен**; Redis — optional (rate limiter деградирует fail-open), статус репортится. | 200 / **503** `not_ready` |
+| `/metrics` | Prometheus-экспозиция (внутренняя сеть, внешний доступ не публикуется). | 200 |
+
+Базовая диагностика:
+
+```sh
+docker compose -f infrastructure/docker/compose/production.yml ps   # healthcheck-статусы
+curl -s https://<domain>/api/ready | jq          # DB ok?
+docker compose -f infrastructure/docker/compose/production.yml logs --tail=200 backend
+```
+
+## 2. Логи
+
+- Контейнеры: `docker compose ... logs backend|frontend|nginx`
+  (`infrastructure/docker/compose/production.yml`).
+- Формат: `LOG_FORMAT=json` в production (структурные записи с request-id;
+  `site/server/src/lib/logger.ts`) — парсятся стандартными средствами
+  Docker; dev-дефолт — pretty.
+- Централизованный корневой каталог `logs/` — конвенция dev-раннера;
+  рантайм-логи в git никогда не попадают (`.gitignore`). Внешнего
+  агрегатора логов **нет** (честная пометка) — источник истины —
+  `docker logs`.
+
+## 3. Типовые инциденты
+
+### 3.1 БД недоступна
+Симптом: `/ready` → 503, `checks.database: "unavailable"`; все записи/чтения
+доменных данных падают.
+Действия: проверить контейнер postgres (`ps`, `pg_isready`), диск/память
+хоста, `DATABASE_URL`; после восстановления БД — прогнать reconciliation
+(`pnpm --filter @mta-market/server reconciliation:run`) и сверить отсутствие
+MISMATCH. Если БД потеряна — restore по
+[BACKUP-RESTORE.md](BACKUP-RESTORE.md).
+
+### 3.2 Redis недоступен
+Симптом: security-critical rate limiters (auth, strict, per-account)
+**fail-closed** → 503 на соответствующих запросах (`site/server/src/lib/rateLimit.ts`);
+глобальный стандартный лимитер по умолчанию fail-open
+(`RATE_LIMIT_FAIL_CLOSED`), `/ready` остаётся 200 (redis = optional).
+Действия: поднять redis; 503-ответы — сигнал о недоступности зависимости,
+а не о лимите.
+
+### 3.3 Диск переполнен (uploads)
+Симптом: загрузки/медиа падают, `UPLOAD_DIR` (по умолчанию `./uploads`,
+volume `uploads_data`) или раздел хоста заполнен.
+Действия: освободить место (rotated docker-образы старше 7 дней чистит
+deploy-скрипт; `docker system prune` вручную с осторожностью), проверить
+volume'ы; S3-контур в production снимает нагрузку с локального диска —
+убедиться, что `S3_ENABLED=true` и объекты в бакете.
+
+### 3.4 Ошибки платёжных webhook'ов
+Симптом: провал `POST /payments/webhook`, повторные доставки от провайдера,
+расхождение ledger vs провайдер.
+Действия: логи `backend` (payments-webhook, request-id); идемпотентность
+повторной доставки — одна бизнес-операция; запустить
+`reconciliation:run` / `reconciliation:summary` — джоб
+(`site/server/src/jobs/reconciliation.ts`, интервал
+`RECONCILIATION_INTERVAL_MS`) сверяет ledger с операциями; MISMATCH
+разбирается вручную по audit-записям.
+
+### 3.5 5xx-всплеск / деградация
+Действия: `docker logs backend` (JSON, grep по `request_id`),
+`/metrics` (частота ошибок), последний деплой → откат по
+[DEPLOYMENT.md §6](DEPLOYMENT.md).
+
+## 4. Компрометация DRM-ключей
+
+По [ADR-001](../adr/ADR-001-drm-lease-revocation.md) и
+[drm/KEY-MANAGEMENT.md](../drm/KEY-MANAGEMENT.md):
+
+1. **Оценить масштаб**: какой ключ скомпрометирован
+   (`DRM_SERVER_PRIVATE_KEY` / `DRM_MASTER_KEY` /
+   `ARTIFACT_SIGNING_PRIVATE_KEY`).
+2. **Серверный ключ подписи**: отозвать затронутые установки
+   (management-plane cutoff — мгновенный) и **ротировать ключ подписи**
+   (`tsx src/cli/drm.ts rotate`; ACTIVE → PREVIOUS). Если PREVIOUS-ключ
+   тоже скомпрометирован — вывести его из доверия на уровне данных
+   (статус REVOKED в `ServerSigningKey`): lease, верифицируемые только
+   отозванным ключом, отклоняются (`DRM_SERVER_KEY_REVOKED`) — это
+   единственный путь перерезать уже выданные lease'ы раньше их TTL.
+3. **`DRM_MASTER_KEY`**: смена мастер-ключа без пере-обёртки DEK ломает
+   доступ ко всем зашифрованным версиям — процедура пере-обёртки
+   **не реализована**; при компрометации мастер-ключа единственный
+   полный ответ — перевыпуск зашифрованных версий (перенос DEK под новый
+   ключ отдельной операцией) и ручной разбор, какие версии были
+   скомпрометированы.
+4. **Ключ подписи артефактов**: сменить `ARTIFACT_SIGNING_PRIVATE_KEY`
+   (новые подписи — новым ключом; существующие верифицируются сохранённым
+   публичным ключом версии), уведомить/помочь издателям при необходимости.
+5. Всё — с audit-записями и записью инцидента в отчёте владельцу.
+
+## 5. Утечка секретов (secrets leak)
+
+1. **Считать скомпрометированным всё, что было в утёкшем материале**:
+   ротировать все секреты `.env` (JWT_SECRET, POSTGRES_PASSWORD, OAuth-,
+   YOOKASSA-, SMTP-, S3-, DRM-ключи — списки и команды генерации в
+   [.env.example](../../.env.example) и
+   [drm/KEY-MANAGEMENT.md](../drm/KEY-MANAGEMENT.md)).
+2. **Аудит git-истории**: `git log -p --all -- '*.env' '*.key' '*.pem'` —
+   убедиться, что секрет не коммитился; если коммитился — секрет
+   считается скомпрометированным независимо от последующего удаления
+   (история переписывается/репозиторий ротируется, ключи меняются).
+3. Сессии: ротация `JWT_SECRET` инвалидирует access/refresh-токены —
+   пользователи перелогинятся.
+4. Записать инцидент: что утекло, когда обнаружено, какие ключи
+   ротированы.
+
+## 6. Эскалация
+
+Единственный эскалационный контакт — **владелец репозитория**
+(acc-holo-dev; оператор сервера и секретов). SLA/on-call ротаций нет.
+
+## Что прогонялось, а что «на бумаге»
+
+| Процедура | Статус |
+|---|---|
+| Health/ready/live-диагностика | Прогонялась (PLAN-004 проверок, E2E/CI используют те же эндпоинты). |
+| Backup перед миграцией / rollback деплоя | Реализовано в deploy-скрипте (PLAN-004, код верифицирован тестами CI; боевой прогон — pending, см. PRODUCTION.md §«Известные границы»). |
+| Restore drill (БД/uploads из бэкапа) | Процедура описана ([BACKUP-RESTORE.md](BACKUP-RESTORE.md)), **drill не выполнялся** — blocker PLAN-004..010. |
+| Компрометация ключей / утечка секретов | **Процедуры на бумаге** — никогда не репетировались. |
+| Внешний uptime-мониторинг, алерты | Список алертов есть (PRODUCTION.md), настройка — на стороне оператора; автоматических алертов в репозитории нет (`infrastructure/monitoring/` пуст). |

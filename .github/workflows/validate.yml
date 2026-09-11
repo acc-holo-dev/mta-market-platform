@@ -1,0 +1,52 @@
+name: Validate
+
+# Repository policy gate (PLAN-010 §21): documentation structure, naming
+# policy and basic repo hygiene. Fast, always runs first.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Repository policy (documents zone, naming, hygiene)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: All markdown lives only in documents/
+        run: |
+          bad=$(find . -name '*.md' \
+            -not -path './documents/*' \
+            -not -path './node_modules/*' \
+            -not -path './site/*/node_modules/*' \
+            -not -path './.git/*')
+          if [ -n "$bad" ]; then
+            echo "::error::.md files outside documents/ are forbidden (PLAN-010 Rule 001):"
+            echo "$bad"
+            exit 1
+          fi
+      - name: No duplicate structure roots (docs/, tests/, logs/, infra/)
+        run: |
+          bad=""
+          for top in documents contracts site module tests logs scripts config infrastructure; do
+            [ -d "$top" ] || { echo "::error::missing foundation directory: $top/"; bad=1; }
+          done
+          for d in site/docs site/tests module/docs module/tests docs tests/site/src infra configurations; do
+            [ -d "$d" ] && { echo "::error::forbidden duplicate directory: $d/ (PLAN-010 Rule 004/005)"; bad=1; }
+          done
+          [ -z "$bad" ] || exit 1
+      - name: No stray markdown next to module sources
+        run: |
+          ! find module/src module/tools tests scripts config infrastructure -name '*.md' | grep -q . \
+            || { echo "::error::.md next to sources found (Rule 001)"; exit 1; }
+      - name: Shell scripts are executable and parse
+        run: |
+          for f in scripts/**/*.sh; do
+            bash -n "$f" || { echo "::error::bash -n failed: $f"; exit 1; }
+          done
+      - name: startup.py compiles
+        run: python3 -m py_compile startup.py scripts/development/*.py

@@ -1,0 +1,14 @@
+# Marketplace domain events (derived read-layer sources; no bus — these are
+# the mutation points that invalidate/produce activity entries, PLAN-006)
+version: 1
+producers:
+  - resource.published        # version release -> ACTIVITY + RESOURCE_UPDATE
+  - resource.version_update   # new version of published resource -> re-moderation
+  - resource.viewed           # PLAN-010 ResourceViewDaily aggregate
+  - review.created            # purchase-gated resource review
+  - purchase.completed        # ledger settlement (PAYMENT_RECEIVED/PLATFORM_FEE/SELLER_REVENUE)
+  - refund.processed          # REFUND_*
+  - discount.applied          # DiscountCampaign/DiscountUsage
+activityTypes:
+  - RESOURCE_PUBLISHED
+  - RESOURCE_UPDATED

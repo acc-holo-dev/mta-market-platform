@@ -1,0 +1,164 @@
+[
+  {
+    "id": "table.resourceViewDaily",
+    "label": "Create table \"resourceViewDaily\"",
+    "summary": "Creates table \"resourceViewDaily\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "resourceViewDaily"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"resourceViewDaily\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceViewDaily\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"resourceViewDaily\"",
+        "sql": "CREATE TABLE \"public\".\"resourceViewDaily\" (\n  \"day\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"resourceId\" text NOT NULL,\n  \"views\" int4 DEFAULT 0 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"resourceViewDaily\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceViewDaily\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.resourceViewDaily.resourceViewDaily_resourceId_day_key",
+    "label": "Add unique constraint on \"resourceViewDaily\" (resourceId, day)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "resourceViewDaily_resourceId_day_key",
+        "table": "resourceViewDaily"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"resourceViewDaily_resourceId_day_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceViewDaily_resourceId_day_key",
+          "public",
+          "\"public\".\"resourceViewDaily\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"resourceViewDaily_resourceId_day_key\"",
+        "sql": "ALTER TABLE \"public\".\"resourceViewDaily\" ADD CONSTRAINT \"resourceViewDaily_resourceId_day_key\" UNIQUE (\"resourceId\", \"day\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"resourceViewDaily_resourceId_day_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceViewDaily_resourceId_day_key",
+          "public",
+          "\"public\".\"resourceViewDaily\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.resourceViewDaily.resourceViewDaily_resourceId_idx_72964925",
+    "label": "Create index \"resourceViewDaily_resourceId_idx_72964925\" on \"resourceViewDaily\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "resourceViewDaily_resourceId_idx_72964925",
+        "table": "resourceViewDaily"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"resourceViewDaily_resourceId_idx_72964925\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceViewDaily_resourceId_idx_72964925\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"resourceViewDaily_resourceId_idx_72964925\"",
+        "sql": "CREATE INDEX \"resourceViewDaily_resourceId_idx_72964925\" ON \"public\".\"resourceViewDaily\" (\"resourceId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"resourceViewDaily_resourceId_idx_72964925\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceViewDaily_resourceId_idx_72964925\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.resourceViewDaily.resourceViewDaily_resourceId_fkey",
+    "label": "Add foreign key \"resourceViewDaily_resourceId_fkey\" on \"resourceViewDaily\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "resourceViewDaily_resourceId_fkey",
+        "table": "resourceViewDaily"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"resourceViewDaily_resourceId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceViewDaily_resourceId_fkey",
+          "public",
+          "\"public\".\"resourceViewDaily\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"resourceViewDaily_resourceId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"resourceViewDaily\"\nADD CONSTRAINT \"resourceViewDaily_resourceId_fkey\"\nFOREIGN KEY (\"resourceId\")\nREFERENCES \"public\".\"resource\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"resourceViewDaily_resourceId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceViewDaily_resourceId_fkey",
+          "public",
+          "\"public\".\"resourceViewDaily\""
+        ]
+      }
+    ]
+  }
+]

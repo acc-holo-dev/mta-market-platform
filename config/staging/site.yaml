@@ -1,0 +1,16 @@
+# Staging — site component. Mirrors production defaults with staging ports
+# (compose: infrastructure/docker/compose/staging.yml, .env.staging).
+api:
+  port: 3001          # host 3101
+  nodeEnv: production
+  logFormat: json
+  rateLimits:
+    auth: 100
+    standard: 300
+    strict: 10
+    login: 10
+    refresh: 30
+payments:
+  yookassaEnabled: false   # enable only with staging shop credentials
+email:
+  enabled: false

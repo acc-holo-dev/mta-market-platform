@@ -1,0 +1,572 @@
+[
+  {
+    "id": "dropCheckConstraint.notification.notification_type_check_7029523f",
+    "label": "Drop check constraint \"notification_type_check_7029523f\" on \"notification\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "notification_type_check_7029523f",
+        "table": "notification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"notification_type_check_7029523f\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "notification_type_check_7029523f",
+          "public",
+          "\"public\".\"notification\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"notification_type_check_7029523f\"",
+        "sql": "ALTER TABLE \"public\".\"notification\" DROP CONSTRAINT \"notification_type_check_7029523f\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"notification_type_check_7029523f\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "notification_type_check_7029523f",
+          "public",
+          "\"public\".\"notification\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.resourceFollow",
+    "label": "Create table \"resourceFollow\"",
+    "summary": "Creates table \"resourceFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "resourceFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"resourceFollow\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"resourceFollow\"",
+        "sql": "CREATE TABLE \"public\".\"resourceFollow\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"resourceId\" text NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"resourceFollow\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.sellerFollow",
+    "label": "Create table \"sellerFollow\"",
+    "summary": "Creates table \"sellerFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "sellerFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"sellerFollow\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"sellerFollow\"",
+        "sql": "CREATE TABLE \"public\".\"sellerFollow\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"followerId\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"sellerUserId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"sellerFollow\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.notification.notification_type_check_5e911290",
+    "label": "Add check constraint \"notification_type_check_5e911290\" on \"notification\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "notification_type_check_5e911290",
+        "table": "notification"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"notification_type_check_5e911290\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "notification_type_check_5e911290",
+          "public",
+          "\"public\".\"notification\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"notification_type_check_5e911290\"",
+        "sql": "ALTER TABLE \"public\".\"notification\" ADD CONSTRAINT \"notification_type_check_5e911290\" CHECK (\"type\" IN ('SERVER_NEWS', 'SERVER_UPDATE', 'FORUM_REPLY', 'REVIEW_EVENT', 'MODERATION', 'CREATOR_RESOURCE', 'CREATOR_ARTICLE', 'RESOURCE_UPDATE'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"notification_type_check_5e911290\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "notification_type_check_5e911290",
+          "public",
+          "\"public\".\"notification\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.resourceFollow.resourceFollow_userId_resourceId_key",
+    "label": "Add unique constraint on \"resourceFollow\" (userId, resourceId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "resourceFollow_userId_resourceId_key",
+        "table": "resourceFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"resourceFollow_userId_resourceId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceFollow_userId_resourceId_key",
+          "public",
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"resourceFollow_userId_resourceId_key\"",
+        "sql": "ALTER TABLE \"public\".\"resourceFollow\" ADD CONSTRAINT \"resourceFollow_userId_resourceId_key\" UNIQUE (\"userId\", \"resourceId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"resourceFollow_userId_resourceId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceFollow_userId_resourceId_key",
+          "public",
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.sellerFollow.sellerFollow_followerId_sellerUserId_key",
+    "label": "Add unique constraint on \"sellerFollow\" (followerId, sellerUserId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "sellerFollow_followerId_sellerUserId_key",
+        "table": "sellerFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"sellerFollow_followerId_sellerUserId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sellerFollow_followerId_sellerUserId_key",
+          "public",
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"sellerFollow_followerId_sellerUserId_key\"",
+        "sql": "ALTER TABLE \"public\".\"sellerFollow\" ADD CONSTRAINT \"sellerFollow_followerId_sellerUserId_key\" UNIQUE (\"followerId\", \"sellerUserId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"sellerFollow_followerId_sellerUserId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sellerFollow_followerId_sellerUserId_key",
+          "public",
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.resourceFollow.resourceFollow_resourceId_idx_72964925",
+    "label": "Create index \"resourceFollow_resourceId_idx_72964925\" on \"resourceFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "resourceFollow_resourceId_idx_72964925",
+        "table": "resourceFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"resourceFollow_resourceId_idx_72964925\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceFollow_resourceId_idx_72964925\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"resourceFollow_resourceId_idx_72964925\"",
+        "sql": "CREATE INDEX \"resourceFollow_resourceId_idx_72964925\" ON \"public\".\"resourceFollow\" (\"resourceId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"resourceFollow_resourceId_idx_72964925\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceFollow_resourceId_idx_72964925\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.resourceFollow.resourceFollow_userId_idx_a489d58a",
+    "label": "Create index \"resourceFollow_userId_idx_a489d58a\" on \"resourceFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "resourceFollow_userId_idx_a489d58a",
+        "table": "resourceFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"resourceFollow_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceFollow_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"resourceFollow_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"resourceFollow_userId_idx_a489d58a\" ON \"public\".\"resourceFollow\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"resourceFollow_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceFollow_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.sellerFollow.sellerFollow_followerId_idx_2aa6c62d",
+    "label": "Create index \"sellerFollow_followerId_idx_2aa6c62d\" on \"sellerFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "sellerFollow_followerId_idx_2aa6c62d",
+        "table": "sellerFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"sellerFollow_followerId_idx_2aa6c62d\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sellerFollow_followerId_idx_2aa6c62d\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"sellerFollow_followerId_idx_2aa6c62d\"",
+        "sql": "CREATE INDEX \"sellerFollow_followerId_idx_2aa6c62d\" ON \"public\".\"sellerFollow\" (\"followerId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"sellerFollow_followerId_idx_2aa6c62d\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sellerFollow_followerId_idx_2aa6c62d\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.sellerFollow.sellerFollow_sellerUserId_idx_3d9f6a46",
+    "label": "Create index \"sellerFollow_sellerUserId_idx_3d9f6a46\" on \"sellerFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "sellerFollow_sellerUserId_idx_3d9f6a46",
+        "table": "sellerFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"sellerFollow_sellerUserId_idx_3d9f6a46\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sellerFollow_sellerUserId_idx_3d9f6a46\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"sellerFollow_sellerUserId_idx_3d9f6a46\"",
+        "sql": "CREATE INDEX \"sellerFollow_sellerUserId_idx_3d9f6a46\" ON \"public\".\"sellerFollow\" (\"sellerUserId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"sellerFollow_sellerUserId_idx_3d9f6a46\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"sellerFollow_sellerUserId_idx_3d9f6a46\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.resourceFollow.resourceFollow_userId_fkey",
+    "label": "Add foreign key \"resourceFollow_userId_fkey\" on \"resourceFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "resourceFollow_userId_fkey",
+        "table": "resourceFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"resourceFollow_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceFollow_userId_fkey",
+          "public",
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"resourceFollow_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"resourceFollow\"\nADD CONSTRAINT \"resourceFollow_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"resourceFollow_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceFollow_userId_fkey",
+          "public",
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.resourceFollow.resourceFollow_resourceId_fkey",
+    "label": "Add foreign key \"resourceFollow_resourceId_fkey\" on \"resourceFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "resourceFollow_resourceId_fkey",
+        "table": "resourceFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"resourceFollow_resourceId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceFollow_resourceId_fkey",
+          "public",
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"resourceFollow_resourceId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"resourceFollow\"\nADD CONSTRAINT \"resourceFollow_resourceId_fkey\"\nFOREIGN KEY (\"resourceId\")\nREFERENCES \"public\".\"resource\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"resourceFollow_resourceId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "resourceFollow_resourceId_fkey",
+          "public",
+          "\"public\".\"resourceFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.sellerFollow.sellerFollow_followerId_fkey",
+    "label": "Add foreign key \"sellerFollow_followerId_fkey\" on \"sellerFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "sellerFollow_followerId_fkey",
+        "table": "sellerFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"sellerFollow_followerId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sellerFollow_followerId_fkey",
+          "public",
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"sellerFollow_followerId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"sellerFollow\"\nADD CONSTRAINT \"sellerFollow_followerId_fkey\"\nFOREIGN KEY (\"followerId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"sellerFollow_followerId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sellerFollow_followerId_fkey",
+          "public",
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.sellerFollow.sellerFollow_sellerUserId_fkey",
+    "label": "Add foreign key \"sellerFollow_sellerUserId_fkey\" on \"sellerFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "sellerFollow_sellerUserId_fkey",
+        "table": "sellerFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"sellerFollow_sellerUserId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sellerFollow_sellerUserId_fkey",
+          "public",
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"sellerFollow_sellerUserId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"sellerFollow\"\nADD CONSTRAINT \"sellerFollow_sellerUserId_fkey\"\nFOREIGN KEY (\"sellerUserId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"sellerFollow_sellerUserId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "sellerFollow_sellerUserId_fkey",
+          "public",
+          "\"public\".\"sellerFollow\""
+        ]
+      }
+    ]
+  }
+]

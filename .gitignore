@@ -1,0 +1,144 @@
+# =============================================================================
+# MTA Market Platform — root .gitignore
+# Policy: secrets, runtime state, build output and dependency trees never
+# enter version control. Only the centralized root logs/ convention is kept
+# (with .gitkeep placeholders), never real log files.
+# =============================================================================
+
+# --- Environment & secrets ----------------------------------------------------
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+**/.env
+**/.env.*
+!**/.env.example
+
+secrets/
+**/secrets/
+
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.der
+*.jks
+*.keystore
+
+# --- Logs (root logs/ is convention-only; runtime logs are never committed) ---
+logs/**
+!logs/**/
+!logs/**/.gitkeep
+*.log
+*.log.*
+**/*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# --- Runtime / transient state --------------------------------------------------
+runtime/
+tmp/
+temp/
+cache/
+.cache/
+.turbo/
+.tsbuildinfo
+*.tsbuildinfo
+
+uploads/
+**/uploads/
+artifacts/
+**/artifacts/
+storage/
+**/storage/
+data/
+**/data/
+backups/
+backups/
+*.backup
+*.bak
+*.dump
+*.sql.gz
+*.sql.zst
+
+# --- Build output ---------------------------------------------------------------
+build/
+**/build/
+dist/
+**/dist/
+out/
+**/out/
+.next/
+**/.next/
+*.next
+tsconfig.tsbuildinfo
+
+# --- Dependencies ---------------------------------------------------------------
+node_modules/
+**/node_modules/
+.pnpm-store/
+
+# --- Test output ------------------------------------------------------------------
+coverage/
+**/coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+.playwright-artifacts/
+
+# --- Python -------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# --- C / C++ / CMake ------------------------------------------------------------------
+CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+cmake_install.cmake
+compile_commands.json
+CPackConfig.cmake
+CPackSourceConfig.cmake
+install_manifest.txt
+*.o
+*.obj
+*.so
+*.so.*
+*.dll
+*.dylib
+*.a
+*.lib
+*.exe
+*.pdb
+*.ilk
+
+# --- Editors / OS ---------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Misc ------------------------------------------------------------------------------
+*.patch.orig
+.DS_Store?
+
+# --- Tool-local generated docs (prisma skills sync etc.) --------------------
+**/.cursor/
+**/.claude/
+**/.agents/
+**/.devin/
+.cursor/
+.claude/
+.agents/
+.devin/

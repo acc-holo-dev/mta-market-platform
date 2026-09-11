@@ -1,0 +1,13 @@
+if(WIN32)
+  set(SDK_PLATFORM_TAG "win")
+else()
+  set(SDK_PLATFORM_TAG "linux")
+endif()
+
+include(CheckCXXCompilerFlag)
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _cpu)
+if(_cpu MATCHES "x86_64|amd64")
+  set(SDK_ARCH_TAG "x64")
+else()
+  set(SDK_ARCH_TAG "${_cpu}")
+endif()

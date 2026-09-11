@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/drm/v2/installation.schema.json",
+  "title": "DRM v2 installation registration / identity",
+  "type": "object",
+  "required": ["publicKey", "licenseId", "mtaVersion", "moduleVersion"],
+  "properties": {
+    "publicKey": { "type": "string", "description": "SPKI DER base64 of the client Ed25519 key; private key NEVER leaves the machine (INV-010)" },
+    "licenseId": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "mtaVersion": { "type": "string" },
+    "moduleVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
+    "serverSerial": { "type": ["string", "null"] },
+    "serverName": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

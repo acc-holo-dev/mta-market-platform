@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/module/heartbeat.schema.json",
+  "title": "Module integration heartbeat (POST /integration/heartbeat)",
+  "description": "Aggregate-data-only: counters prove server liveness; no player identity, IP, chat or telemetry (privacy-by-default).",
+  "type": "object",
+  "required": ["token"],
+  "properties": {
+    "token": { "type": "string", "pattern": "^smk_", "description": "server integration token issued in the owner dashboard" },
+    "state": { "type": "string", "description": "optional free-form operational state" },
+    "players": { "type": "integer", "minimum": 0 },
+    "maxPlayers": { "type": "integer", "minimum": 0 }
+  },
+  "additionalProperties": false,
+  "$comment": "Response: { status, monitoring, verification }. First valid heartbeat flips verification to VERIFIED; ONLINE decays to UNKNOWN via the monitoring sweep (never fake OFFLINE). Powers LIVE aggregates (GET /activity/live)."
+}

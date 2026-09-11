@@ -1,0 +1,66 @@
+# DRM Protocol v2 — frozen wire contract
+# Canonical prose: documents/development/reference/old_drm-protocol-v2.md
+# Server implementation: site/server/src/lib/drm/protocol.ts + routes/drm/v2.ts
+# Client implementation: module/src/drm/license_client.{hpp,cpp}
+#
+# Version bump (v3) is REQUIRED for any change below (see
+# documents/development/reference/README.md).
+
+protocol:
+  name: drm
+  version: 2
+  mount: /drm
+  deprecated:
+    v1:
+      endpoints: [POST /drm/activate, POST /drm/verify]
+      status: 410 Gone
+      bridge: none
+
+constants:
+  leaseTtlSeconds: 604800        # 7 days
+  clockSkewSeconds: 90
+  challengeBytes: 32             # single-use, base64 over the wire
+  nonceBytes: 32                 # 64 hex chars, single-use
+  dekBytes: 32                   # per resource version, AES-256-GCM key
+
+signing:
+  algorithm: Ed25519
+  payload: canonical JSON        # sorted keys, no whitespace, UTF-8,
+                                 # signature field stripped, numbers verbatim
+  encoding: signatures are base64 over the raw canonical bytes
+
+endpoints:
+  - method: GET
+    path: /drm/v2/public-keys
+    auth: public
+    description: rotation-aware trusted key set (ACTIVE + PREVIOUS, G-007)
+  - method: POST
+    path: /drm/v2/installations
+    auth: bearer (owner browser session)
+    body: "[publicKey, licenseId, mtaVersion, moduleVersion, serverSerial?, serverName?]"
+    returns: { installationId, challenge }
+  - method: POST
+    path: /drm/v2/installations/:id/verify
+    auth: bearer
+    body: "Ed25519 signature over the raw 32-byte challenge"
+    returns: verification result
+  - method: POST
+    path: /drm/v2/activate
+    auth: bearer
+    body: "[licenseId, installationId, nonce]"
+    returns: signed lease (lease.schema.json)
+  - method: POST
+    path: /drm/v2/heartbeat
+    auth: bearer
+    description: reports lease validity + shouldUpdate
+  - method: GET
+    path: /drm/v2/leases/:installationId/:resourceId
+    auth: bearer
+  - method: POST
+    path: /drm/v2/versions/:versionId/dek
+    auth: possession proof
+    description: lease-gated DEK release for the encrypted artifact
+
+errors:
+  envelope: { "error": { "code": string, "message": string } }
+  # full code list: contracts/drm/v2/errors.schema.json

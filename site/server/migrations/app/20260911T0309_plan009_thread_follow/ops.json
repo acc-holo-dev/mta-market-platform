@@ -1,0 +1,245 @@
+[
+  {
+    "id": "table.forumThreadFollow",
+    "label": "Create table \"forumThreadFollow\"",
+    "summary": "Creates table \"forumThreadFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "forumThreadFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"forumThreadFollow\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"forumThreadFollow\"",
+        "sql": "CREATE TABLE \"public\".\"forumThreadFollow\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"id\" text NOT NULL,\n  \"threadId\" text NOT NULL,\n  \"userId\" text NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"forumThreadFollow\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.forumThreadFollow.forumThreadFollow_userId_threadId_key",
+    "label": "Add unique constraint on \"forumThreadFollow\" (userId, threadId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "forumThreadFollow_userId_threadId_key",
+        "table": "forumThreadFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"forumThreadFollow_userId_threadId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThreadFollow_userId_threadId_key",
+          "public",
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"forumThreadFollow_userId_threadId_key\"",
+        "sql": "ALTER TABLE \"public\".\"forumThreadFollow\" ADD CONSTRAINT \"forumThreadFollow_userId_threadId_key\" UNIQUE (\"userId\", \"threadId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"forumThreadFollow_userId_threadId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThreadFollow_userId_threadId_key",
+          "public",
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forumThreadFollow.forumThreadFollow_threadId_idx_6deac339",
+    "label": "Create index \"forumThreadFollow_threadId_idx_6deac339\" on \"forumThreadFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forumThreadFollow_threadId_idx_6deac339",
+        "table": "forumThreadFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forumThreadFollow_threadId_idx_6deac339\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThreadFollow_threadId_idx_6deac339\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forumThreadFollow_threadId_idx_6deac339\"",
+        "sql": "CREATE INDEX \"forumThreadFollow_threadId_idx_6deac339\" ON \"public\".\"forumThreadFollow\" (\"threadId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forumThreadFollow_threadId_idx_6deac339\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThreadFollow_threadId_idx_6deac339\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forumThreadFollow.forumThreadFollow_userId_idx_a489d58a",
+    "label": "Create index \"forumThreadFollow_userId_idx_a489d58a\" on \"forumThreadFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forumThreadFollow_userId_idx_a489d58a",
+        "table": "forumThreadFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forumThreadFollow_userId_idx_a489d58a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThreadFollow_userId_idx_a489d58a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forumThreadFollow_userId_idx_a489d58a\"",
+        "sql": "CREATE INDEX \"forumThreadFollow_userId_idx_a489d58a\" ON \"public\".\"forumThreadFollow\" (\"userId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forumThreadFollow_userId_idx_a489d58a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThreadFollow_userId_idx_a489d58a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.forumThreadFollow.forumThreadFollow_userId_fkey",
+    "label": "Add foreign key \"forumThreadFollow_userId_fkey\" on \"forumThreadFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "forumThreadFollow_userId_fkey",
+        "table": "forumThreadFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"forumThreadFollow_userId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThreadFollow_userId_fkey",
+          "public",
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"forumThreadFollow_userId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"forumThreadFollow\"\nADD CONSTRAINT \"forumThreadFollow_userId_fkey\"\nFOREIGN KEY (\"userId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"forumThreadFollow_userId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThreadFollow_userId_fkey",
+          "public",
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.forumThreadFollow.forumThreadFollow_threadId_fkey",
+    "label": "Add foreign key \"forumThreadFollow_threadId_fkey\" on \"forumThreadFollow\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "forumThreadFollow_threadId_fkey",
+        "table": "forumThreadFollow"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"forumThreadFollow_threadId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThreadFollow_threadId_fkey",
+          "public",
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"forumThreadFollow_threadId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"forumThreadFollow\"\nADD CONSTRAINT \"forumThreadFollow_threadId_fkey\"\nFOREIGN KEY (\"threadId\")\nREFERENCES \"public\".\"forumThread\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"forumThreadFollow_threadId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThreadFollow_threadId_fkey",
+          "public",
+          "\"public\".\"forumThreadFollow\""
+        ]
+      }
+    ]
+  }
+]

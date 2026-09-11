@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/drm/v2/lease.schema.json",
+  "title": "DRM v2 signed lease payload",
+  "description": "Canonical JSON (sorted keys, no whitespace, UTF-8) is signed with the server Ed25519 key; the signature field travels alongside the payload.",
+  "type": "object",
+  "required": [
+    "protocolVersion", "licenseId", "installationId", "resourceId",
+    "resourceVersionId", "artifactHash", "issuedAt", "expiresAt",
+    "nonce", "serverKeyId", "capabilities", "signature"
+  ],
+  "properties": {
+    "protocolVersion": { "const": 2 },
+    "licenseId": { "$ref": "#/$defs/uuid" },
+    "installationId": { "$ref": "#/$defs/uuid" },
+    "resourceId": { "$ref": "#/$defs/uuid" },
+    "resourceVersionId": { "$ref": "#/$defs/uuid" },
+    "artifactHash": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "SHA-256 of the released artifact" },
+    "issuedAt": { "$ref": "#/$defs/isodate" },
+    "expiresAt": { "$ref": "#/$defs/isodate", "description": "issuedAt + 604800s (LEASE_TTL)" },
+    "nonce": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "single-use 32-byte activation nonce" },
+    "serverKeyId": { "type": "string", "description": "id of the signing key (ACTIVE|PREVIOUS trusted, G-007)" },
+    "capabilities": {
+      "type": "array",
+      "items": { "enum": ["run", "update"] },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "signature": { "type": "string", "description": "base64 Ed25519 signature over the canonical payload with this field stripped" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "uuid": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+    "isodate": { "type": "string", "format": "date-time" }
+  }
+}

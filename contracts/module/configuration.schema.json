@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/module/configuration.schema.json",
+  "title": "Module runtime configuration (module/config/module.toml)",
+  "description": "Single source of truth shared by the CMake build and the mta CLI.",
+  "type": "object",
+  "required": ["module"],
+  "properties": {
+    "module": {
+      "type": "object",
+      "required": ["name", "title", "author", "version"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "title": { "type": "string" },
+        "author": { "type": "string" },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "properties": {
+        "cxx_standard": { "type": "integer", "enum": [17, 20, 23] },
+        "unity": { "type": "boolean" },
+        "lto": { "type": "boolean" }
+      }
+    },
+    "async": {
+      "type": "object",
+      "properties": {
+        "workers": { "type": ["string", "integer"], "enum": ["auto"], "minimum": 1 },
+        "queue": { "type": "integer", "minimum": 1, "default": 4096 }
+      }
+    },
+    "features": {
+      "type": "object",
+      "properties": {
+        "async": { "type": "boolean" },
+        "userdata": { "type": "boolean" },
+        "events": { "type": "boolean" },
+        "objects": { "type": "boolean" }
+      }
+    }
+  }
+}

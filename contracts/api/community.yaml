@@ -1,0 +1,35 @@
+# Community domain inventory (routes: community, follows, profiles,
+# notifications, reports)
+domain: community
+endpoints:
+  forum:
+    - { method: GET,  path: /community, note: hub (categories, latest, active, pinned) }
+    - { method: GET,  path: /community/categories }
+    - { method: GET,  path: /community/categories/:slug/threads }
+    - { method: POST, path: /community/categories/:slug/threads }
+    - { method: GET,  path: /community/threads/:id }
+    - { method: POST, path: /community/threads/:id/posts }
+    - { method: POST, path: /community/threads/:id/state, note: open/lock/archive/pin }
+    - { method: PATCH,  path: /community/posts/:id }
+    - { method: DELETE, path: /community/posts/:id }
+    - { method: PUT,  path: /community/posts/:id/reactions/:kind }
+    - { method: GET,  path: /community/servers/:slug/threads }
+    - { method: GET,  path: /community/servers/:slug/members }
+  follows:
+    - { method: POST,   path: /creators/:username/follow }
+    - { method: DELETE, path: /creators/:username/follow }
+    - { method: POST,   path: /resources/:slug/follow }
+    - { method: DELETE, path: /resources/:slug/follow }
+    - { method: POST,   path: /community/forum/thread/:id/follow }
+    - { method: DELETE, path: /community/forum/thread/:id/follow }
+    - { method: GET,    path: /me/follows/creators }
+    - { method: GET,    path: /me/follows/resources }
+    - { method: GET,    path: /me/follows/threads }
+  notifications:
+    - { method: GET,  path: /notifications, note: filter=all|unread + unreadCount }
+    - { method: POST, path: /notifications/:id/read }
+    - { method: POST, path: /notifications/read-all }
+  profiles:
+    - { method: GET, path: /profiles/:username, note: badges/servers/resources/articles; privacy-minimized }
+  reports:
+    - { method: POST, path: /reports }

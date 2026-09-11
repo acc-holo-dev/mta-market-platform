@@ -1,0 +1,35 @@
+# Module project configuration — the single source of truth.
+#
+# The CMake build reads this file directly (config/cmake/core/module-config.cmake);
+# the `mta` CLI reads the same file. Module identity (name, title, author,
+# version) is defined ONLY here: it flows into the built binary
+# (base.dll / base.so), the MTA registration, metadata, packaging and
+# diagnostics without ever being duplicated in C++ sources.
+#
+# Every value can still be overridden per configure with plain CMake cache
+# variables (advanced use): -DSDK_MODULE_NAME=my_mod, -DSDK_UNITY=OFF, ...
+
+[module]
+name = "base"
+title = "Base Module"
+author = "Developer"
+version = "2.1.0"
+
+[build]
+cxx_standard = 20
+unity = true
+lto = true
+
+[async]
+# "auto" lets the runtime pick the worker count; an integer pins it.
+workers = "auto"
+# Maximum queued async tasks (consumed by the async subsystem).
+queue = 4096
+
+[features]
+# Subsystem switches; each one is consumed by the phase that owns the
+# subsystem (async -> scheduler, userdata -> objects, ...).
+async = true
+userdata = true
+events = true
+objects = true

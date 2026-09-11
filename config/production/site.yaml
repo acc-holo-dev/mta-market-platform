@@ -1,0 +1,23 @@
+# Production — site component. Defaults pinned by
+# infrastructure/docker/compose/production.yml; secrets only via .env.
+api:
+  port: 3001
+  nodeEnv: production
+  logFormat: json
+  corsOrigins: []      # same-origin behind nginx (/api/ -> backend)
+  cookieSameSite: lax
+  trustProxy: true
+rateLimits:
+  auth: 100
+  standard: 300
+  strict: 10
+  login: 10
+  refresh: 30
+storage:
+  s3Enabled: true      # startup validation fails closed without S3
+payments:
+  yookassaEnabled: true
+email:
+  enabled: true
+jobs:
+  reconciliationEnabled: true   # D-006: must stay true

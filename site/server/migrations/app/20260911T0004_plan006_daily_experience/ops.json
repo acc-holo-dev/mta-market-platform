@@ -1,0 +1,395 @@
+[
+  {
+    "id": "column.public.user.dashboardSeenAt",
+    "label": "Add column \"dashboardSeenAt\" to \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "dashboardSeenAt",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"dashboardSeenAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "dashboardSeenAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"dashboardSeenAt\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD COLUMN \"dashboardSeenAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"dashboardSeenAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "user",
+          "dashboardSeenAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forumPost.forumPost_createdAt_idx_9575dbd7",
+    "label": "Create index \"forumPost_createdAt_idx_9575dbd7\" on \"forumPost\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forumPost_createdAt_idx_9575dbd7",
+        "table": "forumPost"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forumPost_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumPost_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forumPost_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"forumPost_createdAt_idx_9575dbd7\" ON \"public\".\"forumPost\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forumPost_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumPost_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forumThread.forumThread_createdAt_idx_9575dbd7",
+    "label": "Create index \"forumThread_createdAt_idx_9575dbd7\" on \"forumThread\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forumThread_createdAt_idx_9575dbd7",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forumThread_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThread_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forumThread_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"forumThread_createdAt_idx_9575dbd7\" ON \"public\".\"forumThread\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forumThread_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThread_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.moderationEvent.moderationEvent_toStatus_createdAt_idx_d3c44f73",
+    "label": "Create index \"moderationEvent_toStatus_createdAt_idx_d3c44f73\" on \"moderationEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "moderationEvent_toStatus_createdAt_idx_d3c44f73",
+        "table": "moderationEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"moderationEvent_toStatus_createdAt_idx_d3c44f73\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationEvent_toStatus_createdAt_idx_d3c44f73\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"moderationEvent_toStatus_createdAt_idx_d3c44f73\"",
+        "sql": "CREATE INDEX \"moderationEvent_toStatus_createdAt_idx_d3c44f73\" ON \"public\".\"moderationEvent\" (\"toStatus\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"moderationEvent_toStatus_createdAt_idx_d3c44f73\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"moderationEvent_toStatus_createdAt_idx_d3c44f73\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.resourceVersion.resourceVersion_releaseStatus_publishedAt_idx_b6b40219",
+    "label": "Create index \"resourceVersion_releaseStatus_publishedAt_idx_b6b40219\" on \"resourceVersion\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "resourceVersion_releaseStatus_publishedAt_idx_b6b40219",
+        "table": "resourceVersion"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"resourceVersion_releaseStatus_publishedAt_idx_b6b40219\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceVersion_releaseStatus_publishedAt_idx_b6b40219\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"resourceVersion_releaseStatus_publishedAt_idx_b6b40219\"",
+        "sql": "CREATE INDEX \"resourceVersion_releaseStatus_publishedAt_idx_b6b40219\" ON \"public\".\"resourceVersion\" (\"releaseStatus\", \"publishedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"resourceVersion_releaseStatus_publishedAt_idx_b6b40219\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"resourceVersion_releaseStatus_publishedAt_idx_b6b40219\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.review.review_createdAt_idx_9575dbd7",
+    "label": "Create index \"review_createdAt_idx_9575dbd7\" on \"review\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "review_createdAt_idx_9575dbd7",
+        "table": "review"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"review_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"review_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"review_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"review_createdAt_idx_9575dbd7\" ON \"public\".\"review\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"review_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"review_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.server.server_lifecycle_verifiedAt_idx_da9a4538",
+    "label": "Create index \"server_lifecycle_verifiedAt_idx_da9a4538\" on \"server\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "server_lifecycle_verifiedAt_idx_da9a4538",
+        "table": "server"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"server_lifecycle_verifiedAt_idx_da9a4538\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"server_lifecycle_verifiedAt_idx_da9a4538\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"server_lifecycle_verifiedAt_idx_da9a4538\"",
+        "sql": "CREATE INDEX \"server_lifecycle_verifiedAt_idx_da9a4538\" ON \"public\".\"server\" (\"lifecycle\", \"verifiedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"server_lifecycle_verifiedAt_idx_da9a4538\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"server_lifecycle_verifiedAt_idx_da9a4538\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.serverNews.serverNews_status_publishedAt_idx_4d4b1960",
+    "label": "Create index \"serverNews_status_publishedAt_idx_4d4b1960\" on \"serverNews\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "serverNews_status_publishedAt_idx_4d4b1960",
+        "table": "serverNews"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"serverNews_status_publishedAt_idx_4d4b1960\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"serverNews_status_publishedAt_idx_4d4b1960\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"serverNews_status_publishedAt_idx_4d4b1960\"",
+        "sql": "CREATE INDEX \"serverNews_status_publishedAt_idx_4d4b1960\" ON \"public\".\"serverNews\" (\"status\", \"publishedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"serverNews_status_publishedAt_idx_4d4b1960\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"serverNews_status_publishedAt_idx_4d4b1960\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.serverReview.serverReview_createdAt_idx_9575dbd7",
+    "label": "Create index \"serverReview_createdAt_idx_9575dbd7\" on \"serverReview\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "serverReview_createdAt_idx_9575dbd7",
+        "table": "serverReview"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"serverReview_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"serverReview_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"serverReview_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"serverReview_createdAt_idx_9575dbd7\" ON \"public\".\"serverReview\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"serverReview_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"serverReview_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.serverUpdate.serverUpdate_publishedAt_idx_36121b91",
+    "label": "Create index \"serverUpdate_publishedAt_idx_36121b91\" on \"serverUpdate\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "serverUpdate_publishedAt_idx_36121b91",
+        "table": "serverUpdate"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"serverUpdate_publishedAt_idx_36121b91\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"serverUpdate_publishedAt_idx_36121b91\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"serverUpdate_publishedAt_idx_36121b91\"",
+        "sql": "CREATE INDEX \"serverUpdate_publishedAt_idx_36121b91\" ON \"public\".\"serverUpdate\" (\"publishedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"serverUpdate_publishedAt_idx_36121b91\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"serverUpdate_publishedAt_idx_36121b91\""
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/contracts/drm/v2/challenge.schema.json",
+  "title": "DRM v2 installation challenge",
+  "type": "object",
+  "required": ["installationId", "challenge", "expiresAt"],
+  "properties": {
+    "installationId": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "challenge": { "type": "string", "description": "base64 of 32 random bytes; single-use; client signs the DECODED raw bytes (PLAN-004 F-002)" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

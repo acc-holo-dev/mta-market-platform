@@ -1,0 +1,105 @@
+name: E2E
+
+# BLOCKING GATE (PLAN-010 §21): browser E2E must pass — "unit tests green +
+# E2E skipped + docker published" is exactly the situation this workflow
+# forbids. Boots the real stack (Postgres + Redis + API + web) and runs the
+# Playwright suite against it.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  playwright:
+    name: Browser E2E (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mtamarket
+          POSTGRES_USER: mtamarket
+          POSTGRES_PASSWORD: dev_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mtamarket"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://mtamarket:dev_password@127.0.0.1:5432/mtamarket
+      REDIS_URL: redis://127.0.0.1:6379
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      FRONTEND_URL: http://localhost:3000
+      BASE_URL: http://localhost:3001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply contract schema (dev quick path)
+        working-directory: site/server
+        run: npx prisma contract emit && npx prisma db update --confirm mtamarket
+
+      - name: Generate ephemeral DRM/artifact dev keys
+        working-directory: site/server
+        run: |
+          echo "DRM_SERVER_PRIVATE_KEY=$(openssl genpkey -algorithm ed25519 | openssl pkey -outform DER | base64 -w0)" >> "$GITHUB_ENV"
+          echo "ARTIFACT_SIGNING_PRIVATE_KEY=$(openssl genpkey -algorithm ed25519 | openssl pkey -outform DER | base64 -w0)" >> "$GITHUB_ENV"
+          echo "DRM_MASTER_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+          echo "JWT_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
+
+      - name: Build API + web (production build)
+        run: |
+          pnpm --filter @mta-market/server build
+          pnpm --filter @mta-market/web build
+
+      - name: Start API and web
+        run: |
+          node site/server/dist/index.js &> /tmp/backend.log &
+          ( cd site/web && pnpm start ) &> /tmp/web.log &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:3001/health >/dev/null 2>&1 && \
+              curl -sf http://localhost:3000 >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -sf http://localhost:3001/health || { echo "::error::API did not come up"; tail -50 /tmp/backend.log; exit 1; }
+          curl -sf http://localhost:3000 >/dev/null || { echo "::error::web did not come up"; tail -50 /tmp/web.log; exit 1; }
+
+      - name: Seed E2E admin
+        run: pnpm test:e2e:admin
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser E2E
+        run: pnpm test:e2e
+
+      - name: Upload Playwright artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
