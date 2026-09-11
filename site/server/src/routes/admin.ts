@@ -1,4 +1,4 @@
-﻿// Admin moderation endpoints
+// Admin moderation endpoints
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
 import { standardRateLimit } from "../lib/rateLimit.js";
@@ -231,7 +231,7 @@ router.patch(
           (recipientId) => ({
             recipientId,
             type: "CREATOR_RESOURCE" as const,
-            title: `Новинка от ${creatorName}: ${resource.title}`,
+            title: `Новинка от ${creatorLabel}: ${resource.title}`,
             body: resource.description.slice(0, 200),
             entityType: "resource",
             entityId: resource.id,
