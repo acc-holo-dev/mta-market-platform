@@ -1,20 +1,42 @@
+# PLAN-014 dependency policy (documents/architecture/DEPENDENCY-POLICY.md):
+# security updates flow immediately, patch/minor updates arrive grouped,
+# major migrations are manual and are excluded here so Dependabot stops
+# opening one PR per package for unverified major upgrades.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+      day: monday
+    open-pull-requests-limit: 5
     groups:
-      minor-and-patch:
+      javascript-patch:
+        update-types:
+          - patch
+      javascript-minor:
         update-types:
           - minor
-          - patch
+    # Major migrations are controlled manually (dependency matrix +
+    # full regression per PLAN-014 §4/§41). Ignoring majors repo-wide is the
+    # deliberate direction: it suppresses per-package major PRs without
+    # touching security updates.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+    # Action major bumps stay individual PRs (manual review each, §41).
 
   - package-ecosystem: pip
     directory: /

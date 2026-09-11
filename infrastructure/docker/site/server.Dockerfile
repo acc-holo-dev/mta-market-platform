@@ -8,7 +8,7 @@
 # excluded at any depth).
 
 # Stage 1: Dependencies
-FROM node:24-alpine AS deps
+FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -24,7 +24,7 @@ COPY site/packages/tsconfig/package.json ./site/packages/tsconfig/
 RUN pnpm install --frozen-lockfile
 
 # Stage 2: Builder
-FROM node:24-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
@@ -37,7 +37,7 @@ COPY . .
 RUN pnpm --filter @mta-market/server build
 
 # Stage 3: Runner
-FROM node:24-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 RUN apk add --no-cache dumb-init
