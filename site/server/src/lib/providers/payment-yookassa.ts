@@ -1,5 +1,5 @@
-// PLAN E-002/E-006/E-008: canonical YooKassa implementation of IPaymentProvider.
-// Wraps the YooKassa HTTP transport (lib/yookassa.ts) — the only place where
+﻿// PLAN E-002/E-006/E-008: canonical YooKassa implementation of IPaymentProvider.
+// Wraps the YooKassa HTTP transport (lib/yookassa.ts) вЂ” the only place where
 // YooKassa specifics meet the neutral payment layer. Verification follows the
 // actual provider protocol: IP allowlist + HTTP Basic auth on the transport
 // side (lib/yookassaWebhook.ts) and provider re-fetch for business checks
@@ -13,9 +13,9 @@ import {
   YOOKASSA_ENABLED,
   YOOKASSA_SHOP_ID,
   type YooKassaPayment,
-} from "../yookassa";
-import { isYooKassaIP, verifyYooKassaAuth } from "../yookassaWebhook";
-import { fromYooKassaStatus, type PaymentState } from "../paymentStateMachine";
+} from "../yookassa.js";
+import { isYooKassaIP, verifyYooKassaAuth } from "../yookassaWebhook.js";
+import { fromYooKassaStatus, type PaymentState } from "../paymentStateMachine.js";
 import type {
   CreatePaymentRequest,
   IPaymentProvider,
@@ -23,7 +23,7 @@ import type {
   ProviderRefundResult,
   ProviderWebhookContext,
   Capability,
-} from "../paymentProvider";
+} from "../paymentProvider.js";
 
 function toAmount(amount: { value: string; currency: string }): {
   value: number;
@@ -129,5 +129,5 @@ export class YooKassaPaymentProvider implements IPaymentProvider {
 export const yooKassaPaymentProvider = new YooKassaPaymentProvider();
 
 // Self-registration into the global registry (E-010).
-import { paymentProviders } from "../paymentProvider";
+import { paymentProviders } from "../paymentProvider.js";
 paymentProviders.register(yooKassaPaymentProvider);

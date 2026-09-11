@@ -1,0 +1,479 @@
+[
+  {
+    "id": "dropConstraint.payment.payment_orderItemId_key",
+    "label": "Drop constraint \"payment_orderItemId_key\" on \"payment\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "payment_orderItemId_key",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payment_orderItemId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_orderItemId_key",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"payment_orderItemId_key\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" DROP CONSTRAINT \"payment_orderItemId_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payment_orderItemId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_orderItemId_key",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropConstraint.payment.payment_purchaseId_key",
+    "label": "Drop constraint \"payment_purchaseId_key\" on \"payment\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "payment_purchaseId_key",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payment_purchaseId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_purchaseId_key",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop constraint \"payment_purchaseId_key\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" DROP CONSTRAINT \"payment_purchaseId_key\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payment_purchaseId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_purchaseId_key",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.idempotencyRecord",
+    "label": "Create table \"idempotencyRecord\"",
+    "summary": "Creates table \"idempotencyRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "idempotencyRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"idempotencyRecord\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"idempotencyRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"idempotencyRecord\"",
+        "sql": "CREATE TABLE \"public\".\"idempotencyRecord\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"expiresAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"key\" text NOT NULL,\n  \"operation\" text NOT NULL,\n  \"requestHash\" text NOT NULL,\n  \"responseBody\" json,\n  \"responseStatus\" int4,\n  \"status\" text DEFAULT 'PROCESSING' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"userId\" text,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"idempotencyRecord_status_check_3bdcefb2\" CHECK (\"status\" IN ('PROCESSING', 'COMPLETED', 'FAILED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"idempotencyRecord\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"idempotencyRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.idempotencyRecord.idempotencyRecord_operation_key_key",
+    "label": "Add unique constraint on \"idempotencyRecord\" (operation, key)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "idempotencyRecord_operation_key_key",
+        "table": "idempotencyRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"idempotencyRecord_operation_key_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "idempotencyRecord_operation_key_key",
+          "public",
+          "\"public\".\"idempotencyRecord\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"idempotencyRecord_operation_key_key\"",
+        "sql": "ALTER TABLE \"public\".\"idempotencyRecord\" ADD CONSTRAINT \"idempotencyRecord_operation_key_key\" UNIQUE (\"operation\", \"key\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"idempotencyRecord_operation_key_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "idempotencyRecord_operation_key_key",
+          "public",
+          "\"public\".\"idempotencyRecord\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dispute.dispute_purchase_open_uq_7bda247e",
+    "label": "Create index \"dispute_purchase_open_uq_7bda247e\" on \"dispute\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dispute_purchase_open_uq_7bda247e",
+        "table": "dispute"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dispute_purchase_open_uq_7bda247e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_purchase_open_uq_7bda247e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dispute_purchase_open_uq_7bda247e\"",
+        "sql": "CREATE UNIQUE INDEX \"dispute_purchase_open_uq_7bda247e\" ON \"public\".\"dispute\" (\"purchaseId\") WHERE ((status <> 'CLOSED'))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dispute_purchase_open_uq_7bda247e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_purchase_open_uq_7bda247e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.dispute.dispute_service_purchase_open_uq_17878f7f",
+    "label": "Create index \"dispute_service_purchase_open_uq_17878f7f\" on \"dispute\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "dispute_service_purchase_open_uq_17878f7f",
+        "table": "dispute"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"dispute_service_purchase_open_uq_17878f7f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_service_purchase_open_uq_17878f7f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"dispute_service_purchase_open_uq_17878f7f\"",
+        "sql": "CREATE UNIQUE INDEX \"dispute_service_purchase_open_uq_17878f7f\" ON \"public\".\"dispute\" (\"servicePurchaseId\") WHERE ((status <> 'CLOSED'))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"dispute_service_purchase_open_uq_17878f7f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"dispute_service_purchase_open_uq_17878f7f\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.financialTransaction.financial_txn_settlement_once_uq_71476c91",
+    "label": "Create index \"financial_txn_settlement_once_uq_71476c91\" on \"financialTransaction\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "financial_txn_settlement_once_uq_71476c91",
+        "table": "financialTransaction"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"financial_txn_settlement_once_uq_71476c91\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"financial_txn_settlement_once_uq_71476c91\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"financial_txn_settlement_once_uq_71476c91\"",
+        "sql": "CREATE UNIQUE INDEX \"financial_txn_settlement_once_uq_71476c91\" ON \"public\".\"financialTransaction\" (\"relatedPurchaseId\") WHERE ((\"type\" = 'SELLER_REVENUE' AND \"relatedPurchaseId\" IS NOT NULL))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"financial_txn_settlement_once_uq_71476c91\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"financial_txn_settlement_once_uq_71476c91\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.idempotencyRecord.idempotencyRecord_expiresAt_idx_6b6b8c10",
+    "label": "Create index \"idempotencyRecord_expiresAt_idx_6b6b8c10\" on \"idempotencyRecord\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "idempotencyRecord_expiresAt_idx_6b6b8c10",
+        "table": "idempotencyRecord"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"idempotencyRecord_expiresAt_idx_6b6b8c10\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"idempotencyRecord_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"idempotencyRecord_expiresAt_idx_6b6b8c10\"",
+        "sql": "CREATE INDEX \"idempotencyRecord_expiresAt_idx_6b6b8c10\" ON \"public\".\"idempotencyRecord\" (\"expiresAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"idempotencyRecord_expiresAt_idx_6b6b8c10\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"idempotencyRecord_expiresAt_idx_6b6b8c10\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.ledgerEntry.ledger_entry_tx_account_direction_uq_ba5138f9",
+    "label": "Create index \"ledger_entry_tx_account_direction_uq_ba5138f9\" on \"ledgerEntry\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "ledger_entry_tx_account_direction_uq_ba5138f9",
+        "table": "ledgerEntry"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"ledger_entry_tx_account_direction_uq_ba5138f9\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ledger_entry_tx_account_direction_uq_ba5138f9\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"ledger_entry_tx_account_direction_uq_ba5138f9\"",
+        "sql": "CREATE UNIQUE INDEX \"ledger_entry_tx_account_direction_uq_ba5138f9\" ON \"public\".\"ledgerEntry\" (\"transactionId\", \"accountId\", \"direction\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"ledger_entry_tx_account_direction_uq_ba5138f9\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"ledger_entry_tx_account_direction_uq_ba5138f9\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payment.payment_orderitem_captured_uq_edd87aa3",
+    "label": "Create index \"payment_orderitem_captured_uq_edd87aa3\" on \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payment_orderitem_captured_uq_edd87aa3",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payment_orderitem_captured_uq_edd87aa3\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_orderitem_captured_uq_edd87aa3\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payment_orderitem_captured_uq_edd87aa3\"",
+        "sql": "CREATE UNIQUE INDEX \"payment_orderitem_captured_uq_edd87aa3\" ON \"public\".\"payment\" (\"orderItemId\") WHERE ((status IN ('SUCCEEDED', 'SETTLEMENT_PENDING', 'SETTLED', 'REFUNDED', 'PARTIALLY_REFUNDED')))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payment_orderitem_captured_uq_edd87aa3\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_orderitem_captured_uq_edd87aa3\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.payment.payment_purchase_captured_uq_7bc2a98a",
+    "label": "Create index \"payment_purchase_captured_uq_7bc2a98a\" on \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "payment_purchase_captured_uq_7bc2a98a",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"payment_purchase_captured_uq_7bc2a98a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_purchase_captured_uq_7bc2a98a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"payment_purchase_captured_uq_7bc2a98a\"",
+        "sql": "CREATE UNIQUE INDEX \"payment_purchase_captured_uq_7bc2a98a\" ON \"public\".\"payment\" (\"purchaseId\") WHERE ((status IN ('SUCCEEDED', 'SETTLEMENT_PENDING', 'SETTLED', 'REFUNDED', 'PARTIALLY_REFUNDED')))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"payment_purchase_captured_uq_7bc2a98a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"payment_purchase_captured_uq_7bc2a98a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.purchase.purchase_buyer_resource_live_uq_653bdf5e",
+    "label": "Create index \"purchase_buyer_resource_live_uq_653bdf5e\" on \"purchase\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "purchase_buyer_resource_live_uq_653bdf5e",
+        "table": "purchase"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"purchase_buyer_resource_live_uq_653bdf5e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_buyer_resource_live_uq_653bdf5e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"purchase_buyer_resource_live_uq_653bdf5e\"",
+        "sql": "CREATE UNIQUE INDEX \"purchase_buyer_resource_live_uq_653bdf5e\" ON \"public\".\"purchase\" (\"buyerId\", \"resourceId\") WHERE ((status IN ('PENDING', 'COMPLETED')))",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"purchase_buyer_resource_live_uq_653bdf5e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"purchase_buyer_resource_live_uq_653bdf5e\""
+        ]
+      }
+    ]
+  }
+]

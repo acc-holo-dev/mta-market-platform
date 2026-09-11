@@ -1,4 +1,4 @@
-// Yandex ID Identity Provider (PLAN D-002 wave 1)
+﻿// Yandex ID Identity Provider (PLAN D-002 wave 1)
 import crypto from "crypto";
 import {
   IIdentityProvider,
@@ -7,7 +7,7 @@ import {
   AuthorizationRequest,
   AuthorizationResponse,
   CallbackRequest,
-} from "../identityProvider";
+} from "../identityProvider.js";
 
 interface YandexTokenResponse {
   access_token: string;
@@ -128,5 +128,5 @@ export class YandexProvider implements IIdentityProvider {
   }
 }
 
-import { identityProviders } from "../identityProvider";
+import { identityProviders } from "../identityProvider.js";
 identityProviders.register(new YandexProvider());

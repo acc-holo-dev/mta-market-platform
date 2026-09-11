@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TASK-019 / PLAN B-002: Artifact Signing Service
  *
  * High-level service for signing and verifying artifacts, rewritten against
@@ -14,10 +14,10 @@
  */
 
 import { createPublicKey, createPrivateKey } from "crypto";
-import { db } from "../../prisma/db";
-import type { ArtifactManifest, SignedArtifact, VerificationResult } from "./types";
-import { generatePublisherKeypair, signArtifact, verifyArtifactSignature, hashFile } from "./crypto";
-import { generateManifest, attachSignatureMetadata } from "./manifest";
+import { db } from "../../prisma/db.js";
+import type { ArtifactManifest, SignedArtifact, VerificationResult } from "./types.js";
+import { generatePublisherKeypair, signArtifact, verifyArtifactSignature, hashFile } from "./crypto.js";
+import { generateManifest, attachSignatureMetadata } from "./manifest.js";
 
 /**
  * Ensure a PublisherKey row exists for the seller, bound to the platform
@@ -30,7 +30,7 @@ async function ensurePublisherKey(sellerId: string): Promise<{ id: string; publi
   }
 
   // Derive the public key (SPKI DER, base64) from the platform private key
-  // (stored as base64-encoded PKCS8 DER — same encoding the CLI generates).
+  // (stored as base64-encoded PKCS8 DER вЂ” same encoding the CLI generates).
   const privateKeyObject = createPrivateKey({
     key: Buffer.from(privateKey, "base64"),
     format: "der",

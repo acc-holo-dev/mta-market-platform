@@ -1,14 +1,14 @@
-import dotenv from "dotenv";
-import { enforceEnvironmentValidation } from "./lib/startupValidation";
-import { createApp } from "./app";
-import { logger } from "./lib/logger";
-import { startReconciliationScheduler } from "./jobs/reconciliation";
+﻿import dotenv from "dotenv";
+import { enforceEnvironmentValidation } from "./lib/startupValidation.js";
+import { createApp } from "./app.js";
+import { logger } from "./lib/logger.js";
+import { startReconciliationScheduler } from "./jobs/reconciliation.js";
 import {
   startServerMonitoringScheduler,
   stopServerMonitoringScheduler,
-} from "./jobs/serverMonitoring";
-import { redis } from "./lib/redis";
-import { db } from "./prisma/db";
+} from "./jobs/serverMonitoring.js";
+import { redis } from "./lib/redis.js";
+import { db } from "./prisma/db.js";
 
 dotenv.config();
 
@@ -16,7 +16,7 @@ dotenv.config();
 enforceEnvironmentValidation();
 
 // PLAN-004 J-003 (audit): a pending rejection must not kill the process
-// silently mid-request — log it with context (kept non-fatal: an in-flight
+// silently mid-request вЂ” log it with context (kept non-fatal: an in-flight
 // request should still try to finish during the graceful window).
 process.on("unhandledRejection", (reason) => {
   logger.error("unhandled_rejection", { error: reason });

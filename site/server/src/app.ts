@@ -1,51 +1,51 @@
-// TASK A-001/A-002/A-003/A-006: Express app factory.
+﻿// TASK A-001/A-002/A-003/A-006: Express app factory.
 // Extracted from index.ts so integration tests can boot the app
 // without binding a port (supertest) and so middleware wiring is
 // explicit and testable.
 import express, { Express } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import { requestIdMiddleware } from "./middleware/requestId";
-import { observabilityMiddleware } from "./middleware/observability";
-import { metrics } from "./lib/metrics";
-import { db } from "./prisma/db";
-import authRoutes from "./routes/auth";
-import resourcesRoutes from "./routes/resources";
-import versionsRoutes from "./routes/versions";
-import reviewsRoutes from "./routes/reviews";
-import drmRoutes from "./routes/drm";
-import drmV2Routes from "./routes/drm/v2";
-import purchasesRoutes from "./routes/purchases";
-import uploadRoutes from "./routes/upload";
-import mediaRoutes from "./routes/media";
-import paymentsRoutes from "./routes/payments";
-import adminRoutes from "./routes/admin";
-import servicesRoutes from "./routes/services";
-import sellerRoutes from "./routes/seller";
-import sellersRoutes from "./routes/sellers";
-import disputesRoutes from "./routes/disputes";
+import { requestIdMiddleware } from "./middleware/requestId.js";
+import { observabilityMiddleware } from "./middleware/observability.js";
+import { metrics } from "./lib/metrics.js";
+import { db } from "./prisma/db.js";
+import authRoutes from "./routes/auth.js";
+import resourcesRoutes from "./routes/resources.js";
+import versionsRoutes from "./routes/versions.js";
+import reviewsRoutes from "./routes/reviews.js";
+import drmRoutes from "./routes/drm.js";
+import drmV2Routes from "./routes/drm/v2.js";
+import purchasesRoutes from "./routes/purchases.js";
+import uploadRoutes from "./routes/upload.js";
+import mediaRoutes from "./routes/media.js";
+import paymentsRoutes from "./routes/payments.js";
+import adminRoutes from "./routes/admin.js";
+import servicesRoutes from "./routes/services.js";
+import sellerRoutes from "./routes/seller.js";
+import sellersRoutes from "./routes/sellers.js";
+import disputesRoutes from "./routes/disputes.js";
 // PLAN-005: Community & Server Foundation routers.
-import serversRoutes from "./routes/servers";
-import serverNewsRoutes from "./routes/serverNews";
-import serverReviewsRoutes from "./routes/serverReviews";
-import communityRoutes from "./routes/community";
-import notificationsRoutes from "./routes/notifications";
-import reportsRoutes from "./routes/reports";
-import integrationRoutes from "./routes/integration";
-import profilesRoutes from "./routes/profiles";
-import searchRoutes from "./routes/search";
-import newsRoutes from "./routes/news";
-import dashboardRoutes from "./routes/dashboard";
+import serversRoutes from "./routes/servers.js";
+import serverNewsRoutes from "./routes/serverNews.js";
+import serverReviewsRoutes from "./routes/serverReviews.js";
+import communityRoutes from "./routes/community.js";
+import notificationsRoutes from "./routes/notifications.js";
+import reportsRoutes from "./routes/reports.js";
+import integrationRoutes from "./routes/integration.js";
+import profilesRoutes from "./routes/profiles.js";
+import searchRoutes from "./routes/search.js";
+import newsRoutes from "./routes/news.js";
+import dashboardRoutes from "./routes/dashboard.js";
 // PLAN-006: Daily Experience read layer (derived activity, live aggregates).
-import activityRoutes from "./routes/activity";
+import activityRoutes from "./routes/activity.js";
 // PLAN-007: Content Foundation (articles).
-import contentRoutes from "./routes/content";
-import adminContentRoutes from "./routes/adminContent";
+import contentRoutes from "./routes/content.js";
+import adminContentRoutes from "./routes/adminContent.js";
 // PLAN-008: Follow Expansion (Creator + Resource).
-import followsRoutes from "./routes/follows";
-import adminCommunityRoutes from "./routes/adminCommunity";
-import { standardRateLimit } from "./lib/rateLimit";
-import { reqLog } from "./middleware/requestId";
+import followsRoutes from "./routes/follows.js";
+import adminCommunityRoutes from "./routes/adminCommunity.js";
+import { standardRateLimit } from "./lib/rateLimit.js";
+import { reqLog } from "./middleware/requestId.js";
 
 /**
  * Allowed browser origins for cross-origin credentialed requests.
@@ -161,7 +161,7 @@ export function createApp(): Express {
   app.use("/payments", paymentsRoutes);
   app.use("/services", servicesRoutes);
   app.use("/seller", sellerRoutes);
-  // PLAN-003 E-001: public seller storefront (читаемый username в URL).
+  // PLAN-003 E-001: public seller storefront (С‡РёС‚Р°РµРјС‹Р№ username РІ URL).
   app.use("/sellers", sellersRoutes);
   app.use("/disputes", disputesRoutes);
   app.use("/admin", adminRoutes);
@@ -189,7 +189,7 @@ export function createApp(): Express {
   // /me/follows/...); a single root mount avoids double prefixes.
   app.use("/", followsRoutes);
 
-  // PLAN-004 J-003 (audit): global error handler — in Express 4 a rejected
+  // PLAN-004 J-003 (audit): global error handler вЂ” in Express 4 a rejected
   // async handler would otherwise become an unhandledRejection and crash the
   // process. Must be registered after all routes (4 args make it an error
   // middleware).

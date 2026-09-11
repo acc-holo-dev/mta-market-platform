@@ -1,25 +1,25 @@
-// PLAN-003 A-002/A-005: public media serving for resource covers/screenshots.
+﻿// PLAN-003 A-002/A-005: public media serving for resource covers/screenshots.
 //
 // Only `media-<64hex>.<png|jpg|jpeg|webp|gif>` names are served (see
 // isMediaName / resolveLocalMediaPath). Paid artifacts use plain random
 // names, so this route can never serve them.
 //
-// PLAN-004 B-002: production media delivery strategy —
+// PLAN-004 B-002: production media delivery strategy вЂ”
 // - local storage: bytes are streamed from UPLOAD_DIR;
 // - S3/R2 storage: if MEDIA_PUBLIC_BASE_URL is configured, the route issues a
 //   302 redirect to the controlled public/CDN media URL (same `/media/<name>`
 //   path, e.g. a bucket/CDN host mirroring the `media/` prefix); otherwise
 //   the object is fetched from the private bucket and streamed by the
-//   backend. Arbitrary external URLs remain forbidden — the name policy
+//   backend. Arbitrary external URLs remain forbidden вЂ” the name policy
 //   applies in every mode, and paid artifacts (plain random names) are
 //   unreachable through this route.
 import { Router, Response } from "express";
 import fs from "fs";
-import { isMediaName, resolveLocalMediaPath, MEDIA_MIME_BY_EXTENSION } from "../lib/media";
+import { isMediaName, resolveLocalMediaPath, MEDIA_MIME_BY_EXTENSION } from "../lib/media.js";
 import path from "path";
-import { standardRateLimit } from "../lib/rateLimit";
-import { reqLog } from "../middleware/requestId";
-import { S3_ENABLED, s3GetObject } from "../lib/s3";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { reqLog } from "../middleware/requestId.js";
+import { S3_ENABLED, s3GetObject } from "../lib/s3.js";
 
 const router: Router = Router();
 
@@ -43,7 +43,7 @@ router.get("/:name", standardRateLimit, async (req, res: Response) => {
   if (S3_ENABLED) {
     if (MEDIA_PUBLIC_BASE_URL) {
       // 302 to the CDN/public object URL. Images are immutable
-      // (content-addressed by random name) — cache the redirect too.
+      // (content-addressed by random name) вЂ” cache the redirect too.
       res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       res.redirect(302, `${MEDIA_PUBLIC_BASE_URL}/media/${name}`);
       return;

@@ -1,16 +1,16 @@
-// PLAN-007 Workstreams C/E: Content Foundation routes.
-// Author flow: create draft → submit → moderation (adminCommunity.ts).
+﻿// PLAN-007 Workstreams C/E: Content Foundation routes.
+// Author flow: create draft в†’ submit в†’ moderation (adminCommunity.ts).
 // Public: /content hub, /content/articles/[slug]. Links are explicit only
 // (B-002): a resource may be any PUBLISHED resource; a server may be attached
-// only by its staff (G-004 precedent). Content is plain text — never raw HTML.
+// only by its staff (G-004 precedent). Content is plain text вЂ” never raw HTML.
 import { Router, Response } from "express";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { standardRateLimit, userRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { reqLog } from "../middleware/requestId";
-import { makeServerSlug } from "../lib/slug";
-import { isOwnMediaUrl } from "../lib/media";
-import { loadStaffRole, canManage, PUBLIC_SERVER_LIFECYCLES } from "../lib/serverAccess";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit, userRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { reqLog } from "../middleware/requestId.js";
+import { makeServerSlug } from "../lib/slug.js";
+import { isOwnMediaUrl } from "../lib/media.js";
+import { loadStaffRole, canManage, PUBLIC_SERVER_LIFECYCLES } from "../lib/serverAccess.js";
 
 const router: Router = Router();
 
@@ -20,7 +20,7 @@ type ArticleStatusValue = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "ARCHIVED";
 
 function excerptOf(content: string): string {
   const flat = content.replace(/\s+/g, " ").trim();
-  return flat.length <= 300 ? flat : `${flat.slice(0, 297)}…`;
+  return flat.length <= 300 ? flat : `${flat.slice(0, 297)}вЂ¦`;
 }
 
 function slugFor(title: string): string {
@@ -42,7 +42,7 @@ function validLinks(resourceIds: unknown, serverIds: unknown) {
 
 // ---------- author flow ----------
 
-// POST /content — create draft (C-001). body: {title, category, tags?,
+// POST /content вЂ” create draft (C-001). body: {title, category, tags?,
 // content, coverUrl?, resourceIds?, serverIds?, createDiscussion?}
 router.post(
   "/",
@@ -53,23 +53,23 @@ router.post(
     try {
       const { title, category, tags, content, coverUrl, resourceIds, serverIds } = req.body ?? {};
       if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 120) {
-        res.status(400).json({ error: "Заголовок: от 3 до 120 символов" });
+        res.status(400).json({ error: "Р—Р°РіРѕР»РѕРІРѕРє: РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ" });
         return;
       }
       if (typeof content !== "string" || content.trim().length < 30 || content.length > 20000) {
-        res.status(400).json({ error: "Текст статьи: от 30 до 20000 символов" });
+        res.status(400).json({ error: "РўРµРєСЃС‚ СЃС‚Р°С‚СЊРё: РѕС‚ 30 РґРѕ 20000 СЃРёРјРІРѕР»РѕРІ" });
         return;
       }
       if (category !== undefined && !CATEGORIES.includes(category)) {
-        res.status(400).json({ error: "Неизвестная категория" });
+        res.status(400).json({ error: "РќРµРёР·РІРµСЃС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ" });
         return;
       }
       if (tags !== undefined && (typeof tags !== "string" || tags.length > 200)) {
-        res.status(400).json({ error: "Теги: строка до 200 символов" });
+        res.status(400).json({ error: "РўРµРіРё: СЃС‚СЂРѕРєР° РґРѕ 200 СЃРёРјРІРѕР»РѕРІ" });
         return;
       }
       if (coverUrl !== undefined && coverUrl !== null && !isOwnMediaUrl(coverUrl)) {
-        res.status(400).json({ error: "Обложка должна быть загружена через /upload/media" });
+        res.status(400).json({ error: "РћР±Р»РѕР¶РєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ Р·Р°РіСЂСѓР¶РµРЅР° С‡РµСЂРµР· /upload/media" });
         return;
       }
       const { resIds, svIds } = validLinks(resourceIds, serverIds);
@@ -85,18 +85,18 @@ router.post(
         : [];
       const validResourceIds = new Set(validResources.map((r: any) => r.id as string));
       if (validResourceIds.size !== resIds.length) {
-        res.status(400).json({ error: "Некоторые ресурсы не существуют или не опубликованы" });
+        res.status(400).json({ error: "РќРµРєРѕС‚РѕСЂС‹Рµ СЂРµСЃСѓСЂСЃС‹ РЅРµ СЃСѓС‰РµСЃС‚РІСѓСЋС‚ РёР»Рё РЅРµ РѕРїСѓР±Р»РёРєРѕРІР°РЅС‹" });
         return;
       }
       for (const sid of svIds) {
         const server = await db.orm.public.Server.where({ id: sid }).first();
         if (!server || !(PUBLIC_SERVER_LIFECYCLES as readonly string[]).includes(server.lifecycle)) {
-          res.status(400).json({ error: "Сервер не существует или не публичен" });
+          res.status(400).json({ error: "РЎРµСЂРІРµСЂ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚ РёР»Рё РЅРµ РїСѓР±Р»РёС‡РµРЅ" });
           return;
         }
         const role = await loadStaffRole(server as any, req.user!.userId);
         if (!canManage(role)) {
-          res.status(403).json({ error: "Свой сервер может привязать только его персонал" });
+          res.status(403).json({ error: "РЎРІРѕР№ СЃРµСЂРІРµСЂ РјРѕР¶РµС‚ РїСЂРёРІСЏР·Р°С‚СЊ С‚РѕР»СЊРєРѕ РµРіРѕ РїРµСЂСЃРѕРЅР°Р»" });
           return;
         }
       }
@@ -135,7 +135,7 @@ router.post(
   }
 );
 
-// PATCH /content/:id — author edits. DRAFT/PENDING stay; PUBLISHED/ARCHIVED
+// PATCH /content/:id вЂ” author edits. DRAFT/PENDING stay; PUBLISHED/ARCHIVED
 // go back to PENDING_REVIEW (re-moderation, C-002).
 router.patch(
   "/:id",
@@ -153,14 +153,14 @@ router.patch(
       const patch: Record<string, unknown> = {};
       if (title !== undefined) {
         if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 120) {
-          res.status(400).json({ error: "Заголовок: от 3 до 120 символов" });
+          res.status(400).json({ error: "Р—Р°РіРѕР»РѕРІРѕРє: РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ" });
           return;
         }
         patch.title = title.trim();
       }
       if (content !== undefined) {
         if (typeof content !== "string" || content.trim().length < 30 || content.length > 20000) {
-          res.status(400).json({ error: "Текст статьи: от 30 до 20000 символов" });
+          res.status(400).json({ error: "РўРµРєСЃС‚ СЃС‚Р°С‚СЊРё: РѕС‚ 30 РґРѕ 20000 СЃРёРјРІРѕР»РѕРІ" });
           return;
         }
         patch.content = content;
@@ -168,21 +168,21 @@ router.patch(
       }
       if (category !== undefined) {
         if (!CATEGORIES.includes(category)) {
-          res.status(400).json({ error: "Неизвестная категория" });
+          res.status(400).json({ error: "РќРµРёР·РІРµСЃС‚РЅР°СЏ РєР°С‚РµРіРѕСЂРёСЏ" });
           return;
         }
         patch.category = category;
       }
       if (tags !== undefined) {
         if (typeof tags !== "string" || tags.length > 200) {
-          res.status(400).json({ error: "Теги: строка до 200 символов" });
+          res.status(400).json({ error: "РўРµРіРё: СЃС‚СЂРѕРєР° РґРѕ 200 СЃРёРјРІРѕР»РѕРІ" });
           return;
         }
         patch.tags = tags.trim() || null;
       }
       if (coverUrl !== undefined) {
         if (coverUrl !== null && !isOwnMediaUrl(coverUrl)) {
-          res.status(400).json({ error: "Обложка должна быть загружена через /upload/media" });
+          res.status(400).json({ error: "РћР±Р»РѕР¶РєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ Р·Р°РіСЂСѓР¶РµРЅР° С‡РµСЂРµР· /upload/media" });
           return;
         }
         patch.coverUrl = coverUrl;
@@ -202,7 +202,7 @@ router.patch(
   }
 );
 
-// POST /content/:id/submit — DRAFT/ARCHIVED → PENDING_REVIEW (C-001).
+// POST /content/:id/submit вЂ” DRAFT/ARCHIVED в†’ PENDING_REVIEW (C-001).
 router.post(
   "/:id/submit",
   authenticate,
@@ -215,7 +215,7 @@ router.post(
         return;
       }
       if (article.status !== "DRAFT" && article.status !== "ARCHIVED") {
-        res.status(409).json({ error: "Отправить на модерацию можно черновик или архивную статью" });
+        res.status(409).json({ error: "РћС‚РїСЂР°РІРёС‚СЊ РЅР° РјРѕРґРµСЂР°С†РёСЋ РјРѕР¶РЅРѕ С‡РµСЂРЅРѕРІРёРє РёР»Рё Р°СЂС…РёРІРЅСѓСЋ СЃС‚Р°С‚СЊСЋ" });
         return;
       }
       const updated = await db.orm.public.Article
@@ -229,7 +229,7 @@ router.post(
   }
 );
 
-// GET /content/mine — all own articles with statuses (C-002).
+// GET /content/mine вЂ” all own articles with statuses (C-002).
 router.get("/mine", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const rows = await db.orm.public.Article
@@ -266,7 +266,7 @@ router.get("/mine", authenticate, standardRateLimit, async (req: AuthRequest, re
   }
 });
 
-// POST /content/:id/discussion — create the article thread (B-003). Author
+// POST /content/:id/discussion вЂ” create the article thread (B-003). Author
 // (published article) or admin; one thread per article (articleId unique).
 router.post(
   "/:id/discussion",
@@ -286,20 +286,20 @@ router.post(
         return;
       }
       if (article.status !== "PUBLISHED") {
-        res.status(409).json({ error: "Обсуждение доступно для опубликованных статей" });
+        res.status(409).json({ error: "РћР±СЃСѓР¶РґРµРЅРёРµ РґРѕСЃС‚СѓРїРЅРѕ РґР»СЏ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅС‹С… СЃС‚Р°С‚РµР№" });
         return;
       }
       const existing = await db.orm.public.ForumThread.where({ articleId: article.id }).first();
       if (existing) {
-        res.status(409).json({ error: "Обсуждение уже существует" });
+        res.status(409).json({ error: "РћР±СЃСѓР¶РґРµРЅРёРµ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚" });
         return;
       }
-      // "Обсуждения" category when present, else first by position.
+      // "РћР±СЃСѓР¶РґРµРЅРёСЏ" category when present, else first by position.
       const category =
         (await db.orm.public.ForumCategory.where({ slug: "servers" }).first()) ??
         (await db.orm.public.ForumCategory.orderBy((c: any) => c.position.asc()).first());
       if (!category) {
-        res.status(409).json({ error: "Форумные категории не настроены" });
+        res.status(409).json({ error: "Р¤РѕСЂСѓРјРЅС‹Рµ РєР°С‚РµРіРѕСЂРёРё РЅРµ РЅР°СЃС‚СЂРѕРµРЅС‹" });
         return;
       }
       const thread = await db.orm.public.ForumThread.create({
@@ -311,7 +311,7 @@ router.post(
       await db.orm.public.ForumPost.create({
         threadId: thread.id,
         authorId: req.user!.userId,
-        content: `Обсуждение статьи «${article.title}». ${article.excerpt}`,
+        content: `РћР±СЃСѓР¶РґРµРЅРёРµ СЃС‚Р°С‚СЊРё В«${article.title}В». ${article.excerpt}`,
         position: 0,
       });
       await db.orm.public.ForumThread
@@ -327,7 +327,7 @@ router.post(
 
 // ---------- public surfaces ----------
 
-// GET /content — public hub (E-001): PUBLISHED only, category filter,
+// GET /content вЂ” public hub (E-001): PUBLISHED only, category filter,
 // honest pagination.
 router.get("/", standardRateLimit, async (req, res: Response) => {
   try {
@@ -385,7 +385,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// GET /content/articles/:slug — public article page (E-002). PUBLISHED only;
+// GET /content/articles/:slug вЂ” public article page (E-002). PUBLISHED only;
 // links render only while the linked entity remains public.
 router.get("/articles/:slug", standardRateLimit, async (req, res: Response) => {
     try {

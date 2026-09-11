@@ -1,8 +1,8 @@
-// PLAN-005 M: notification foundation. Recipient-owned notification objects
+﻿// PLAN-005 M: notification foundation. Recipient-owned notification objects
 // with a stable type vocabulary (M-002). Creation is best-effort: a follower
 // notification burst must never fail the triggering request.
-import { db } from "../prisma/db";
-import { logger } from "./logger";
+import { db } from "../prisma/db.js";
+import { logger } from "./logger.js";
 
 export type NotificationType =
   | "SERVER_NEWS"

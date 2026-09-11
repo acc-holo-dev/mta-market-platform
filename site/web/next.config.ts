@@ -17,6 +17,12 @@ const nextConfig = {
           source: "/api/:path*",
           destination: `${process.env.API_PROXY_TARGET || "http://127.0.0.1:3001"}/:path*`,
         },
+        {
+          // Public media (covers/screenshots/banners) is served by the
+          // backend at /media/:name — same-origin dev mirror of nginx.
+          source: "/media/:path*",
+          destination: `${process.env.API_PROXY_TARGET || "http://127.0.0.1:3001"}/media/:path*`,
+        },
       ];
     }
     return [];

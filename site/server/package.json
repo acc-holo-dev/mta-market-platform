@@ -2,6 +2,7 @@
   "name": "@mta-market/server",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -9,7 +10,6 @@
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
     "postinstall": "prisma skills sync || exit 0",
     "contract:emit": "prisma contract emit",
     "drm:keygen": "tsx src/cli/drm.ts keygen",

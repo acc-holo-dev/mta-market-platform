@@ -1,25 +1,25 @@
-// Authentication routes (OAuth2 identity providers + JWT)
+﻿// Authentication routes (OAuth2 identity providers + JWT)
 // PLAN D-002/D-003/D-004: registry-driven OAuth (Discord, Yandex, Google),
 // identity linking/unlinking, oauth_state CSRF cookie.
 import { Router, Request, Response } from "express";
 import crypto from "crypto";
-import { authRateLimit } from "../lib/rateLimit";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyAccessToken } from "../lib/jwt";
-import { hashRefreshToken, generateTokenId, verifyRefreshTokenHash } from "../lib/tokenSecurity";
-import { setRefreshCookie, clearRefreshCookie } from "../lib/cookies";
-import { db } from "../prisma/db";
-import { sendWelcomeEmail } from "../lib/email";
-import { userRateLimit } from "../lib/rateLimit";
+import { authRateLimit } from "../lib/rateLimit.js";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyAccessToken } from "../lib/jwt.js";
+import { hashRefreshToken, generateTokenId, verifyRefreshTokenHash } from "../lib/tokenSecurity.js";
+import { setRefreshCookie, clearRefreshCookie } from "../lib/cookies.js";
+import { db } from "../prisma/db.js";
+import { sendWelcomeEmail } from "../lib/email.js";
+import { userRateLimit } from "../lib/rateLimit.js";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { reqLog } from "../middleware/requestId";
-import { identityProviders } from "../lib/identityProvider";
+import { reqLog } from "../middleware/requestId.js";
+import { identityProviders } from "../lib/identityProvider.js";
 
 // Side-effect imports: each provider self-registers into the global registry.
-import "../lib/providers/discord";
-import "../lib/providers/yandex";
-import "../lib/providers/google";
+import "../lib/providers/discord.js";
+import "../lib/providers/yandex.js";
+import "../lib/providers/google.js";
 
 const router: Router = Router();
 
@@ -64,7 +64,7 @@ function isRealEmail(email: string): boolean {
 
 // ---------------------------------------------------------------------------
 // PLAN-001 A-001/A-002: local registration + login (username/email + password).
-// Uses the existing session/token/cookie infrastructure — no parallel auth
+// Uses the existing session/token/cookie infrastructure вЂ” no parallel auth
 // system. OAuth-only accounts keep passwordHash = null.
 // ---------------------------------------------------------------------------
 
@@ -425,7 +425,7 @@ router.post("/logout", authRateLimit, async (req: Request, res: Response) => {
 
 // PATCH /auth/me - edit allowed profile fields (PLAN-001 B-002).
 // role, status, email, username and any protected/identity fields are NOT
-// editable here — attempts are ignored/rejected.
+// editable here вЂ” attempts are ignored/rejected.
 router.patch("/me", authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const allowed: Record<string, unknown> = {};

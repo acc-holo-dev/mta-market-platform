@@ -1,6 +1,6 @@
-// Authentication middleware
+﻿// Authentication middleware
 import { Request, Response, NextFunction } from "express";
-import { verifyAccessToken, JWTPayload } from "../lib/jwt";
+import { verifyAccessToken, JWTPayload } from "../lib/jwt.js";
 
 export interface AuthRequest extends Request {
   /** Bound by the requestId middleware (PLAN B-007). */

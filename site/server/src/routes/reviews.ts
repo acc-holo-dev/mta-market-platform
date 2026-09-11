@@ -1,10 +1,10 @@
-// Reviews API routes
+﻿// Reviews API routes
 import { Router, Response } from "express";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { userRateLimit } from "../lib/rateLimit";
-import { reqLog } from "../middleware/requestId";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { userRateLimit } from "../lib/rateLimit.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
@@ -30,7 +30,7 @@ router.get("/:slug/reviews", standardRateLimit, async (req, res: Response) => {
       return;
     }
 
-    // PLAN B-004: honest pagination — COUNT aggregate for the total, SQL
+    // PLAN B-004: honest pagination вЂ” COUNT aggregate for the total, SQL
     // limit/offset for the page. Average rating is computed over ALL reviews
     // via an aggregate, not over the current page.
     const reviews = await db.orm.public.Review.where({ resourceId: resource.id })
@@ -104,7 +104,7 @@ router.post(
         return;
       }
 
-      // PLAN K-001: self-purchase reviews are review fraud — the resource
+      // PLAN K-001: self-purchase reviews are review fraud вЂ” the resource
       // seller can never review their own listing.
       if (resource.sellerId === req.user!.userId) {
         res.status(403).json({ error: "You cannot review your own resource" });

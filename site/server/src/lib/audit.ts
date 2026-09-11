@@ -1,9 +1,9 @@
-// PLAN Q-004: append-only audit log, separate from application logs.
+﻿// PLAN Q-004: append-only audit log, separate from application logs.
 // Sensitive state changes (moderation, seller approvals, refunds, dispute
 // transitions, key rotation) record who did WHAT to WHICH target, from
 // where, under which request_id. Records are never updated or deleted.
-import { db } from "../prisma/db";
-import { logger } from "./logger";
+import { db } from "../prisma/db.js";
+import { logger } from "./logger.js";
 
 export interface AuditInput {
   actorId: string;

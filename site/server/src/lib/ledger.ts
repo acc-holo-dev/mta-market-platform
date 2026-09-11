@@ -1,4 +1,4 @@
-// Financial ledger (PLAN F-001..F-005) + seller balance helpers.
+﻿// Financial ledger (PLAN F-001..F-005) + seller balance helpers.
 //
 // F-001: the source of truth is the append-only LedgerEntry table; every
 // amount is a positive number with a DEBIT/CREDIT direction, grouped into
@@ -10,10 +10,23 @@
 // every posted transaction must balance: sum(debits) == sum(credits).
 //
 // F-005: free orders create commerce/audit records but never money movement
-// — zero-amount settlements post nothing.
-import { db } from "../prisma/db";
-import { logger } from "./logger";
-import { withKeyLock } from "./keyLock";
+// вЂ” zero-amount settlements post nothing.
+//
+// PLAN-012 В§8/В§9/В§10 (transactional correctness):
+//   - the cached SellerBalance is mutated ATOMICALLY in SQL
+//     ("availableAmount = availableAmount + delta" via the raw lane) вЂ” the
+//     read-then-write race is gone;
+//   - the legacy FinancialTransaction + balance delta + double-entry ledger
+//     posting for one settlement happen in ONE database transaction;
+//   - the deterministic settlement transaction id
+//     (`settle:purchase:<id>` / `settle:service_purchase:<id>`) is enforced
+//     by the ledger_entry_tx_account_direction_uq unique index, and the
+//     one-SELLER_REVENUE-per-line rule by financial_txn_settlement_once_uq вЂ”
+//     both hold across backend instances, not just within one process.
+import { db } from "../prisma/db.js";
+import { logger } from "./logger.js";
+import { withKeyLock } from "./keyLock.js";
+import { isUniqueViolation } from "./dbErrors.js";
 
 export interface RecordSellerRevenueOptions {
   sellerId: string;
@@ -45,20 +58,31 @@ type LedgerAccountKind =
   | "REFUND_RESERVE"
   | "ADJUSTMENTS";
 
-/** F-002: lazily ensure a ledger account exists (upsert by unique code). */
+/** F-002: lazily ensure a ledger account exists (unique code is the invariant). */
 export async function ensureLedgerAccount(
   code: string,
   kind: LedgerAccountKind,
-  options: { currency?: string; userId?: string } = {}
+  options: { currency?: string; userId?: string; executor?: DbOrTx } = {}
 ): Promise<{ id: string }> {
-  const existing = await db.orm.public.LedgerAccount.where({ code }).first();
+  const executor = options.executor ?? db;
+  const existing = await executor.orm.public.LedgerAccount.where({ code }).first();
   if (existing) return { id: existing.id };
-  return db.orm.public.LedgerAccount.create({
-    code,
-    kind,
-    currency: options.currency ?? "RUB",
-    userId: options.userId ?? null,
-  });
+  try {
+    return await executor.orm.public.LedgerAccount.create({
+      code,
+      kind,
+      currency: options.currency ?? "RUB",
+      userId: options.userId ?? null,
+    });
+  } catch (error) {
+    // Two instances ensuring the same account concurrently: the unique code
+    // decides вЂ” re-read the winner's row.
+    if (isUniqueViolation(error, "ledgerAccount_code_key")) {
+      const winner = await executor.orm.public.LedgerAccount.where({ code }).first();
+      if (winner) return { id: winner.id };
+    }
+    throw error;
+  }
 }
 
 export interface LedgerEntryInput {
@@ -81,6 +105,14 @@ export class LedgerUnbalancedError extends Error {
   }
 }
 
+/** Thrown when a settlement was already applied (dedup marker hit). */
+export class SettlementAlreadyAppliedError extends Error {
+  constructor() {
+    super("Settlement was already applied for this line");
+    this.name = "SettlementAlreadyAppliedError";
+  }
+}
+
 /** Normalize the affected-row result of updateAndCount()-style returns. */
 export function affectedCount(result: unknown): number {
   if (typeof result === "number") return result;
@@ -97,6 +129,12 @@ export function affectedCount(result: unknown): number {
  * F-003/INV-012: post a balanced group of ledger entries. Throws
  * LedgerUnbalancedError when sum(debits) != sum(credits) or an entry amount
  * is non-positive.
+ *
+ * PLAN-012 В§10: idempotency is now a DATABASE invariant вЂ” the unique
+ * (transactionId, accountId, direction) index rejects the second posting of
+ * the same balanced transaction even across backend instances. The
+ * check-before-insert below stays as the cheap fast path; the insert is
+ * also guarded by catching the unique violation.
  */
 export async function postLedgerEntries(
   transactionId: string,
@@ -105,13 +143,9 @@ export async function postLedgerEntries(
 ): Promise<void> {
   if (entries.length === 0) return; // nothing to post (F-005 free flow)
 
-  // PLAN-011 concurrency foundation (exactly-once): the deterministic
-  // settlement transaction id is only meaningful if it is actually enforced.
-  // A settlement retry (repair pass) must never post the same double-entry
-  // rows twice — check before posting.
   const existing = await executor.orm.public.LedgerEntry.where({ transactionId }).first();
   if (existing) {
-    return; // already posted — idempotent repair pass
+    return; // already posted вЂ” idempotent repair pass
   }
 
   const debits = entries
@@ -129,11 +163,10 @@ export async function postLedgerEntries(
   }
 
   for (const entry of entries) {
-    const account = await ensureLedgerAccount(
-      entry.account.code,
-      entry.account.kind,
-      { userId: entry.account.userId }
-    );
+    const account = await ensureLedgerAccount(entry.account.code, entry.account.kind, {
+      userId: entry.account.userId,
+      executor,
+    });
     await executor.orm.public.LedgerEntry.create({
       transactionId,
       accountId: account.id,
@@ -171,121 +204,50 @@ export async function isLedgerTransactionBalanced(transactionId: string): Promis
 }
 
 /**
- * F-001/F-002: settlement of a completed line as a double-entry transaction:
- *   DEBIT  platform_cash             finalPrice
- *   CREDIT seller_available:<seller> sellerRevenue
- *   CREDIT platform_revenue           platformFee
- * Free orders (finalPrice == 0) post NOTHING (F-005).
+ * PLAN-012 В§8: ATOMIC balance mutation. The delta is applied by the database
+ * itself ("availableAmount = availableAmount + delta" in a single UPDATE with
+ * RETURNING) вЂ” two concurrent mutations can no longer overwrite each other,
+ * whatever the number of backend instances. The row is created if missing.
  */
-async function postSettlementLedger(input: {
-  sellerId: string;
-  finalPrice: number;
-  sellerRevenue: number;
-  platformFee: number;
-  orderId?: string;
-  memo: string;
-}): Promise<string | null> {
-  if (input.finalPrice <= 0) {
-    // F-005: no money movement for free orders.
-    return null;
+export async function applySellerBalanceDelta(
+  sellerId: string,
+  availableDelta: number,
+  totalEarnedDelta: number,
+  executor: DbOrTx = db
+): Promise<number> {
+  // Ensure the row exists (the userId is the primary key вЂ” a parallel
+  // creation is resolved by the primary key, not by a read-then-write race).
+  const existing = await executor.orm.public.SellerBalance.where({ userId: sellerId }).first();
+  if (!existing) {
+    try {
+      await executor.orm.public.SellerBalance.create({
+        userId: sellerId,
+        availableAmount: 0,
+        inEscrowAmount: 0,
+        totalEarned: 0,
+      });
+    } catch (error) {
+      if (!isUniqueViolation(error, "sellerBalance_pkey")) throw error;
+    }
   }
 
-  // PLAN-004 D-006/E-003 (audit GAP-2): the settlement transaction id is
-  // deterministic (one ledger settlement per purchase/service line, ever).
-  // A crash between purchase completion and settlement previously left a
-  // permanent gap: the webhook retry hit `alreadyCompleted` and settlement
-  // never ran. With a stable id the retry can safely re-run
-  // settlePurchaseRevenue — an idempotent repair pass.
-  const transactionId = `settle:${input.memo}`;
-  const entries: LedgerEntryInput[] = [
-    {
-      account: { code: LEDGER_ACCOUNT_CODES.PLATFORM_CASH, kind: "PLATFORM_CASH" },
-      direction: "DEBIT",
-      amount: input.finalPrice,
-      orderId: input.orderId,
-      memo: input.memo,
-    },
-  ];
-  if (input.sellerRevenue > 0) {
-    entries.push({
-      account: {
-        code: LEDGER_ACCOUNT_CODES.SELLER_AVAILABLE(input.sellerId),
-        kind: "SELLER_AVAILABLE",
-        userId: input.sellerId,
-      },
-      direction: "CREDIT",
-      amount: input.sellerRevenue,
-      orderId: input.orderId,
-      userId: input.sellerId,
-      memo: input.memo,
-    });
-  }
-  if (input.platformFee > 0) {
-    entries.push({
-      account: { code: LEDGER_ACCOUNT_CODES.PLATFORM_REVENUE, kind: "PLATFORM_REVENUE" },
-      direction: "CREDIT",
-      amount: input.platformFee,
-      orderId: input.orderId,
-      memo: input.memo,
-    });
-  }
-
-  await postLedgerEntries(transactionId, entries);
-  return transactionId;
-}
-
-/**
- * Atomically updates the seller's cached balance and records a legacy ledger
- * transaction. Concurrency note: balance read-then-write is guarded by the
- * F-003 double-entry rows; the cache is reconciled by internal.ts.
- */
-export async function recordSellerRevenue(options: RecordSellerRevenueOptions): Promise<{
-  balanceAfter: number;
-}> {
-  const { sellerId, purchaseId, amount, type } = options;
-
-  if (amount < 0) {
-    throw new Error(`Ledger amount must be non-negative, got ${amount}`);
-  }
-  if (amount === 0) {
-    return { balanceAfter: 0 }; // nothing to record (F-005)
-  }
-
-  // Ensure balance row exists (upsert-like behavior)
-  let balance = await db.orm.public.SellerBalance.where({ userId: sellerId }).first();
-
-  if (!balance) {
-    balance = await db.orm.public.SellerBalance.create({
-      userId: sellerId,
-      availableAmount: 0,
-      inEscrowAmount: 0,
-      totalEarned: 0,
-    });
-  }
-
-  // PLAN-004 E-003 (audit GAP-4): REFUND_FROM_SELLER must DECREASE the
-  // cached availableAmount — the double-entry side DEBITs seller_available,
-  // so the cache previously ran in the opposite direction and drifted from
-  // the ledger.
-  const availableDelta = type === "REFUND_FROM_SELLER" ? -amount : amount;
-  const totalEarnedDelta =
-    type === "SELLER_REVENUE" ? amount : type === "REFUND_FROM_SELLER" ? -amount : 0;
-  const newBalance = balance.availableAmount + availableDelta;
-
-  await db.orm.public.SellerBalance.where({ userId: sellerId }).update({
-    availableAmount: newBalance,
-    ...(totalEarnedDelta !== 0 ? { totalEarned: balance.totalEarned + totalEarnedDelta } : {}),
-  });
-
-  await db.orm.public.FinancialTransaction.create({
-    userId: sellerId,
-    type,
-    amount,
-    balanceAfter: newBalance,
-    relatedPurchaseId: purchaseId,
-  });
-
-  return { balanceAfter: newBalance };
+  // The raw lane is authored on the client (db.raw.sql); the plan executes
+  // through the supplied executor so it rides the caller's transaction. The
+  // client executes plans via runtime(); a transaction context carries
+  // execute() directly.
+  const plan = db.raw.sql
+    `UPDATE "sellerBalance"
+     SET "availableAmount" = "availableAmount" + ${availableDelta},
+         "totalEarned" = "totalEarned" + ${totalEarnedDelta}
+     WHERE "userId" = ${sellerId}
+     RETURNING "availableAmount"`
+    .returnsRow({ availableAmount: "pg/int4@1" })
+    .build();
+  const rows =
+    typeof executor.execute === "function"
+      ? ((await executor.execute(plan)) as Array<{ availableAmount: number }>)
+      : ((await executor.runtime().execute(plan)) as Array<{ availableAmount: number }>);
+  return Number(rows[0]?.availableAmount ?? 0);
 }
 
 /**
@@ -293,15 +255,17 @@ export async function recordSellerRevenue(options: RecordSellerRevenueOptions): 
  * seller gets finalPrice - platformFee; platform keeps platformFee.
  * Reads fee breakdown from the purchase snapshot (immutable).
  * INVARIANT: the split is validated against the FINAL price (after
- * discounts) — the pre-discount priceSnapshot is not the settled amount.
+ * discounts) вЂ” the pre-discount priceSnapshot is not the settled amount.
  * F-003: also posts the balanced double-entry settlement transaction.
  */
 /**
- * PLAN-011 concurrency foundation: settlement is exactly-once per purchase.
- * The existence guard below plus this per-purchase key lock make the repair
- * pass (alreadyCompleted path) and parallel retries idempotent within the
- * backend process. Cross-instance exactly-once needs a unique constraint
- * (formal migration path) — see documents/history/MIGRATION.md.
+ * PLAN-011 concurrency foundation + PLAN-012 В§9/В§10: settlement is
+ * exactly-once per purchase. The per-purchase key lock serializes repair
+ * passes within one process; the database invariants (unique
+ * financialTransaction row per SELLER_REVENUE settlement, unique ledger
+ * (transactionId, accountId, direction)) make it exactly-once across
+ * instances. The whole settlement вЂ” legacy cache, legacy transaction and
+ * double-entry rows вЂ” is ONE database transaction.
  */
 export async function settlePurchaseRevenue(purchase: SettleInput): Promise<void> {
   return withKeyLock(`settle:${purchase.id}`, () => settlePurchaseRevenueUnlocked(purchase));
@@ -337,44 +301,227 @@ async function settlePurchaseRevenueUnlocked(purchase: SettleInput): Promise<voi
     );
   }
 
-  // Credit seller with their revenue portion (legacy cache + transactions)
-  // PLAN-011 concurrency foundation (exactly-once): the legacy
-  // FinancialTransaction + SellerBalance cache must also be applied at most
-  // once per purchase. The repair pass (alreadyCompleted path in commerce)
-  // re-runs settlePurchaseRevenue — without this guard the cache drifted
-  // from the ledger on every retry.
-  if (purchase.sellerRevenue > 0) {
-    const alreadyRecorded = await db.orm.public.FinancialTransaction
-      .where({ relatedPurchaseId: purchase.id, type: "SELLER_REVENUE" })
-      .first();
-    if (!alreadyRecorded) {
-      await recordSellerRevenue({
-        sellerId,
-        purchaseId: purchase.id,
-        amount: purchase.sellerRevenue,
-        type: "SELLER_REVENUE",
-      });
-    }
-  }
+  const orderId = purchase.orderItemId
+    ? (await db.orm.public.OrderItem.where({ id: purchase.orderItemId }).first())?.orderId
+    : undefined;
 
-  // F-003: double-entry settlement (no-op for free orders, F-005)
-  await postSettlementLedger({
-    sellerId,
-    finalPrice: purchase.finalPrice,
-    sellerRevenue: purchase.sellerRevenue,
-    platformFee: purchase.platformFee,
-    orderId: purchase.orderItemId
-      ? (await db.orm.public.OrderItem.where({ id: purchase.orderItemId }).first())?.orderId
-      : undefined,
-    memo: `purchase:${purchase.id}`,
-  });
+  // F-003: one database transaction for the legacy cache, the legacy
+  // transaction row and the double-entry settlement (В§9). Free orders post
+  // nothing (F-005). Exactly-once: the FinancialTransaction row is the dedup
+  // marker (pre-checked here, enforced by the
+  // financial_txn_settlement_once_uq unique index across instances) вЂ” a
+  // losing race aborts atomically with nothing applied.
+  try {
+    await db.transaction(async (tx: DbOrTx) => {
+      if (purchase.sellerRevenue > 0) {
+        const alreadyRecorded = await tx.orm.public.FinancialTransaction
+          .where({ relatedPurchaseId: purchase.id, type: "SELLER_REVENUE" })
+          .first();
+        if (alreadyRecorded) {
+          logger.info("purchase_settlement_already_applied", { purchase_id: purchase.id });
+          throw new SettlementAlreadyAppliedError();
+        }
+        await recordSellerRevenue(
+          {
+            sellerId,
+            purchaseId: purchase.id,
+            amount: purchase.sellerRevenue,
+            type: "SELLER_REVENUE",
+          },
+          tx
+        );
+      }
+
+      await postSettlementLedger(
+        {
+          sellerId,
+          finalPrice: purchase.finalPrice,
+          sellerRevenue: purchase.sellerRevenue,
+          platformFee: purchase.platformFee,
+          orderId,
+          memo: `purchase:${purchase.id}`,
+        },
+        tx
+      );
+    });
+  } catch (error) {
+    // A parallel settlement (other instance) won the unique race: the
+    // committed winner already applied every effect вЂ” our abort is the
+    // exactly-once no-op. The ledger unique (transactionId, accountId,
+    // direction) covers the free-revenue and partial paths.
+    if (
+      error instanceof SettlementAlreadyAppliedError ||
+      isUniqueViolation(error)
+    ) {
+      logger.warn("purchase_settlement_race_lost", {
+        purchase_id: purchase.id,
+        reason: error instanceof SettlementAlreadyAppliedError ? "marker" : "unique",
+      });
+      return;
+    }
+    throw error;
+  }
 }
 
+/**
+ * F-001/F-002: settlement of a completed line as a double-entry transaction:
+ *   DEBIT  platform_cash             finalPrice
+ *   CREDIT seller_available:<seller> sellerRevenue
+ *   CREDIT platform_revenue           platformFee
+ * Free orders (finalPrice == 0) post NOTHING (F-005).
+ * Runs on the supplied executor (db or an open transaction).
+ */
+async function postSettlementLedger(
+  input: {
+    sellerId: string;
+    finalPrice: number;
+    sellerRevenue: number;
+    platformFee: number;
+    orderId?: string;
+    memo: string;
+  },
+  executor: DbOrTx = db
+): Promise<string | null> {
+  if (input.finalPrice <= 0) {
+    // F-005: no money movement for free orders.
+    return null;
+  }
+
+  // PLAN-004 D-006/E-003 (audit GAP-2) + PLAN-012 В§10: the settlement
+  // transaction id is deterministic (one ledger settlement per purchase /
+  // service line, ever); the unique (transactionId, accountId, direction)
+  // index turns it into a hard invariant. A crash between purchase
+  // completion and settlement leaves a repairable gap: the retry re-runs
+  // settlePurchaseRevenue вЂ” already-posted entries make it a no-op.
+  const transactionId = `settle:${input.memo}`;
+  const entries: LedgerEntryInput[] = [
+    {
+      account: { code: LEDGER_ACCOUNT_CODES.PLATFORM_CASH, kind: "PLATFORM_CASH" },
+      direction: "DEBIT",
+      amount: input.finalPrice,
+      orderId: input.orderId,
+      memo: input.memo,
+    },
+  ];
+  if (input.sellerRevenue > 0) {
+    entries.push({
+      account: {
+        code: LEDGER_ACCOUNT_CODES.SELLER_AVAILABLE(input.sellerId),
+        kind: "SELLER_AVAILABLE",
+        userId: input.sellerId,
+      },
+      direction: "CREDIT",
+      amount: input.sellerRevenue,
+      orderId: input.orderId,
+      userId: input.sellerId,
+      memo: input.memo,
+    });
+  }
+  if (input.platformFee > 0) {
+    entries.push({
+      account: { code: LEDGER_ACCOUNT_CODES.PLATFORM_REVENUE, kind: "PLATFORM_REVENUE" },
+      direction: "CREDIT",
+      amount: input.platformFee,
+      orderId: input.orderId,
+      memo: input.memo,
+    });
+  }
+
+  await postLedgerEntries(transactionId, entries, executor);
+  return transactionId;
+}
+
+/**
+ * Atomically updates the seller's cached balance and records the legacy
+ * financial transaction.
+ *
+ * PLAN-012 В§8/В§10:
+ *   - the balance delta is applied by the DATABASE (single UPDATE ... +
+ *     delta ... RETURNING), never read-then-write in JS;
+ *   - the FinancialTransaction row is the dedup marker: for SELLER_REVENUE a
+ *     unique partial index (financial_txn_settlement_once_uq) admits exactly
+ *     one row per related purchase вЂ” a concurrent/repair settlement loses
+ *     the race at the database and the balance delta it already applied is
+ *     rolled back with the transaction;
+ *   - when `executor` is supplied the caller owns the transaction boundary
+ *     (settlement composes ledger + cache + marker atomically).
+ */
+export async function recordSellerRevenue(
+  options: RecordSellerRevenueOptions,
+  executor?: DbOrTx
+): Promise<{
+  applied: boolean;
+  balanceAfter: number;
+}> {
+  const { sellerId, purchaseId, amount, type } = options;
+
+  if (amount < 0) {
+    throw new Error(`Ledger amount must be non-negative, got ${amount}`);
+  }
+  if (amount === 0) {
+    const current = await db.orm.public.SellerBalance.where({ userId: sellerId }).first();
+    return { applied: false, balanceAfter: Number(current?.availableAmount ?? 0) };
+  }
+
+  const availableDelta = type === "REFUND_FROM_SELLER" ? -amount : amount;
+  const totalEarnedDelta =
+    type === "SELLER_REVENUE" ? amount : type === "REFUND_FROM_SELLER" ? -amount : 0;
+
+  const run = async (tx: DbOrTx): Promise<{ applied: boolean; balanceAfter: number }> => {
+    // Atomic delta first; the legacy transaction row is the dedup marker.
+    const balanceAfter = await applySellerBalanceDelta(
+      sellerId,
+      availableDelta,
+      totalEarnedDelta,
+      tx
+    );
+
+    try {
+      await tx.orm.public.FinancialTransaction.create({
+        userId: sellerId,
+        type,
+        amount,
+        balanceAfter,
+        relatedPurchaseId: purchaseId,
+      });
+    } catch (error) {
+      if (
+        type === "SELLER_REVENUE" &&
+        isUniqueViolation(error, "financial_txn_settlement_once_uq")
+      ) {
+        // This settlement was already applied (concurrent instance or the
+        // idempotent repair pass). Throwing rolls back our delta; the caller
+        // treats the settlement as already done.
+        throw new SettlementAlreadyAppliedError();
+      }
+      throw error;
+    }
+
+    return { applied: true, balanceAfter };
+  };
+
+  if (executor) {
+    return run(executor);
+  }
+
+  try {
+    return await db.transaction(run);
+  } catch (error) {
+    if (error instanceof SettlementAlreadyAppliedError) {
+      const current = await db.orm.public.SellerBalance.where({ userId: sellerId }).first();
+      return { applied: false, balanceAfter: Number(current?.availableAmount ?? 0) };
+    }
+    throw error;
+  }
+}
 
 /**
  * C-009/C-011: records the revenue split for an ACCEPTED service order.
  * Mirrors settlePurchaseRevenue: seller gets sellerRevenue, platform keeps
  * platformFee; the split is validated against the FINAL price.
+ * PLAN-012 В§9: one database transaction for the cache, the legacy row and
+ * the double-entry settlement; exactly-once is enforced by the same
+ * database invariants as purchase settlement.
  */
 export async function settleServiceRevenue(servicePurchase: {
   id: string;
@@ -397,20 +544,51 @@ export async function settleServiceRevenue(servicePurchase: {
     );
   }
 
-  if (servicePurchase.sellerRevenue > 0) {
-    await recordSellerRevenue({
-      sellerId: service.sellerId,
-      purchaseId: servicePurchase.id,
-      amount: servicePurchase.sellerRevenue,
-      type: "SELLER_REVENUE",
-    });
-  }
+  try {
+    await db.transaction(async (tx: DbOrTx) => {
+      if (servicePurchase.sellerRevenue > 0) {
+        const alreadyRecorded = await tx.orm.public.FinancialTransaction
+          .where({ relatedPurchaseId: servicePurchase.id, type: "SELLER_REVENUE" })
+          .first();
+        if (alreadyRecorded) {
+          logger.info("service_settlement_already_applied", {
+            service_purchase_id: servicePurchase.id,
+          });
+          throw new SettlementAlreadyAppliedError();
+        }
+        await recordSellerRevenue(
+          {
+            sellerId: service.sellerId,
+            purchaseId: servicePurchase.id,
+            amount: servicePurchase.sellerRevenue,
+            type: "SELLER_REVENUE",
+          },
+          tx
+        );
+      }
 
-  await postSettlementLedger({
-    sellerId: service.sellerId,
-    finalPrice: servicePurchase.finalPrice,
-    sellerRevenue: servicePurchase.sellerRevenue,
-    platformFee: servicePurchase.platformFee,
-    memo: `service_purchase:${servicePurchase.id}`,
-  });
+      await postSettlementLedger(
+        {
+          sellerId: service.sellerId,
+          finalPrice: servicePurchase.finalPrice,
+          sellerRevenue: servicePurchase.sellerRevenue,
+          platformFee: servicePurchase.platformFee,
+          memo: `service_purchase:${servicePurchase.id}`,
+        },
+        tx
+      );
+    });
+  } catch (error) {
+    if (
+      error instanceof SettlementAlreadyAppliedError ||
+      isUniqueViolation(error)
+    ) {
+      logger.warn("service_settlement_race_lost", {
+        service_purchase_id: servicePurchase.id,
+        reason: error instanceof SettlementAlreadyAppliedError ? "marker" : "unique",
+      });
+      return;
+    }
+    throw error;
+  }
 }

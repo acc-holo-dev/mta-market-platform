@@ -1,4 +1,4 @@
-// Discord Identity Provider (PLAN D-002 wave 1)
+﻿// Discord Identity Provider (PLAN D-002 wave 1)
 import crypto from "crypto";
 import {
   IIdentityProvider,
@@ -7,7 +7,7 @@ import {
   AuthorizationRequest,
   AuthorizationResponse,
   CallbackRequest,
-} from "../identityProvider";
+} from "../identityProvider.js";
 
 interface DiscordTokenResponse {
   access_token: string;
@@ -132,5 +132,5 @@ export class DiscordProvider implements IIdentityProvider {
   }
 }
 
-import { identityProviders } from "../identityProvider";
+import { identityProviders } from "../identityProvider.js";
 identityProviders.register(new DiscordProvider());

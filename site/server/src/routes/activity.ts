@@ -1,16 +1,16 @@
-// PLAN-006 Workstreams B/C: public read endpoints for the Daily Experience
-// layer. Read-only, guest-accessible (§29), rate-limited like other bulk
-// surfaces. /activity/live — the LIVE line; /activity — the Home snapshot
+﻿// PLAN-006 Workstreams B/C: public read endpoints for the Daily Experience
+// layer. Read-only, guest-accessible (В§29), rate-limited like other bulk
+// surfaces. /activity/live вЂ” the LIVE line; /activity вЂ” the Home snapshot
 // (items + popular blocks). The potential continuous /activity feed route
-// (DAILY-EXPERIENCE §21) is intentionally NOT built in PLAN-006.
+// (DAILY-EXPERIENCE В§21) is intentionally NOT built in PLAN-006.
 import { Router, Response } from "express";
-import { standardRateLimit } from "../lib/rateLimit";
-import { getActivitySnapshot, getLiveAggregates } from "../lib/activity";
-import { reqLog } from "../middleware/requestId";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { getActivitySnapshot, getLiveAggregates } from "../lib/activity.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
-// GET /activity/live — global live signal (players/servers online).
+// GET /activity/live вЂ” global live signal (players/servers online).
 router.get("/live", standardRateLimit, async (_req, res: Response) => {
   try {
     res.json(await getLiveAggregates());
@@ -20,7 +20,7 @@ router.get("/live", standardRateLimit, async (_req, res: Response) => {
   }
 });
 
-// GET /activity — Home snapshot: live + high-value items + popular blocks.
+// GET /activity вЂ” Home snapshot: live + high-value items + popular blocks.
 router.get("/", standardRateLimit, async (req, res: Response) => {
   try {
     const limitRaw = parseInt((req.query.limit as string) || "20", 10) || 20;

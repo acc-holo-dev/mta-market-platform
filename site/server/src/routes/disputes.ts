@@ -1,4 +1,4 @@
-// Disputes API (PLAN K-002/K-003).
+﻿// Disputes API (PLAN K-002/K-003).
 // State machine: OPEN -> WAITING_BUYER -> WAITING_SELLER -> UNDER_REVIEW ->
 // RESOLVED_BUYER | RESOLVED_SELLER | PARTIAL_REFUND -> CLOSED.
 // Buyers/sellers communicate through messages; every transition is recorded
@@ -6,12 +6,14 @@
 // PARTIAL_REFUND route to the refund service (Block 5, INV-013) for
 // purchases; service orders flip to their lifecycle counterparts.
 import { Router, Response } from "express";
-import { authenticate, AuthRequest, requireRole } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { validateCuid } from "../middleware/validateCuid";
-import { db } from "../prisma/db";
-import { recordAudit } from "../lib/audit";
-import { reqLog } from "../middleware/requestId";
+import { authenticate, AuthRequest, requireRole } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { validateCuid } from "../middleware/validateCuid.js";
+import { db } from "../prisma/db.js";
+import { recordAudit } from "../lib/audit.js";
+import { reqLog } from "../middleware/requestId.js";
+import { isUniqueViolation } from "../lib/dbErrors.js";
+import { affectedCount } from "../lib/ledger.js";
 
 const router: Router = Router();
 
@@ -103,7 +105,10 @@ router.post("/", authenticate, standardRateLimit, async (req: AuthRequest, res: 
       }
     }
 
-    // One open dispute per order.
+    // One open dispute per order вЂ” application pre-check, backed by the
+    // dispute_purchase_open_uq / dispute_service_purchase_open_uq partial
+    // unique indexes (PLAN-012 В§13): two concurrent OPEN requests for one
+    // order cannot both commit.
     const existing = await db.orm.public.Dispute
       .where(
         targetType === "PURCHASE"
@@ -116,14 +121,28 @@ router.post("/", authenticate, standardRateLimit, async (req: AuthRequest, res: 
       return;
     }
 
-    const dispute = await db.orm.public.Dispute.create({
-      targetType,
-      purchaseId: purchaseRow?.id ?? null,
-      servicePurchaseId: servicePurchaseRow?.id ?? null,
-      openedById: req.user!.userId,
-      status: "OPEN",
-      reason,
-    });
+    let dispute: { id: string };
+    try {
+      dispute = await db.orm.public.Dispute.create({
+        targetType,
+        purchaseId: purchaseRow?.id ?? null,
+        servicePurchaseId: servicePurchaseRow?.id ?? null,
+        openedById: req.user!.userId,
+        status: "OPEN",
+        reason,
+      });
+    } catch (error) {
+      if (
+        isUniqueViolation(error, "dispute_purchase_open_uq") ||
+        isUniqueViolation(error, "dispute_service_purchase_open_uq")
+      ) {
+        // A parallel request (possibly on another instance) opened the
+        // dispute first вЂ” the database rejected the duplicate.
+        res.status(409).json({ error: "An open dispute already exists for this order" });
+        return;
+      }
+      throw error;
+    }
     await db.orm.public.DisputeEvent.create({
       disputeId: dispute.id,
       actorId: req.user!.userId,
@@ -252,14 +271,44 @@ router.post("/:id/transition", authenticate, requireRole("ADMIN"), validateCuid(
       return;
     }
 
-    const updated = await db.orm.public.Dispute.where({ id: dispute.id }).update({
-      status,
-      ...(resolution ? { resolution } : {}),
-      ...(status === "CLOSED" || status.startsWith("RESOLVED") || status === "PARTIAL_REFUND"
-        ? { closedAt: ["CLOSED"].includes(status) ? new Date().toISOString() : null }
-        : {}),
-      resolvedById: status.startsWith("RESOLVED") || status === "PARTIAL_REFUND" ? req.user!.userId : undefined,
-    });
+    // PLAN-012 В§14: the transition is a CAS on the current state вЂ” parallel
+    // admin requests cannot both drive the machine. A loser either observes
+    // its own transition already applied (idempotent replay) or is rejected.
+    const transitioned = await db.orm.public.Dispute
+      .where({ id: dispute.id, status: dispute.status })
+      .updateAndCount({
+        status,
+        ...(resolution ? { resolution } : {}),
+        ...(status === "CLOSED" || status.startsWith("RESOLVED") || status === "PARTIAL_REFUND"
+          ? { closedAt: ["CLOSED"].includes(status) ? new Date().toISOString() : null }
+          : {}),
+        resolvedById:
+          status.startsWith("RESOLVED") || status === "PARTIAL_REFUND" ? req.user!.userId : undefined,
+      });
+    if (affectedCount(transitioned) !== 1) {
+      const current = await db.orm.public.Dispute.where({ id: dispute.id }).first();
+      if (current?.status === status) {
+        // The same transition already committed (parallel duplicate request).
+        await db.orm.public.DisputeEvent.create({
+          disputeId: dispute.id,
+          actorId: req.user!.userId,
+          event: "STATUS_CHANGE_DUPLICATE_IGNORED",
+          fromStatus: dispute.status,
+          toStatus: status,
+        });
+        reqLog(req).warn("dispute_transition_duplicate", {
+          dispute_id: dispute.id,
+          to: status,
+        });
+        res.json(current);
+        return;
+      }
+      res.status(409).json({
+        error: `Dispute state changed concurrently (now ${current?.status ?? "unknown"}); retry`,
+      });
+      return;
+    }
+    const updated = await db.orm.public.Dispute.where({ id: dispute.id }).first();
     await db.orm.public.DisputeEvent.create({
       disputeId: dispute.id,
       actorId: req.user!.userId,
@@ -282,9 +331,11 @@ router.post("/:id/transition", authenticate, requireRole("ADMIN"), validateCuid(
       if (purchase && purchase.status === "DISPUTED") {
         if (status === "RESOLVED_SELLER" || status === "CLOSED") {
           // Settled without buyer refund: restore the completed purchase.
-          await db.orm.public.Purchase.where({ id: purchase.id }).update({
-            status: "COMPLETED",
-          });
+          // CAS on DISPUTED: a concurrent refund already flipped the row to
+          // REFUNDED вЂ” the restore must not overwrite it.
+          await db.orm.public.Purchase
+            .where({ id: purchase.id, status: "DISPUTED" })
+            .updateAndCount({ status: "COMPLETED" });
         }
         // RESOLVED_BUYER / PARTIAL_REFUND: money moves only through the
         // refund service (POST /payments/refunds, Block 5, INV-013); the

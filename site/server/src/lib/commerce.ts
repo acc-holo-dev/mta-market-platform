@@ -1,4 +1,4 @@
-// PLAN C-003, C-008, C-010, C-012: commerce checkout aggregate.
+﻿// PLAN C-003, C-008, C-010, C-012: commerce checkout aggregate.
 //
 // Order     = checkout intent (C-012); OrderItem = immutable priced line
 // (C-006); Purchase = completed RESOURCE purchase (kept compatible: payment
@@ -13,17 +13,18 @@
 // creates a payment provider intent; completion happens immediately after
 // checkout with the same atomic path.
 
-import { db } from "../prisma/db";
+import { db } from "../prisma/db.js";
 import {
   consumeDiscount,
   calculateFinalPrice,
   validateDiscount,
   DiscountUnavailableError,
   affectedCount,
-} from "./discount";
-import { settlePurchaseRevenue } from "./ledger";
-import { withKeyLock } from "./keyLock";
-import { logger } from "./logger";
+} from "./discount.js";
+import { settlePurchaseRevenue } from "./ledger.js";
+import { withKeyLock } from "./keyLock.js";
+import { logger } from "./logger.js";
+import { isUniqueViolation } from "./dbErrors.js";
 
 const PLATFORM_FEE_RATE = 0.1; // 10% of the FINAL price (A-011 parity)
 
@@ -70,12 +71,30 @@ export interface ResourceCheckoutInput {
 /** C-003/C-012: create a resource checkout (Order + OrderItem + Purchase). */
 /**
  * PLAN-011 concurrency foundation: the already-owned check and the purchase
- * creation are a check-then-insert pair — parallel checkouts of the same
+ * creation are a check-then-insert pair вЂ” parallel checkouts of the same
  * resource by the same buyer must be exactly-once. The key lock serializes
  * them within the backend process (single-instance deployment topology).
  * Cross-instance exactly-once needs a unique partial index (formal
- * migration path) — see documents/history/MIGRATION.md.
+ * migration path) вЂ” see documents/history/MIGRATION.md.
  */
+/**
+ * PLAN-012 В§4: checkout exactly-once is a DATABASE invariant. The in-process
+ * key lock serializes same-buyer checkouts within one instance (cheap fast
+ * path); the partial unique index purchase_buyer_resource_live_uq (at most
+ * one PENDING|COMPLETED purchase per buyer+resource) is the hard guarantee вЂ”
+ * two backend instances racing the same checkout converge on one purchase:
+ * the loser re-presents the winner's checkout instead of creating a
+ * duplicate (cross-instance correctness; see documents/history/MIGRATION.md).
+ */
+class CheckoutRaceLostError extends Error {
+  constructor(
+    public readonly winnerPurchaseId: string
+  ) {
+    super("A concurrent checkout of the same resource already created the purchase");
+    this.name = "CheckoutRaceLostError";
+  }
+}
+
 export async function createResourceCheckout(input: ResourceCheckoutInput): Promise<CheckoutResult> {
   const { userId, resourceSlug } = input;
   const resource = await db.orm.public.Resource.where({ slug: resourceSlug }).first();
@@ -166,47 +185,86 @@ async function createResourceCheckoutUnlocked(input: ResourceCheckoutInput): Pro
   // The checkout triple is created atomically; completion (free flow) is a
   // separate atomic step so that every entitlement grant shares one code path
   // with the webhook/simulate flows.
-  const created = await db.transaction(async (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => {
-    const order = await tx.orm.public.Order.create({
-      buyerId: userId,
-      status: "PENDING",
-      currency,
-      subtotal: basePrice,
-      discountTotal: discountAmount,
-      finalTotal: finalPrice,
-    });
+  let created: { orderId: string; orderItemId: string; purchaseId: string };
+  try {
+    created = await db.transaction(async (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => {
+      const order = await tx.orm.public.Order.create({
+        buyerId: userId,
+        status: "PENDING",
+        currency,
+        subtotal: basePrice,
+        discountTotal: discountAmount,
+        finalTotal: finalPrice,
+      });
 
-    const orderItem = await tx.orm.public.OrderItem.create({
-      orderId: order.id,
-      itemType: "RESOURCE",
-      resourceId: resource.id,
-      sellerId: resource.sellerId,
-      titleSnapshot: resource.title,
-      currency,
-      basePrice,
-      discountCampaignId: discount?.campaignId ?? null,
-      discountCode: discount?.code ?? null,
-      discountAmount,
-      finalPrice,
-      platformFee,
-      sellerNet,
-    });
+      const orderItem = await tx.orm.public.OrderItem.create({
+        orderId: order.id,
+        itemType: "RESOURCE",
+        resourceId: resource.id,
+        sellerId: resource.sellerId,
+        titleSnapshot: resource.title,
+        currency,
+        basePrice,
+        discountCampaignId: discount?.campaignId ?? null,
+        discountCode: discount?.code ?? null,
+        discountAmount,
+        finalPrice,
+        platformFee,
+        sellerNet,
+      });
 
-    const purchase = await tx.orm.public.Purchase.create({
-      buyerId: userId,
-      resourceId: resource.id,
-      versionId: version.id,
-      orderItemId: orderItem.id,
-      status: "PENDING",
-      priceSnapshot: basePrice,
-      discountSnapshot: discountAmount,
-      finalPrice,
-      platformFee,
-      sellerRevenue: sellerNet,
-    });
+      let purchaseId: string;
+      try {
+        const purchase = await tx.orm.public.Purchase.create({
+          buyerId: userId,
+          resourceId: resource.id,
+          versionId: version.id,
+          orderItemId: orderItem.id,
+          status: "PENDING",
+          priceSnapshot: basePrice,
+          discountSnapshot: discountAmount,
+          finalPrice,
+          platformFee,
+          sellerRevenue: sellerNet,
+        });
+        purchaseId = purchase.id;
+      } catch (error) {
+        if (isUniqueViolation(error, "purchase_buyer_resource_live_uq")) {
+          // A concurrent checkout (other instance) created the live purchase
+          // first. Aborting this transaction also discards our Order and
+          // OrderItem rows; the winner's checkout is re-presented below.
+          const winner = await tx.orm.public.Purchase
+            .where({ buyerId: userId, resourceId: resource.id })
+            .orderBy((m) => m.createdAt.desc())
+            .first();
+          throw new CheckoutRaceLostError(winner?.id ?? "");
+        }
+        throw error;
+      }
 
-    return { orderId: order.id, orderItemId: orderItem.id, purchaseId: purchase.id };
-  });
+      return { orderId: order.id, orderItemId: orderItem.id, purchaseId };
+    });
+  } catch (error) {
+    if (error instanceof CheckoutRaceLostError) {
+      if (error.winnerPurchaseId) {
+        const represented = await representExistingCheckout(userId, resource.id);
+        if (represented) {
+          logger.info("resource_checkout_race_lost_rerepresented", {
+            user_id: userId,
+            resource_id: resource.id,
+            purchase_id: represented.purchaseId,
+          });
+          return represented;
+        }
+      }
+      throw new CommerceError(
+        409,
+        "pending_purchase_exists",
+        "A pending purchase already exists for this resource"
+      );
+    }
+    throw error;
+  }
 
   logger.info("resource_checkout_created", {
     user_id: userId,
@@ -219,7 +277,7 @@ async function createResourceCheckoutUnlocked(input: ResourceCheckoutInput): Pro
   });
 
   if (finalPrice === 0) {
-    // C-003/C-008: free acquisition — no payment provider call (INV-002).
+    // C-003/C-008: free acquisition вЂ” no payment provider call (INV-002).
     try {
       const completion = await completeResourceOrderItem(created.orderItemId);
       return {
@@ -252,6 +310,50 @@ export interface ServiceCheckoutInput {
   serviceSlug: string;
   buyerNotes?: string;
   discountCode?: string;
+}
+
+/**
+ * PLAN-012 В§4: re-present the winning checkout of a lost create race (same
+ * buyer + resource) instead of surfacing an error вЂ” the loser's HTTP answer
+ * is the winner's checkout state, exactly as the in-process pending path
+ * behaves. Null when the winner cannot be re-presented (caller rejects).
+ */
+async function representExistingCheckout(
+  userId: string,
+  resourceId: string
+): Promise<CheckoutResult | null> {
+  const purchase = await db.orm.public.Purchase
+    .where({ buyerId: userId, resourceId })
+    .orderBy((m) => m.createdAt.desc())
+    .first();
+  if (!purchase) return null;
+
+  if (purchase.status === "COMPLETED") {
+    return {
+      orderId: "",
+      orderItemId: purchase.orderItemId ?? "",
+      purchaseId: purchase.id,
+      status: "completed",
+      basePrice: purchase.priceSnapshot,
+      discountAmount: purchase.discountSnapshot,
+      finalPrice: purchase.finalPrice,
+    };
+  }
+  if (purchase.status !== "PENDING" || !purchase.orderItemId) return null;
+
+  const item = await db.orm.public.OrderItem.where({ id: purchase.orderItemId }).first();
+  if (!item) return null;
+  const order = await db.orm.public.Order.where({ id: item.orderId }).first();
+
+  return {
+    orderId: item.orderId,
+    orderItemId: item.id,
+    purchaseId: purchase.id,
+    status: order?.status === "COMPLETED" ? "completed" : "pending",
+    basePrice: item.basePrice,
+    discountAmount: item.discountAmount,
+    finalPrice: item.finalPrice,
+  };
 }
 
 /** C-010/C-012: create a service checkout (Order + OrderItem + ServicePurchase). */
@@ -496,7 +598,7 @@ export async function completeResourceOrderItem(orderItemId: string): Promise<Co
   } else {
     // PLAN-004 D-006/E-003 (audit GAP-2): repair the settlement crash window.
     // If the process died between purchase completion and ledger settlement,
-    // a webhook retry lands here with `alreadyCompleted` — previously the
+    // a webhook retry lands here with `alreadyCompleted` вЂ” previously the
     // settlement never ran and the gap was only a WARNING log. Settlement is
     // now idempotent (deterministic ledger transaction id
     // `settle:purchase:<id>`), so re-running it is always safe.

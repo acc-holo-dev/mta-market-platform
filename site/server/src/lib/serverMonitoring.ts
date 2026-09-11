@@ -1,9 +1,9 @@
-// PLAN-005 E: monitoring state derived ONLY from real integration data.
+﻿// PLAN-005 E: monitoring state derived ONLY from real integration data.
 // E-006 rule: "the system does not know" (UNKNOWN) is never presented as
 // "the server is definitely down" (OFFLINE). OFFLINE is recorded exclusively
 // when the integration itself reports a graceful shutdown.
-import { db } from "../prisma/db";
-import { logger } from "./logger";
+import { db } from "../prisma/db.js";
+import { logger } from "./logger.js";
 
 /**
  * A heartbeat is considered fresh for this long after lastSeenAt. The module

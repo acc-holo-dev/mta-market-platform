@@ -1,15 +1,15 @@
-// Seller onboarding + profile API (PLAN L-001/L-003).
+﻿// Seller onboarding + profile API (PLAN L-001/L-003).
 // Lifecycle: POST /seller/apply (PENDING) -> moderator APPROVES or REJECTS
 // (admin routes) -> APPROVED sellers gain listing capabilities (L-002) and
 // payout eligibility. Sellers cannot alter platform-controlled financial or
 // moderation state (L-003): the write surface here is limited to profile
 // fields and is always re-reviewed on change.
 import { Router, Response } from "express";
-import { authenticate, AuthRequest, requireRole } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { recordAudit } from "../lib/audit";
-import { reqLog } from "../middleware/requestId";
+import { authenticate, AuthRequest, requireRole } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { recordAudit } from "../lib/audit.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
@@ -27,7 +27,7 @@ router.get("/profile", authenticate, standardRateLimit, async (req: AuthRequest,
 });
 
 // POST /seller/apply - apply for seller onboarding (L-001)
-// PLAN-010 B-002: creator analytics — honest demand signal for the seller.
+// PLAN-010 B-002: creator analytics вЂ” honest demand signal for the seller.
 // Views are aggregate page-opens of the seller's own resources; no viewer
 // identities exist. Conversion = completed purchases / views (30 days).
 const ANALYTICS_DAYS = 30;

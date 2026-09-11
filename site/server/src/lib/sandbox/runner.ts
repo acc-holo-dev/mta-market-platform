@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TASK-022: Upload Sandbox - Docker Runner
  * 
  * Executes artifacts in isolated Docker containers with resource limits.
@@ -11,9 +11,9 @@ import type {
   CompatibilityReport,
   SecurityIssue,
   ContainerConfig
-} from './types';
-import { SANDBOX_ERROR_CODES } from './types';
-import { logger } from '../../lib/logger';
+} from './types.js';
+import { SANDBOX_ERROR_CODES } from './types.js';
+import { logger } from '../../lib/logger.js';
 
 /**
  * Run artifact in Docker sandbox

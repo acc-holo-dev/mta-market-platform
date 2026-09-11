@@ -1,10 +1,10 @@
-// PLAN L-002: permission model.
+﻿// PLAN L-002: permission model.
 // Central place deciding WHO may do WHAT. Roles group permissions: a plain
 // USER gains seller capabilities through an APPROVED SellerProfile (L-001);
 // ADMIN/MODERATOR carry platform privileges. Route handlers call these
 // helpers instead of scattering role checks.
 
-import { db } from "../prisma/db";
+import { db } from "../prisma/db.js";
 
 export type Actor = {
   userId: string;
@@ -22,7 +22,7 @@ export function isAdmin(actor: Pick<Actor, "role">): boolean {
 /**
  * L-001: seller publish/create capability. A user can create and submit
  * resources/services only with an APPROVED seller profile (moderators and
- * admins are always allowed — they moderate the marketplace).
+ * admins are always allowed вЂ” they moderate the marketplace).
  */
 export async function canCreateListings(actor: Actor): Promise<boolean> {
   if (isAdminOrModerator(actor)) return true;

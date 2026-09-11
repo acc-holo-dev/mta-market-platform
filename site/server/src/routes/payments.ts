@@ -1,29 +1,31 @@
-// Payment routes (PLAN E-001..E-008).
+﻿// Payment routes (PLAN E-001..E-008).
 // Routes talk to the neutral IPaymentProvider registry, never a provider SDK
 // directly (E-002). Payment row mutations go through the state machine
 // (E-003). Refunds are an independent lifecycle (E-008, INV-013).
 import { Router, Request, Response } from "express";
-import { db } from "../prisma/db";
+import { db } from "../prisma/db.js";
 import crypto from "crypto";
-import { authenticate, requireRole, AuthRequest } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { validateCuid } from "../middleware/validateCuid";
-import { getClientIP } from "../lib/yookassaWebhook";
-import { sendPurchaseEmail } from "../lib/email";
-import { completeResourceOrderItem, markServicePurchasePaid, CommerceError } from "../lib/commerce";
-import { affectedCount } from "../lib/ledger";
-import { paymentProviders, type IPaymentProvider } from "../lib/paymentProvider";
+import { authenticate, requireRole, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { validateCuid } from "../middleware/validateCuid.js";
+import { getClientIP } from "../lib/yookassaWebhook.js";
+import { sendPurchaseEmail } from "../lib/email.js";
+import { completeResourceOrderItem, markServicePurchasePaid, CommerceError } from "../lib/commerce.js";
+import { affectedCount } from "../lib/ledger.js";
+import { paymentProviders, type IPaymentProvider } from "../lib/paymentProvider.js";
 // E-002: side-effect import registers the YooKassa implementation.
-import "../lib/providers/payment-yookassa";
+import "../lib/providers/payment-yookassa.js";
 import {
   assertTransition,
   type PaymentState,
-} from "../lib/paymentStateMachine";
-import { createRefund } from "../lib/refunds";
-import { PaymentRefundError } from "../lib/paymentErrors";
-import { reqLog } from "../middleware/requestId";
-import { incPaymentSuccess } from "../lib/metrics";
-import type { YooKassaWebhook } from "../lib/yookassa";
+} from "../lib/paymentStateMachine.js";
+import { createRefund } from "../lib/refunds.js";
+import { PaymentRefundError, PaymentStateError } from "../lib/paymentErrors.js";
+import { reqLog } from "../middleware/requestId.js";
+import { incPaymentSuccess } from "../lib/metrics.js";
+import { withIdempotency, isIdempotencyError } from "../lib/idempotency.js";
+import { isUniqueViolation } from "../lib/dbErrors.js";
+import type { YooKassaWebhook } from "../lib/yookassa.js";
 
 const router: Router = Router();
 
@@ -35,27 +37,50 @@ function yooKassaProvider(): IPaymentProvider | null {
 /**
  * E-003: apply a state-machine transition to a Payment row. No-op when the
  * row is already in the target state; throws PaymentStateError on illegal
- * transitions ( surfacing as 500 — a programming error, not a client one).
+ * transitions (surfacing as 500 вЂ” a programming error, not a client one).
+ *
+ * PLAN-012 В§6: the transition is a compare-and-set on the observed state вЂ”
+ * parallel webhook deliveries (or two instances) cannot interleave two
+ * different transitions; a loser re-reads and either acknowledges the
+ * already-applied state or retries onto the new current state.
  */
 async function transitionPaymentTo(providerPaymentId: string, to: PaymentState): Promise<void> {
-  const row = await db.orm.public.Payment.where({ providerPaymentId }).first();
-  if (!row) return;
-  const from = row.status as PaymentState;
-  if (from === to) return;
-  assertTransition(from, to);
-  await db.orm.public.Payment.where({ id: row.id }).update({
-    status: to,
-    ...(to === "SUCCEEDED" ? { succeededAt: new Date().toISOString() } : {}),
-    ...(to === "FAILED" ? { failedAt: new Date().toISOString() } : {}),
-  });
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const row = await db.orm.public.Payment.where({ providerPaymentId }).first();
+    if (!row) return;
+    const from = row.status as PaymentState;
+    if (from === to) return;
+    assertTransition(from, to);
+    const updated = await db.orm.public.Payment
+      .where({ id: row.id, status: from })
+      .updateAndCount({
+        status: to,
+        ...(to === "SUCCEEDED" ? { succeededAt: new Date().toISOString() } : {}),
+        ...(to === "FAILED" ? { failedAt: new Date().toISOString() } : {}),
+      });
+    if (affectedCount(updated) === 1) return;
+    // Lost the CAS: another writer moved the row; loop re-reads and retries
+    // against the fresh state.
+  }
+  const finalRow = await db.orm.public.Payment.where({ providerPaymentId }).first();
+  if (finalRow?.status === to) return; // concurrent winner reached the target
+  throw new PaymentStateError(
+    `Payment ${providerPaymentId} did not reach ${to} after concurrent transitions`
+  );
 }
 
 // POST /payments/create - Create payment (authenticated)
 // Accepts { purchaseId } for resource lines (legacy) or { servicePurchaseId }
 // for service lines (C-010). The provider amount is always the FINAL total.
-router.post("/create", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
-  try {
-    const { purchaseId, servicePurchaseId } = req.body;
+// PLAN-012 В§5: honored when the client sends an Idempotency-Key вЂ” a repeated
+// request replays the stored response instead of creating a second payment.
+router.post(
+  "/create",
+  authenticate,
+  standardRateLimit,
+  withIdempotency("payments.create", async (req: AuthRequest, res: Response) => {
+    try {
+      const { purchaseId, servicePurchaseId } = req.body;
 
     if (!purchaseId && !servicePurchaseId) {
       res.status(400).json({ error: "Missing purchaseId or servicePurchaseId" });
@@ -99,7 +124,7 @@ router.post("/create", authenticate, standardRateLimit, async (req: AuthRequest,
 
       const created = await provider.createPayment({
         amount: { value: servicePurchase.finalPrice, currency: "RUB" },
-        description: "Заказ услуги",
+        description: "Р—Р°РєР°Р· СѓСЃР»СѓРіРё",
         orderId: servicePurchase.id,
         returnUrl: `${process.env.FRONTEND_URL}/services/orders/${servicePurchase.id}`,
       });
@@ -149,10 +174,10 @@ router.post("/create", authenticate, standardRateLimit, async (req: AuthRequest,
 
     if (provider) {
       // TASK A-011: the provider amount must equal the order FINAL total
-      // (after discounts) — never the pre-discount snapshot.
+      // (after discounts) вЂ” never the pre-discount snapshot.
       const created = await provider.createPayment({
         amount: { value: purchase.finalPrice, currency: "RUB" },
-        description: `Покупка ресурса: ${resource.title}`,
+        description: `РџРѕРєСѓРїРєР° СЂРµСЃСѓСЂСЃР°: ${resource.title}`,
         orderId: purchase.id.toString(),
         returnUrl: `${process.env.FRONTEND_URL}/purchases/${purchase.id}`,
       });
@@ -177,11 +202,29 @@ router.post("/create", authenticate, standardRateLimit, async (req: AuthRequest,
         purchaseId: purchase.id,
       });
     }
-  } catch (error) {
-    reqLog(req).error("payment_create_failed", { error });
-    res.status(500).json({ error: "Failed to create payment" });
-  }
-});
+    } catch (error) {
+      if (error instanceof CommerceError) {
+        res.status(error.status).json({ error: error.message, code: error.code });
+        return;
+      }
+      if (
+        isUniqueViolation(error, "payment_purchase_captured_uq") ||
+        isUniqueViolation(error, "payment_orderitem_captured_uq")
+      ) {
+        // PLAN-012 В§6: a parallel request already captured money for this
+        // line вЂ” the database rejected the second capture.
+        res.status(409).json({ error: "Payment for this order is already captured" });
+        return;
+      }
+      if (isIdempotencyError(error)) {
+        res.status(error.status).json({ error: error.message, code: error.code });
+        return;
+      }
+      reqLog(req).error("payment_create_failed", { error });
+      res.status(500).json({ error: "Failed to create payment" });
+    }
+  })
+);
 
 // POST /payments/webhook - YooKassa webhook
 // Transport authenticity (IP allowlist + HTTP Basic auth) is delegated to the
@@ -191,7 +234,7 @@ router.post("/create", authenticate, standardRateLimit, async (req: AuthRequest,
 router.post("/webhook", async (req: Request, res: Response) => {
   try {
     // TASK A-010: when the provider is not configured there is no way to
-    // verify transport authenticity or re-fetch provider state — the endpoint
+    // verify transport authenticity or re-fetch provider state вЂ” the endpoint
     // must be DISABLED, not open.
     const provider = yooKassaProvider();
     if (!provider) {
@@ -238,17 +281,50 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
     let eventRecord = existingEvent;
     if (!eventRecord) {
-      eventRecord = await db.orm.public.PaymentProviderEvent.create({
-        provider: "YUKASSA",
-        providerEventId: object.id,
-        objectId: object.id,
-        eventType,
-        objectType: "payment",
-        payloadHash,
-        payload: req.body,
-        status: "PROCESSING",
-        attempts: 1,
-      });
+      try {
+        eventRecord = await db.orm.public.PaymentProviderEvent.create({
+          provider: "YUKASSA",
+          providerEventId: object.id,
+          objectId: object.id,
+          eventType,
+          objectType: "payment",
+          payloadHash,
+          payload: req.body,
+          status: "PROCESSING",
+          attempts: 1,
+        });
+      } catch (error) {
+        if (
+          isUniqueViolation(
+            error,
+            "paymentProviderEvent_provider_providerEventId_eventType_key"
+          )
+        ) {
+          // PLAN-012 В§7: a parallel delivery (other instance) persisted the
+          // same event first вЂ” adopt its record instead of failing.
+          eventRecord = await db.orm.public.PaymentProviderEvent.where({
+            provider: "YUKASSA",
+            providerEventId: object.id,
+            eventType,
+          }).first();
+          if (eventRecord?.status === "PROCESSED") {
+            res.status(200).json({ message: "Event already processed" });
+            return;
+          }
+          if (!eventRecord) {
+            res.status(500).json({ error: "Failed to process webhook" });
+            return;
+          }
+        } else {
+          throw error;
+        }
+      }
+    }
+    if (!eventRecord) {
+      // Unreachable in practice (create throws or returns a row); kept for
+      // the type checker after the race path.
+      res.status(500).json({ error: "Failed to process webhook" });
+      return;
     } else {
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
         status: "PROCESSING",
@@ -268,7 +344,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
     // PLAN-004 D-004 (audit GAP-1): real cancellation lifecycle. A
     // `payment.canceled` event closes the local PENDING payment/purchase so
-    // it does not hang forever, and — critically — when the provider reports
+    // it does not hang forever, and вЂ” critically вЂ” when the provider reports
     // a *succeeded* payment while the local state is already CANCELED (user
     // canceled at the provider after capture, or a race with
     // /payments/cancel), provider truth wins: the transition is repaired to
@@ -287,7 +363,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
       if (cancelOrderRef) {
         // CAS: only a still-PENDING purchase is closed; a completed one is
         // money already captured (handled by the succeeded flow / refund).
-        // PurchaseStatus has no CANCELED — FAILED is the terminal "no
+        // PurchaseStatus has no CANCELED вЂ” FAILED is the terminal "no
         // entitlement" state (the provider-side cancel is reflected on the
         // Payment row, which does have CANCELED).
         await db.orm.public.Purchase.where({ id: cancelOrderRef, status: "PENDING" }).update({
@@ -305,13 +381,15 @@ router.post("/webhook", async (req: Request, res: Response) => {
     if (localPayment && localPayment.status === "CANCELED") {
       // Provider says SUCCEEDED after a local cancel: repair the state
       // (provider truth wins) and fall through to the normal succeeded flow
-      // below — the buyer paid, the entitlement must be granted.
-      await db.orm.public.Payment.where({ providerPaymentId: object.id }).update({
-        status: "PENDING",
-      });
-      reqLog(req).warn("payment_canceled_then_succeeded_repaired", {
-        provider_payment_id: object.id,
-      });
+      // below вЂ” the buyer paid, the entitlement must be granted.
+      const repaired = await db.orm.public.Payment
+        .where({ providerPaymentId: object.id, status: "CANCELED" })
+        .updateAndCount({ status: "PENDING" });
+      if (affectedCount(repaired) === 1) {
+        reqLog(req).warn("payment_canceled_then_succeeded_repaired", {
+          provider_payment_id: object.id,
+        });
+      }
     }
 
     const orderId = object.metadata?.order_id;
@@ -578,13 +656,16 @@ router.post(
 );
 
 // POST /payments/refunds - create a refund (ADMIN only, E-008)
-// INV-013: the refunded total can never exceed the captured amount.
+// INV-013: the refunded total can never exceed the captured amount (the
+// per-payment advisory lock + transaction in the refund service hold the
+// ceiling across instances). PLAN-012 В§5: honored when the client sends an
+// Idempotency-Key.
 router.post(
   "/refunds",
   authenticate,
   requireRole("ADMIN"),
   standardRateLimit,
-  async (req: AuthRequest, res: Response) => {
+  withIdempotency("payments.refunds", async (req: AuthRequest, res: Response) => {
     try {
       const { paymentId, amount, reason } = req.body ?? {};
       if (!paymentId) {
@@ -610,10 +691,14 @@ router.post(
         res.status(error.status).json({ error: error.message, code: error.code });
         return;
       }
+      if (isIdempotencyError(error)) {
+        res.status(error.status).json({ error: error.message, code: error.code });
+        return;
+      }
       reqLog(req).error("refund_create_failed", { error });
       res.status(500).json({ error: "Failed to create refund" });
     }
-  }
+  })
 );
 
 // GET /payments/:paymentId/refunds - list refunds for a payment (ADMIN only)
@@ -637,14 +722,17 @@ router.get(
 );
 
 // POST /payments/:id/simulate - Simulate payment (development only)
-// This route is ONLY compiled in non-production environments
+// This route is ONLY compiled in non-production environments.
+// PLAN-012 В§5: honored when the client sends an Idempotency-Key (the
+// underlying completion is already CAS-idempotent; the key replays the
+// stored response).
 if (process.env.NODE_ENV !== 'production') {
   router.post(
     "/:id/simulate",
     authenticate,
     validateCuid('id'),
     standardRateLimit,
-    async (req: AuthRequest, res: Response) => {
+    withIdempotency("payments.simulate", async (req: AuthRequest, res: Response) => {
       try {
         if (yooKassaProvider()) {
           res.status(403).json({ error: "Cannot simulate in production" });
@@ -689,10 +777,14 @@ if (process.env.NODE_ENV !== 'production') {
           res.status(error.status).json({ error: error.message, code: error.code });
           return;
         }
+        if (isIdempotencyError(error)) {
+          res.status(error.status).json({ error: error.message, code: error.code });
+          return;
+        }
         reqLog(req).error("payment_simulation_failed", { error });
         res.status(500).json({ error: "Failed to simulate payment" });
       }
-    }
+    })
   );
 }
 

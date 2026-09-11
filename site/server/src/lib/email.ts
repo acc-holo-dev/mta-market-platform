@@ -1,8 +1,8 @@
-// Email notification system (nodemailer)
+﻿// Email notification system (nodemailer)
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
-import { logger } from "./logger";
-import { incEmailFailure } from "./metrics";
+import { logger } from "./logger.js";
+import { incEmailFailure } from "./metrics.js";
 
 const EMAIL_ENABLED = process.env.EMAIL_ENABLED === "true";
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
@@ -59,19 +59,19 @@ export async function sendEmail(options: SendEmailOptions): Promise<void> {
 export async function sendWelcomeEmail(email: string, username: string): Promise<void> {
   await sendEmail({
     to: email,
-    subject: "Добро пожаловать в MTA Market!",
+    subject: "Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ MTA Market!",
     html: `
-      <h1>Привет, ${username}!</h1>
-      <p>Добро пожаловать в MTA Market — маркетплейс для MTA:SA ресурсов.</p>
-      <p>Теперь вы можете:</p>
+      <h1>РџСЂРёРІРµС‚, ${username}!</h1>
+      <p>Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ MTA Market вЂ” РјР°СЂРєРµС‚РїР»РµР№СЃ РґР»СЏ MTA:SA СЂРµСЃСѓСЂСЃРѕРІ.</p>
+      <p>РўРµРїРµСЂСЊ РІС‹ РјРѕР¶РµС‚Рµ:</p>
       <ul>
-        <li>Покупать готовые скрипты и моды</li>
-        <li>Продавать свои разработки</li>
-        <li>Оставлять отзывы</li>
+        <li>РџРѕРєСѓРїР°С‚СЊ РіРѕС‚РѕРІС‹Рµ СЃРєСЂРёРїС‚С‹ Рё РјРѕРґС‹</li>
+        <li>РџСЂРѕРґР°РІР°С‚СЊ СЃРІРѕРё СЂР°Р·СЂР°Р±РѕС‚РєРё</li>
+        <li>РћСЃС‚Р°РІР»СЏС‚СЊ РѕС‚Р·С‹РІС‹</li>
       </ul>
-      <p>Удачи!</p>
+      <p>РЈРґР°С‡Рё!</p>
     `,
-    text: `Привет, ${username}! Добро пожаловать в MTA Market.`,
+    text: `РџСЂРёРІРµС‚, ${username}! Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ MTA Market.`,
   });
 }
 
@@ -83,15 +83,15 @@ export async function sendPurchaseEmail(
 ): Promise<void> {
   await sendEmail({
     to: email,
-    subject: `Покупка завершена: ${resourceTitle}`,
+    subject: `РџРѕРєСѓРїРєР° Р·Р°РІРµСЂС€РµРЅР°: ${resourceTitle}`,
     html: `
-      <h1>Покупка завершена!</h1>
-      <p>Вы успешно приобрели: <strong>${resourceTitle}</strong></p>
-      <p>ID лицензии: <code>${licenseId}</code></p>
-      <p>Скачать ресурс можно в личном кабинете.</p>
-      <p><a href="${process.env.FRONTEND_URL}/dashboard/purchases">Перейти к покупкам</a></p>
+      <h1>РџРѕРєСѓРїРєР° Р·Р°РІРµСЂС€РµРЅР°!</h1>
+      <p>Р’С‹ СѓСЃРїРµС€РЅРѕ РїСЂРёРѕР±СЂРµР»Рё: <strong>${resourceTitle}</strong></p>
+      <p>ID Р»РёС†РµРЅР·РёРё: <code>${licenseId}</code></p>
+      <p>РЎРєР°С‡Р°С‚СЊ СЂРµСЃСѓСЂСЃ РјРѕР¶РЅРѕ РІ Р»РёС‡РЅРѕРј РєР°Р±РёРЅРµС‚Рµ.</p>
+      <p><a href="${process.env.FRONTEND_URL}/dashboard/purchases">РџРµСЂРµР№С‚Рё Рє РїРѕРєСѓРїРєР°Рј</a></p>
     `,
-    text: `Покупка завершена: ${resourceTitle}. ID лицензии: ${licenseId}`,
+    text: `РџРѕРєСѓРїРєР° Р·Р°РІРµСЂС€РµРЅР°: ${resourceTitle}. ID Р»РёС†РµРЅР·РёРё: ${licenseId}`,
   });
 }
 
@@ -103,14 +103,14 @@ export async function sendReviewNotification(
 ): Promise<void> {
   await sendEmail({
     to: email,
-    subject: `Новый отзыв на "${resourceTitle}"`,
+    subject: `РќРѕРІС‹Р№ РѕС‚Р·С‹РІ РЅР° "${resourceTitle}"`,
     html: `
-      <h1>Новый отзыв!</h1>
-      <p>Пользователь оставил отзыв на ваш ресурс: <strong>${resourceTitle}</strong></p>
-      <p>Оценка: ${"⭐".repeat(rating)}</p>
-      <p><a href="${process.env.FRONTEND_URL}/resources/${resourceTitle}">Посмотреть отзывы</a></p>
+      <h1>РќРѕРІС‹Р№ РѕС‚Р·С‹РІ!</h1>
+      <p>РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ РѕСЃС‚Р°РІРёР» РѕС‚Р·С‹РІ РЅР° РІР°С€ СЂРµСЃСѓСЂСЃ: <strong>${resourceTitle}</strong></p>
+      <p>РћС†РµРЅРєР°: ${"в­ђ".repeat(rating)}</p>
+      <p><a href="${process.env.FRONTEND_URL}/resources/${resourceTitle}">РџРѕСЃРјРѕС‚СЂРµС‚СЊ РѕС‚Р·С‹РІС‹</a></p>
     `,
-    text: `Новый отзыв на "${resourceTitle}". Оценка: ${rating}/5`,
+    text: `РќРѕРІС‹Р№ РѕС‚Р·С‹РІ РЅР° "${resourceTitle}". РћС†РµРЅРєР°: ${rating}/5`,
   });
 }
 
@@ -122,14 +122,14 @@ export async function sendResourcePublishedEmail(
 ): Promise<void> {
   await sendEmail({
     to: email,
-    subject: `Ресурс "${resourceTitle}" опубликован`,
+    subject: `Р РµСЃСѓСЂСЃ "${resourceTitle}" РѕРїСѓР±Р»РёРєРѕРІР°РЅ`,
     html: `
-      <h1>Ресурс опубликован!</h1>
-      <p>Ваш ресурс <strong>${resourceTitle}</strong> прошёл модерацию и опубликован.</p>
-      <p><a href="${process.env.FRONTEND_URL}/resources/${slug}">Посмотреть на сайте</a></p>
-      <p>Теперь пользователи могут его покупать.</p>
+      <h1>Р РµСЃСѓСЂСЃ РѕРїСѓР±Р»РёРєРѕРІР°РЅ!</h1>
+      <p>Р’Р°С€ СЂРµСЃСѓСЂСЃ <strong>${resourceTitle}</strong> РїСЂРѕС€С‘Р» РјРѕРґРµСЂР°С†РёСЋ Рё РѕРїСѓР±Р»РёРєРѕРІР°РЅ.</p>
+      <p><a href="${process.env.FRONTEND_URL}/resources/${slug}">РџРѕСЃРјРѕС‚СЂРµС‚СЊ РЅР° СЃР°Р№С‚Рµ</a></p>
+      <p>РўРµРїРµСЂСЊ РїРѕР»СЊР·РѕРІР°С‚РµР»Рё РјРѕРіСѓС‚ РµРіРѕ РїРѕРєСѓРїР°С‚СЊ.</p>
     `,
-    text: `Ресурс "${resourceTitle}" опубликован.`,
+    text: `Р РµСЃСѓСЂСЃ "${resourceTitle}" РѕРїСѓР±Р»РёРєРѕРІР°РЅ.`,
   });
 }
 
@@ -141,14 +141,14 @@ export async function sendLicenseActivatedEmail(
 ): Promise<void> {
   await sendEmail({
     to: email,
-    subject: `Лицензия активирована на сервере "${serverName}"`,
+    subject: `Р›РёС†РµРЅР·РёСЏ Р°РєС‚РёРІРёСЂРѕРІР°РЅР° РЅР° СЃРµСЂРІРµСЂРµ "${serverName}"`,
     html: `
-      <h1>Лицензия активирована!</h1>
-      <p>Ваша лицензия на <strong>${resourceTitle}</strong> активирована.</p>
-      <p>Сервер: <strong>${serverName}</strong></p>
-      <p>Если это были не вы, обратитесь в поддержку.</p>
+      <h1>Р›РёС†РµРЅР·РёСЏ Р°РєС‚РёРІРёСЂРѕРІР°РЅР°!</h1>
+      <p>Р’Р°С€Р° Р»РёС†РµРЅР·РёСЏ РЅР° <strong>${resourceTitle}</strong> Р°РєС‚РёРІРёСЂРѕРІР°РЅР°.</p>
+      <p>РЎРµСЂРІРµСЂ: <strong>${serverName}</strong></p>
+      <p>Р•СЃР»Рё СЌС‚Рѕ Р±С‹Р»Рё РЅРµ РІС‹, РѕР±СЂР°С‚РёС‚РµСЃСЊ РІ РїРѕРґРґРµСЂР¶РєСѓ.</p>
     `,
-    text: `Лицензия на "${resourceTitle}" активирована на сервере "${serverName}".`,
+    text: `Р›РёС†РµРЅР·РёСЏ РЅР° "${resourceTitle}" Р°РєС‚РёРІРёСЂРѕРІР°РЅР° РЅР° СЃРµСЂРІРµСЂРµ "${serverName}".`,
   });
 }
 
@@ -162,14 +162,14 @@ export async function sendPayoutEmail(
 
   await sendEmail({
     to: email,
-    subject: `Выплата ${amountFormatted} ${currency} обработана`,
+    subject: `Р’С‹РїР»Р°С‚Р° ${amountFormatted} ${currency} РѕР±СЂР°Р±РѕС‚Р°РЅР°`,
     html: `
-      <h1>Выплата обработана!</h1>
-      <p>Сумма: <strong>${amountFormatted} ${currency}</strong></p>
-      <p>Средства будут зачислены в течение 1-3 рабочих дней.</p>
-      <p><a href="${process.env.FRONTEND_URL}/dashboard/balance">Посмотреть баланс</a></p>
+      <h1>Р’С‹РїР»Р°С‚Р° РѕР±СЂР°Р±РѕС‚Р°РЅР°!</h1>
+      <p>РЎСѓРјРјР°: <strong>${amountFormatted} ${currency}</strong></p>
+      <p>РЎСЂРµРґСЃС‚РІР° Р±СѓРґСѓС‚ Р·Р°С‡РёСЃР»РµРЅС‹ РІ С‚РµС‡РµРЅРёРµ 1-3 СЂР°Р±РѕС‡РёС… РґРЅРµР№.</p>
+      <p><a href="${process.env.FRONTEND_URL}/dashboard/balance">РџРѕСЃРјРѕС‚СЂРµС‚СЊ Р±Р°Р»Р°РЅСЃ</a></p>
     `,
-    text: `Выплата ${amountFormatted} ${currency} обработана.`,
+    text: `Р’С‹РїР»Р°С‚Р° ${amountFormatted} ${currency} РѕР±СЂР°Р±РѕС‚Р°РЅР°.`,
   });
 }
 

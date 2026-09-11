@@ -1,9 +1,9 @@
-// PLAN-005 C-001/J-002: integration secrets. The server integration (the
+﻿// PLAN-005 C-001/J-002: integration secrets. The server integration (the
 // mta-market-module) proves control by possessing a secret issued by MTA
 // Market; only the sha256 hash is stored. Review tokens are one-time,
 // expiring, server-bound credentials shown to players once.
 import crypto from "crypto";
-import { db } from "../prisma/db";
+import { db } from "../prisma/db.js";
 
 export const INTEGRATION_TOKEN_PREFIX = "smk_"; // server integration key
 export const REVIEW_TOKEN_PREFIX = "rtk_";
@@ -43,7 +43,7 @@ export async function issueReviewToken(
 
 /**
  * Resolves a claimed review token to its row. Enforces server binding,
- * expiry (re-checked here — the sweep is a background nicety) and one-time
+ * expiry (re-checked here вЂ” the sweep is a background nicety) and one-time
  * consumption (replay protection) at the claim site.
  */
 export type ReviewTokenLookup =
@@ -53,7 +53,7 @@ export type ReviewTokenLookup =
 
 /**
  * Resolves a claimed review token. Enforces server binding, expiry
- * (re-checked here — the sweep is a background nicety) and one-time
+ * (re-checked here вЂ” the sweep is a background nicety) and one-time
  * consumption state so the claim site can answer 409 for replays vs 400
  * for unknown/wrong-server tokens.
  */

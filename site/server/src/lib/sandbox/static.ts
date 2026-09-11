@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TASK-022: Upload Sandbox - Static Validation
  * 
  * Static analysis of uploaded artifacts before sandbox execution.
@@ -10,8 +10,8 @@ import type {
   StaticValidationResult,
   ArchiveEntry,
   SandboxConfig
-} from './types';
-import { DEFAULT_SANDBOX_CONFIG, SANDBOX_ERROR_CODES } from './types';
+} from './types.js';
+import { DEFAULT_SANDBOX_CONFIG, SANDBOX_ERROR_CODES } from './types.js';
 
 /**
  * Validate uploaded artifact statically

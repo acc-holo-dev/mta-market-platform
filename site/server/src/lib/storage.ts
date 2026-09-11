@@ -1,11 +1,11 @@
-// Storage abstraction for artifact pipelines (PLAN B-001/B-002).
+﻿// Storage abstraction for artifact pipelines (PLAN B-001/B-002).
 // Loads artifact bytes from the storage referenced by a version's fileUrl:
 // - S3 mode: fileUrl is the private object key;
 // - local mode: fileUrl is an /uploads/<filename> reference, confined to
-//   UPLOAD_DIR (never served statically — see TASK A-009).
+//   UPLOAD_DIR (never served statically вЂ” see TASK A-009).
 import fs from "fs";
-import { S3_ENABLED, s3GetObject } from "./s3";
-import { resolveLocalUploadPath } from "./upload";
+import { S3_ENABLED, s3GetObject } from "./s3.js";
+import { resolveLocalUploadPath } from "./upload.js";
 
 /**
  * Load the artifact buffer for a stored file reference.

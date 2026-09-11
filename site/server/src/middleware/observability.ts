@@ -1,9 +1,9 @@
-// PLAN O-001: HTTP metrics middleware + Q-001 security headers.
+﻿// PLAN O-001: HTTP metrics middleware + Q-001 security headers.
 // - records http_requests_total / http_5xx_total / http_latency_ms;
 // - sets baseline security headers on every response (helmet-equivalent
 //   without a dependency).
 import type { Request, Response, NextFunction } from "express";
-import { metrics, METRIC_HELP } from "../lib/metrics";
+import { metrics, METRIC_HELP } from "../lib/metrics.js";
 
 export function observabilityMiddleware(req: Request, res: Response, next: NextFunction): void {
   const start = process.hrtime.bigint();

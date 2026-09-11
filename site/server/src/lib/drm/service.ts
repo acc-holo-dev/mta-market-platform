@@ -1,8 +1,8 @@
-/**
+﻿/**
  * TASK-020 / PLAN A-006: DRM Protocol v2 Service
  *
  * High-level service for DRM v2 protocol operations, rewritten against the
- * contract ORM (db.orm.public.*) — the previous version targeted a classic
+ * contract ORM (db.orm.public.*) вЂ” the previous version targeted a classic
  * Prisma Client API that does not exist in this project.
  *
  * Ownership model (PLAN INV-007):
@@ -13,7 +13,7 @@
  *   installation (challenge/response proves possession of the private key).
  */
 
-import { db } from '../../prisma/db';
+import { db } from '../../prisma/db.js';
 import type {
   InstallationRegistration,
   InstallationResponse,
@@ -25,15 +25,15 @@ import type {
   HeartbeatRequest,
   HeartbeatResponse,
   Capability
-} from './types';
+} from './types.js';
 import {
   generateChallenge,
   verifyChallengeResponse,
   signLease,
   calculateLeaseExpiry
-} from './crypto';
-import { DRM_ERROR_CODES } from './types';
-import { LEASE_DURATION_SECONDS, DEK_ALGORITHM } from './protocol';
+} from './crypto.js';
+import { DRM_ERROR_CODES } from './types.js';
+import { LEASE_DURATION_SECONDS, DEK_ALGORITHM } from './protocol.js';
 
 // Default lease duration (G-001 protocol constant)
 const DEFAULT_LEASE_DURATION_SECONDS = LEASE_DURATION_SECONDS;
@@ -42,11 +42,11 @@ const DEFAULT_LEASE_DURATION_SECONDS = LEASE_DURATION_SECONDS;
  * Generate server signing keypair.
  *
  * Should be called once during initial setup (CLI: pnpm drm:keygen).
- * Private key MUST be stored securely (ENV/KMS/Vault) — it is returned
+ * Private key MUST be stored securely (ENV/KMS/Vault) вЂ” it is returned
  * exactly once and never persisted by this service.
  */
 export async function createServerSigningKey(): Promise<ServerKeyPair> {
-  const { generatePublisherKeypair } = await import('../artifact/crypto');
+  const { generatePublisherKeypair } = await import('../artifact/crypto.js');
 
   // Check if active key already exists
   const existingKey = await db.orm.public.ServerSigningKey.where({
@@ -235,7 +235,7 @@ export async function activateLicense(
   }
 
   // INV-007/INV-011: a lease can only be issued for the license the
-  // installation is bound to — never for an arbitrary license id.
+  // installation is bound to вЂ” never for an arbitrary license id.
   if (installation.licenseId !== licenseId) {
     throw new Error(DRM_ERROR_CODES.LICENSE_INSTALLATION_MISMATCH);
   }
@@ -363,7 +363,7 @@ export async function recordHeartbeat(
 
   const leaseValid = lease ? new Date(lease.expiresAt) > new Date() : false;
 
-  // PLAN R-002: safe update flow — the server only ADVISES an update. When a
+  // PLAN R-002: safe update flow вЂ” the server only ADVISES an update. When a
   // newer PUBLISHED version exists (not YANKED/DEPRECATED), tell the module
   // via shouldUpdate + updateVersionId; the module decides whether and when
   // to update (compatibility + signature checks happen on its side).
@@ -461,11 +461,11 @@ export async function getActiveLease(
  * The current ACTIVE key becomes PREVIOUS (still trusted for verification of
  * existing leases); a new keypair is created and becomes ACTIVE. The new
  * private key is returned exactly once and must be installed into the
- * DRM_SERVER_PRIVATE_KEY environment by the operator — leases are signed
+ * DRM_SERVER_PRIVATE_KEY environment by the operator вЂ” leases are signed
  * with the private key matching the ACTIVE key id.
  */
 export async function rotateServerSigningKey(): Promise<ServerKeyPair> {
-  const { generatePublisherKeypair } = await import('../artifact/crypto');
+  const { generatePublisherKeypair } = await import('../artifact/crypto.js');
 
   const current = await db.orm.public.ServerSigningKey.where({ status: 'ACTIVE' }).first();
   if (current) {
@@ -486,7 +486,7 @@ export async function rotateServerSigningKey(): Promise<ServerKeyPair> {
 }
 
 /**
- * PLAN G-007: keys a module must trust during rotation — the ACTIVE key plus
+ * PLAN G-007: keys a module must trust during rotation вЂ” the ACTIVE key plus
  * the PREVIOUS key (existing leases stay verifiable). REVOKED/EXPIRED keys
  * are never returned.
  */
@@ -542,7 +542,7 @@ export async function issueVersionDek(input: VersionDekRequest): Promise<{
   }
 
   // Possession of the installation private key.
-  const { verifyChallengeResponse } = await import('./crypto');
+  const { verifyChallengeResponse } = await import('./crypto.js');
   const possessionProof = Buffer.from(`dek:${versionId}:${nonce}`, 'ascii').toString('base64');
   if (!verifyChallengeResponse(possessionProof, signature, installation.publicKey)) {
     throw new Error(DRM_ERROR_CODES.INVALID_SIGNATURE);
@@ -566,7 +566,7 @@ export async function issueVersionDek(input: VersionDekRequest): Promise<{
     throw new Error('Resource version is not encrypted');
   }
 
-  const { unwrapDek } = await import('../artifact/encryption');
+  const { unwrapDek } = await import('../artifact/encryption.js');
   const dek = unwrapDek({
     wrappedDek: encryption.wrappedDek,
     wrapNonce: encryption.wrapNonce,
@@ -590,14 +590,14 @@ export async function createVersionDek(versionId: string): Promise<{
   wrapNonce: string;
   wrapTag: string;
   algorithm: string;
-  /** raw DEK (base64) — returned once for encrypting the artifact payload */
+  /** raw DEK (base64) вЂ” returned once for encrypting the artifact payload */
   dek: string;
 }> {
   const existing = await db.orm.public.ArtifactEncryption.where({ versionId }).first();
   if (existing) {
     throw new Error('Version already has a DEK');
   }
-  const { generateVersionDek, wrapDek } = await import('../artifact/encryption');
+  const { generateVersionDek, wrapDek } = await import('../artifact/encryption.js');
   const { dekId, dek } = generateVersionDek();
   const wrapped = wrapDek(dek);
   await db.orm.public.ArtifactEncryption.create({

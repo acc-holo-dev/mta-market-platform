@@ -27,6 +27,28 @@ jobs:
         run: pnpm lint
       - name: Build server (tsc)
         run: pnpm --filter @mta-market/server build
+      - name: Production runtime smoke (node dist/)
+        working-directory: site/server
+        env:
+          # The dist runtime must fail FAST with a clear reason when required
+          # production secrets are absent (startup policy), not crash with an
+          # ERR_MODULE_NOT_FOUND — this is the PLAN-012 §21A gate.
+          NODE_ENV: production
+        run: |
+          set +e
+          node dist/index.js > dist-smoke.log 2>&1
+          code=$?
+          cat dist-smoke.log
+          if [ "$code" -eq 0 ]; then
+            echo "::error::production runtime started without required secrets (startup policy violated)"
+            exit 1
+          fi
+          if ! grep -q "module not found\|ERR_MODULE_NOT_FOUND" dist-smoke.log; then
+            echo "dist runtime smoke: clean fail-fast confirmed (exit $code, no module resolution errors)"
+            exit 0
+          fi
+          echo "::error::dist emit has unresolved imports (ERR_MODULE_NOT_FOUND)"
+          exit 1
       - name: Build web (next build)
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001

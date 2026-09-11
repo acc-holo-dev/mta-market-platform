@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TASK-020 / PLAN A-006: DRM Protocol v2 Routes
  *
  * Machine-facing protocol mounted at /drm/v2/* (see app.ts).
@@ -23,11 +23,11 @@ import {
   getActiveLease,
   getTrustedServerKeys,
   issueVersionDek
-} from '../../lib/drm/service';
-import { DRM_ERROR_CODES } from '../../lib/drm/types';
-import { authenticate, AuthRequest } from '../../lib/auth';
-import { strictRateLimit, standardRateLimit } from '../../lib/rateLimit';
-import { reqLog } from '../../middleware/requestId';
+} from '../../lib/drm/service.js';
+import { DRM_ERROR_CODES } from '../../lib/drm/types.js';
+import { authenticate, AuthRequest } from '../../lib/auth.js';
+import { strictRateLimit, standardRateLimit } from '../../lib/rateLimit.js';
+import { reqLog } from '../../middleware/requestId.js';
 
 const router: Router = Router();
 
@@ -399,7 +399,7 @@ router.get('/v2/public-keys', async (req: Request, res: Response) => {
  * PLAN G-005: release the per-version DEK to an installation that proves
  * possession of its private key and holds a valid lease covering this
  * version. The server master key never leaves the server.
- * Body: { installationId, nonce, signature } — signature (base64 Ed25519)
+ * Body: { installationId, nonce, signature } вЂ” signature (base64 Ed25519)
  * over the ASCII bytes `dek:${versionId}:${nonce}`.
  */
 router.post('/v2/versions/:versionId/dek', strictRateLimit, async (req: Request, res: Response) => {

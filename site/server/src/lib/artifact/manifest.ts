@@ -1,11 +1,11 @@
-/**
+﻿/**
  * TASK-019: Artifact Manifest Generator
  * 
  * Generate artifact manifests with metadata, compatibility info, and signatures.
  */
 
-import type { ArtifactManifest, Dependency, Compatibility } from './types';
-import { hashFile } from './crypto';
+import type { ArtifactManifest, Dependency, Compatibility } from './types.js';
+import { hashFile } from './crypto.js';
 
 export interface GenerateManifestInput {
   resourceId: string;

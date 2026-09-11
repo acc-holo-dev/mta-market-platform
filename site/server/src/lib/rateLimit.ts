@@ -1,16 +1,16 @@
-// Rate limiting middleware using Redis
+﻿// Rate limiting middleware using Redis
 import { Request, Response, NextFunction } from "express";
-import { redis } from "../lib/redis";
-import { logger } from "./logger";
+import { redis } from "../lib/redis.js";
+import { logger } from "./logger.js";
 
 interface RateLimitOptions {
-  windowMs: number; // время окна в миллисекундах
-  max: number; // максимум запросов в окне
+  windowMs: number; // РІСЂРµРјСЏ РѕРєРЅР° РІ РјРёР»Р»РёСЃРµРєСѓРЅРґР°С…
+  max: number; // РјР°РєСЃРёРјСѓРј Р·Р°РїСЂРѕСЃРѕРІ РІ РѕРєРЅРµ
   keyPrefix?: string;
   /**
    * PLAN-004 M-002: Redis outage semantics.
    * - fail-closed (security-critical limiters: auth, strict, per-account):
-   *   when Redis cannot be reached the request is rejected with 503 — an
+   *   when Redis cannot be reached the request is rejected with 503 вЂ” an
    *   unavailable limiter must not silently disable brute-force protection;
    * - fail-open (bulk traffic): availability wins, the limiter is skipped
    *   for the failed request.
@@ -59,19 +59,19 @@ export function rateLimit(options: RateLimitOptions) {
   };
 }
 
-// Предустановки
+// РџСЂРµРґСѓСЃС‚Р°РЅРѕРІРєРё
 // Thresholds are env-configurable so staging/tests can tune them without
 // code changes. Production values are pinned in docker-compose.prod.yml
-// (PLAN-004 A-003) — dev/E2E values must never leak into production.
+// (PLAN-004 A-003) вЂ” dev/E2E values must never leak into production.
 export const strictRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 минута
+  windowMs: 60 * 1000, // 1 РјРёРЅСѓС‚Р°
   max: parseInt(process.env.STRICT_RATE_LIMIT_MAX || "10", 10),
   keyPrefix: "rl:strict",
   failClosed: true, // DRM/upload protection: fail closed
 });
 
 export const standardRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 минута
+  windowMs: 60 * 1000, // 1 РјРёРЅСѓС‚Р°
   max: parseInt(process.env.STANDARD_RATE_LIMIT_MAX || "300", 10),
   keyPrefix: "rl:standard",
   // PLAN-004 M-002: the global limiter covers bulk traffic; hard-failing the
@@ -81,7 +81,7 @@ export const standardRateLimit = rateLimit({
 });
 
 export const authRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 минут
+  windowMs: 15 * 60 * 1000, // 15 РјРёРЅСѓС‚
   max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || "300", 10),
   keyPrefix: "rl:auth",
   failClosed: true, // login/register/refresh brute-force protection
@@ -135,4 +135,4 @@ export function userRateLimit(options: {
   };
 }
 
-import type { AuthRequest as AuthenticatedRequest } from "./auth";
+import type { AuthRequest as AuthenticatedRequest } from "./auth.js";

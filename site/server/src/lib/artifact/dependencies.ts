@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PLAN I-002: dependency graph validation.
  *
  * A resource declares dependencies on other resources (by slug, optional
@@ -14,7 +14,7 @@
  * Runs at the publication gate (admin publish) and is unit-tested.
  */
 
-import { db } from "../../prisma/db";
+import { db } from "../../prisma/db.js";
 
 export interface DependencyCheckResult {
   ok: boolean;

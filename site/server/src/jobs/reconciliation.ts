@@ -1,29 +1,29 @@
-/**
+﻿/**
  * PLAN B-003: Reconciliation Scheduler
  *
  * Periodic execution of the existing reconciliation system (REUSE: the
- * service in lib/reconciliation is NOT rewritten — this file only wires it
+ * service in lib/reconciliation is NOT rewritten вЂ” this file only wires it
  * into the runtime and adds the daily cycle):
  *
  *   1. payment reconciliation   (YUKASSA, real provider re-fetch when enabled)
  *   2. refund reconciliation    (internal REFUNDED payments; provider refund
- *                                API arrives with Phase E — provider side is
+ *                                API arrives with Phase E вЂ” provider side is
  *                                reported as unavailable, no fake mismatches)
  *   3. payout reconciliation    (internal SELLER_PAYOUT ledger; provider payout
  *                                source arrives with Phase F)
  *   4. provider event mismatch  (PaymentProviderEvent vs Payment)
- *   5. internal ledger check    (purchases vs seller balances — full scan)
+ *   5. internal ledger check    (purchases vs seller balances вЂ” full scan)
  *
  * Errors produce: a structured log line (metric source until O-001) and a
  * persistent alertable record (ReconciliationReport with status FAILED /
  * mismatch rows). A failing step never crashes the server.
  */
 
-import { reconcile, checkProviderEventMismatches } from '../lib/reconciliation/service';
-import { reconcileAllPurchases } from '../lib/reconciliation/internal';
-import { logger } from '../lib/logger';
+import { reconcile, checkProviderEventMismatches } from '../lib/reconciliation/service.js';
+import { reconcileAllPurchases } from '../lib/reconciliation/internal.js';
+import { logger } from '../lib/logger.js';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
-import type { CycleResult, CycleStepResult } from '../lib/reconciliation/types';
+import type { CycleResult, CycleStepResult } from '../lib/reconciliation/types.js';
 
 export type { CycleResult, CycleStepResult };
 

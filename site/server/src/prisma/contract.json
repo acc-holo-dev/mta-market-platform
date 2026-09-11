@@ -84,6 +84,10 @@
       "model": "ForumThreadFollow",
       "namespace": "public"
     },
+    "idempotencyRecord": {
+      "model": "IdempotencyRecord",
+      "namespace": "public"
+    },
     "installation": {
       "model": "Installation",
       "namespace": "public"
@@ -438,6 +442,23 @@
               {
                 "name": "ARCHIVED",
                 "value": "ARCHIVED"
+              }
+            ]
+          },
+          "IdempotencyStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "PROCESSING",
+                "value": "PROCESSING"
+              },
+              {
+                "name": "COMPLETED",
+                "value": "COMPLETED"
+              },
+              {
+                "name": "FAILED",
+                "value": "FAILED"
               }
             ]
           },
@@ -3911,6 +3932,133 @@
               },
               "namespaceId": "public",
               "table": "forumThreadFollow"
+            }
+          },
+          "IdempotencyRecord": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "expiresAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "key": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "operation": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "requestHash": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "responseBody": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/json@1",
+                  "kind": "scalar"
+                }
+              },
+              "responseStatus": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "IdempotencyStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "userId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {},
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "expiresAt": {
+                  "column": "expiresAt"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "key": {
+                  "column": "key"
+                },
+                "operation": {
+                  "column": "operation"
+                },
+                "requestHash": {
+                  "column": "requestHash"
+                },
+                "responseBody": {
+                  "column": "responseBody"
+                },
+                "responseStatus": {
+                  "column": "responseStatus"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "userId": {
+                  "column": "userId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "idempotencyRecord"
             }
           },
           "Installation": {
@@ -12694,11 +12842,29 @@
                 },
                 {
                   "columns": [
+                    "purchaseId"
+                  ],
+                  "name": "dispute_purchase_open_uq_7bda247e",
+                  "prefix": "dispute_purchase_open_uq",
+                  "unique": true,
+                  "where": "(status <> 'CLOSED')"
+                },
+                {
+                  "columns": [
                     "servicePurchaseId"
                   ],
                   "name": "dispute_servicePurchaseId_idx_d3ffae5a",
                   "prefix": "dispute_servicePurchaseId_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "servicePurchaseId"
+                  ],
+                  "name": "dispute_service_purchase_open_uq_17878f7f",
+                  "prefix": "dispute_service_purchase_open_uq",
+                  "unique": true,
+                  "where": "(status <> 'CLOSED')"
                 },
                 {
                   "columns": [
@@ -13058,6 +13224,15 @@
                   "name": "financialTransaction_userId_idx_a489d58a",
                   "prefix": "financialTransaction_userId_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "relatedPurchaseId"
+                  ],
+                  "name": "financial_txn_settlement_once_uq_71476c91",
+                  "prefix": "financial_txn_settlement_once_uq",
+                  "unique": true,
+                  "where": "(\"type\" = 'SELLER_REVENUE' AND \"relatedPurchaseId\" IS NOT NULL)"
                 }
               ],
               "primaryKey": {
@@ -13733,6 +13908,110 @@
                 }
               ]
             },
+            "idempotencyRecord": {
+              "checks": [
+                {
+                  "expression": "\"status\" IN ('PROCESSING', 'COMPLETED', 'FAILED')",
+                  "name": "idempotencyRecord_status_check_3bdcefb2",
+                  "prefix": "idempotencyRecord_status_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "expiresAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "key": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "operation": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "requestHash": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "responseBody": {
+                  "codecId": "pg/json@1",
+                  "nativeType": "json",
+                  "nullable": true
+                },
+                "responseStatus": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PROCESSING"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "IdempotencyStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "userId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                }
+              },
+              "foreignKeys": [],
+              "indexes": [
+                {
+                  "columns": [
+                    "expiresAt"
+                  ],
+                  "name": "idempotencyRecord_expiresAt_idx_6b6b8c10",
+                  "prefix": "idempotencyRecord_expiresAt_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "operation",
+                    "key"
+                  ]
+                }
+              ]
+            },
             "installation": {
               "checks": [
                 {
@@ -14278,6 +14557,16 @@
                   "name": "ledgerEntry_userId_idx_a489d58a",
                   "prefix": "ledgerEntry_userId_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "transactionId",
+                    "accountId",
+                    "direction"
+                  ],
+                  "name": "ledger_entry_tx_account_direction_uq_ba5138f9",
+                  "prefix": "ledger_entry_tx_account_direction_uq",
+                  "unique": true
                 }
               ],
               "primaryKey": {
@@ -15056,11 +15345,29 @@
               "indexes": [
                 {
                   "columns": [
+                    "orderItemId"
+                  ],
+                  "name": "payment_orderitem_captured_uq_edd87aa3",
+                  "prefix": "payment_orderitem_captured_uq",
+                  "unique": true,
+                  "where": "(status IN ('SUCCEEDED', 'SETTLEMENT_PENDING', 'SETTLED', 'REFUNDED', 'PARTIALLY_REFUNDED'))"
+                },
+                {
+                  "columns": [
                     "providerPaymentId"
                   ],
                   "name": "payment_providerPaymentId_idx_c1a2370c",
                   "prefix": "payment_providerPaymentId_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "purchaseId"
+                  ],
+                  "name": "payment_purchase_captured_uq_7bc2a98a",
+                  "prefix": "payment_purchase_captured_uq",
+                  "unique": true,
+                  "where": "(status IN ('SUCCEEDED', 'SETTLEMENT_PENDING', 'SETTLED', 'REFUNDED', 'PARTIALLY_REFUNDED'))"
                 },
                 {
                   "columns": [
@@ -15077,16 +15384,6 @@
                 ]
               },
               "uniques": [
-                {
-                  "columns": [
-                    "purchaseId"
-                  ]
-                },
-                {
-                  "columns": [
-                    "orderItemId"
-                  ]
-                },
                 {
                   "columns": [
                     "providerPaymentId"
@@ -15525,6 +15822,16 @@
                   "name": "purchase_buyerId_idx_80be0de9",
                   "prefix": "purchase_buyerId_idx",
                   "unique": false
+                },
+                {
+                  "columns": [
+                    "buyerId",
+                    "resourceId"
+                  ],
+                  "name": "purchase_buyer_resource_live_uq_653bdf5e",
+                  "prefix": "purchase_buyer_resource_live_uq",
+                  "unique": true,
+                  "where": "(status IN ('PENDING', 'COMPLETED'))"
                 },
                 {
                   "columns": [
@@ -19868,6 +20175,14 @@
                 "ARCHIVED"
               ]
             },
+            "IdempotencyStatus": {
+              "kind": "valueSet",
+              "values": [
+                "PROCESSING",
+                "COMPLETED",
+                "FAILED"
+              ]
+            },
             "InstallationStatus": {
               "kind": "valueSet",
               "values": [
@@ -20207,10 +20522,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "eefc89aa395f121293557bc0c461a86bc3654b1f43c32fdfea426402b4171e21"
+    "storageHash": "b1dbf93b4e9242d6c20697c3044b1bcff174d75274cfe580a57e91be286a8a2b"
   },
   "execution": {
-    "executionHash": "9294b73e0286c982c0a99368be602ae8fcd3a012abc8e1274563ea08a4b6dfd2",
+    "executionHash": "50dff0b9d260a839f52706c89f0b065b7d9629457e7ddbb5af31983c20f6af8c",
     "mutations": {
       "defaults": [
         {
@@ -20521,6 +20836,32 @@
             "column": "id",
             "namespace": "public",
             "table": "forumThreadFollow"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "uuidv4",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "id",
+            "namespace": "public",
+            "table": "idempotencyRecord"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "idempotencyRecord"
           }
         },
         {

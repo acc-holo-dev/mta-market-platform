@@ -1,11 +1,11 @@
-// PLAN B-007: Request ID / tracing middleware.
+﻿// PLAN B-007: Request ID / tracing middleware.
 // Every HTTP request gets a request_id that:
 // - is returned to the client in the X-Request-Id response header;
 // - is bound into every log line emitted for the request (req.log);
 // - can be propagated from an upstream caller via the X-Request-Id header.
 import { randomUUID } from "crypto";
 import { Request, Response, NextFunction } from "express";
-import { logger, type Logger } from "../lib/logger";
+import { logger, type Logger } from "../lib/logger.js";
 
 export interface RequestWithTracing extends Request {
   id?: string;

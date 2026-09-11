@@ -1,12 +1,12 @@
-// PLAN-003 E-001..E-004: public seller storefront.
+﻿// PLAN-003 E-001..E-004: public seller storefront.
 //
-// GET /sellers/:username — product-oriented public identity of a seller:
+// GET /sellers/:username вЂ” product-oriented public identity of a seller:
 // avatar, name, member-since, resource count and the published resources.
-// Непубличные ресурсы не отдаются (только PUBLISHED).
+// РќРµРїСѓР±Р»РёС‡РЅС‹Рµ СЂРµСЃСѓСЂСЃС‹ РЅРµ РѕС‚РґР°СЋС‚СЃСЏ (С‚РѕР»СЊРєРѕ PUBLISHED).
 import { Router, Response } from "express";
-import { db } from "../prisma/db";
-import { standardRateLimit } from "../lib/rateLimit";
-import { reqLog } from "../middleware/requestId";
+import { db } from "../prisma/db.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
@@ -26,8 +26,8 @@ router.get("/:username", standardRateLimit, async (req, res: Response) => {
 
     const profile = await db.orm.public.SellerProfile.where({ userId: user.id }).first();
 
-    // Публичная витрина существует, только если у продавца есть опубликованные
-    // ресурсы (или одобренный профиль — тогда шапка магазина без ресурсов).
+    // РџСѓР±Р»РёС‡РЅР°СЏ РІРёС‚СЂРёРЅР° СЃСѓС‰РµСЃС‚РІСѓРµС‚, С‚РѕР»СЊРєРѕ РµСЃР»Рё Сѓ РїСЂРѕРґР°РІС†Р° РµСЃС‚СЊ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅС‹Рµ
+    // СЂРµСЃСѓСЂСЃС‹ (РёР»Рё РѕРґРѕР±СЂРµРЅРЅС‹Р№ РїСЂРѕС„РёР»СЊ вЂ” С‚РѕРіРґР° С€Р°РїРєР° РјР°РіР°Р·РёРЅР° Р±РµР· СЂРµСЃСѓСЂСЃРѕРІ).
     const hasApprovedProfile = profile?.status === "APPROVED";
 
     const cards = await db.orm.public.Resource
@@ -53,8 +53,8 @@ router.get("/:username", standardRateLimit, async (req, res: Response) => {
       };
     });
 
-    // PLAN-008: aggregate follower count only — the follower list is never
-    // exposed (DAILY-EXPERIENCE §42).
+    // PLAN-008: aggregate follower count only вЂ” the follower list is never
+    // exposed (DAILY-EXPERIENCE В§42).
     const followersAgg = await db.orm.public.SellerFollow
       .where({ sellerUserId: user.id })
       .aggregate((a: any) => ({ total: a.count() }));

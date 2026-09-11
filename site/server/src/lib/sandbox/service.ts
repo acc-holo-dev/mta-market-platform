@@ -1,22 +1,22 @@
-/**
+﻿/**
  * TASK-022 / PLAN B-001: Upload Sandbox Service
  *
  * Main service for artifact validation and sandbox execution.
- * Rewritten against the contract ORM (db.orm.public.*) — the original
+ * Rewritten against the contract ORM (db.orm.public.*) вЂ” the original
  * targeted a classic Prisma Client API that does not exist in this project.
  */
 
-import { db } from '../../prisma/db';
-import { validateArchive } from './static';
-import { incSandboxFailure } from '../metrics';
-import { runSandbox, isDockerAvailable } from './runner';
+import { db } from '../../prisma/db.js';
+import { validateArchive } from './static.js';
+import { incSandboxFailure } from '../metrics.js';
+import { runSandbox, isDockerAvailable } from './runner.js';
 import type {
   StaticValidationResult,
   SandboxRunResult,
   SandboxConfig
-} from './types';
-import { DEFAULT_SANDBOX_CONFIG } from './types';
-import { logger } from '../../lib/logger';
+} from './types.js';
+import { DEFAULT_SANDBOX_CONFIG } from './types.js';
+import { logger } from '../../lib/logger.js';
 
 /**
  * Validate and execute artifact in sandbox

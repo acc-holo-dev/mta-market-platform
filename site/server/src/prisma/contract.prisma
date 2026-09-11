@@ -328,6 +328,12 @@ model Purchase {
   @@index([buyerId])
   @@index([resourceId])
   @@index([orderItemId])
+  // PLAN-012 §4 (checkout exactly-once, multi-instance): at most one LIVE
+  // (PENDING or COMPLETED) purchase per buyer+resource. FAILED/REFUNDED rows
+  // are dead entitlements and do not block a fresh checkout. This partial
+  // unique index is the database invariant behind the application key-lock:
+  // 10 concurrent checkout requests -> exactly one logical purchase flow.
+  @@index([buyerId, resourceId], unique: true, where: "(status IN ('PENDING', 'COMPLETED'))", name: "purchase_buyer_resource_live_uq")
 }
 
 enum LicenseStatus {
@@ -406,8 +412,12 @@ enum PaymentStatus {
 
 model Payment {
   id                String          @id @default(uuid())
-  purchaseId        String?         @unique // Resource payments (Phase C bridge); null for service payments
-  orderItemId       String?         @unique // C-012: service/other payments attach to their OrderItem
+  // PLAN-012 §6: a purchase may have several payment ATTEMPTS (a canceled
+  // payment must be re-creatable without a schema-level 500). Exactly-once is
+  // enforced per CAPTURED payment by the partial unique indexes below, not by
+  // a blanket unique on the attempt row.
+  purchaseId        String?
+  orderItemId       String?
   provider          PaymentProvider
   providerPaymentId String          @unique
   status            PaymentStatus   @default(PENDING)
@@ -422,6 +432,11 @@ model Payment {
 
   @@index([providerPaymentId])
   @@index([status])
+  // PLAN-012 §6 (payment exactly-once, multi-instance): at most one CAPTURED
+  // (money-bearing) payment row per checkout line, whatever the number of
+  // PENDING/FAILED/CANCELED attempts preceded it.
+  @@index([purchaseId], unique: true, where: "(status IN ('SUCCEEDED', 'SETTLEMENT_PENDING', 'SETTLED', 'REFUNDED', 'PARTIALLY_REFUNDED'))", name: "payment_purchase_captured_uq")
+  @@index([orderItemId], unique: true, where: "(status IN ('SUCCEEDED', 'SETTLEMENT_PENDING', 'SETTLED', 'REFUNDED', 'PARTIALLY_REFUNDED'))", name: "payment_orderitem_captured_uq")
 }
 
 enum ProviderEventStatus {
@@ -478,6 +493,11 @@ model FinancialTransaction {
   @@index([userId])
   @@index([type])
   @@index([createdAt])
+  // PLAN-012 §9/§10 (settlement exactly-once, multi-instance): one legacy
+  // SELLER_REVENUE financial transaction per settled line. The repair pass
+  // (crash between completion and settlement) can re-run safely — the second
+  // application is rejected by the database, not by a read guard.
+  @@index([relatedPurchaseId], unique: true, where: "(\"type\" = 'SELLER_REVENUE' AND \"relatedPurchaseId\" IS NOT NULL)", name: "financial_txn_settlement_once_uq")
 }
 
 model SellerBalance {
@@ -982,6 +1002,11 @@ model LedgerEntry {
   @@index([transactionId])
   @@index([accountId])
   @@index([userId])
+  // PLAN-012 §10 (ledger exactly-once, multi-instance): the same balanced
+  // transaction can never post two entries on the same account in the same
+  // direction — the deterministic transaction id becomes a hard invariant
+  // instead of a check-before-insert convention.
+  @@index([transactionId, accountId, direction], unique: true, name: "ledger_entry_tx_account_direction_uq")
 }
 
 // PLAN G-005: per-resource-version DEK, stored wrapped under the server
@@ -1119,6 +1144,13 @@ model Dispute {
   @@index([purchaseId])
   @@index([servicePurchaseId])
   @@index([status])
+  // PLAN-012 §13 (one open dispute per order, multi-instance): the
+  // application pre-check ("an open dispute already exists") is backed by a
+  // database invariant — two concurrent open disputes for one target cannot
+  // both commit. CLOSED disputes are terminal history and do not block a new
+  // dispute on the same order.
+  @@index([purchaseId], unique: true, where: "(status <> 'CLOSED')", name: "dispute_purchase_open_uq")
+  @@index([servicePurchaseId], unique: true, where: "(status <> 'CLOSED')", name: "dispute_service_purchase_open_uq")
 }
 
 // K-003: dispute communication.
@@ -1206,6 +1238,42 @@ model AuditLog {
   @@index([actorId])
   @@index([targetType, targetId])
   @@index([createdAt])
+}
+
+// ===========================================================================
+// PLAN-012 §5: durable idempotency records for financially significant
+// mutations (checkout, payment creation, payment simulation, refunds).
+//
+// Contract:
+//   same key + same operation + same payload  -> replay the stored outcome;
+//   same key + same operation + other payload -> deterministic rejection
+//                                                (idempotency_key_conflict);
+//   a repeated HTTP request never creates a second financial entity.
+//
+// The unique [operation, key] pair is the database invariant — two backend
+// instances processing the same retryed request cannot both win.
+// ===========================================================================
+enum IdempotencyStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model IdempotencyRecord {
+  id             String            @id @default(uuid())
+  operation      String // logical operation name, e.g. "purchases.create"
+  key            String // client-supplied Idempotency-Key (UUID)
+  userId         String? // requesting user snapshot (authorization re-check)
+  requestHash    String // sha256 over the canonical request payload
+  status         IdempotencyStatus @default(PROCESSING)
+  responseStatus Int? // HTTP status of the replayed response
+  responseBody   Json? // JSON body of the replayed response
+  createdAt      TimestamptzString @default(now())
+  updatedAt      temporal.updatedAtString()
+  expiresAt      TimestamptzString? // lazy GC horizon (default 24h)
+
+  @@unique([operation, key])
+  @@index([expiresAt])
 }
 
 // PLAN-001 / C-001: persisted per-user balance. Independent from

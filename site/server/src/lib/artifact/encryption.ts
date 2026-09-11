@@ -1,5 +1,5 @@
-/**
- * PLAN G-005: artifact encryption — envelope-encrypted per-version DEKs.
+﻿/**
+ * PLAN G-005: artifact encryption вЂ” envelope-encrypted per-version DEKs.
  *
  * - every resource version gets a unique DEK (32 bytes);
  * - the DEK itself is wrapped (AES-256-GCM) under the server master key
@@ -15,7 +15,7 @@ import {
   DEK_KEY_BYTES,
   DEK_WRAP_NONCE_BYTES,
   DRM_MASTER_KEY_ENV,
-} from "../drm/protocol";
+} from "../drm/protocol.js";
 
 export class EncryptionNotConfiguredError extends Error {
   constructor() {

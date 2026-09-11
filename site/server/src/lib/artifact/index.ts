@@ -1,11 +1,11 @@
-/**
+﻿/**
  * TASK-019: Artifact Signing Module
  * 
  * Complete artifact signing and verification system with Ed25519.
  */
 
 // Export types
-export * from './types';
+export * from './types.js';
 
 // Export cryptography functions
 export {
@@ -17,7 +17,7 @@ export {
   hashFile,
   isValidPublicKey,
   isValidSignature
-} from './crypto';
+} from './crypto.js';
 
 // Export manifest functions
 export {
@@ -26,9 +26,9 @@ export {
   validateManifest,
   parseManifest,
   serializeManifest
-} from './manifest';
+} from './manifest.js';
 
-// Export signing service (main API) — PLAN B-002: single signing
+// Export signing service (main API) вЂ” PLAN B-002: single signing
 // implementation shared by the web pipeline (and later the CLI).
 export {
   signVersionArtifact,
@@ -36,4 +36,4 @@ export {
   getManifest,
   hasValidSignature,
   generatePlatformSigningKeypair
-} from './signing';
+} from './signing.js';

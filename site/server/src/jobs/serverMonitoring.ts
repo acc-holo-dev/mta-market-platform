@@ -1,7 +1,7 @@
-// PLAN-005 E/AC: background monitoring sweep. Mirrors the reconciliation
+﻿// PLAN-005 E/AC: background monitoring sweep. Mirrors the reconciliation
 // scheduler pattern (plain timers, single-flight, disabled in tests).
-import { runMonitoringSweep } from "../lib/serverMonitoring";
-import { logger } from "../lib/logger";
+import { runMonitoringSweep } from "../lib/serverMonitoring.js";
+import { logger } from "../lib/logger.js";
 
 let timer: ReturnType<typeof setInterval> | null = null;
 let running = false;

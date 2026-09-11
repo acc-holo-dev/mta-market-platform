@@ -1,9 +1,9 @@
-// PLAN E-003: payment state machine.
+﻿// PLAN E-003: payment state machine.
 // Canonical transitions; every Payment row mutation goes through assertTransition.
-// Actual provider-specific transitions may be richer — provider implementations
+// Actual provider-specific transitions may be richer вЂ” provider implementations
 // map their native states onto these.
 
-import { PaymentStateError } from "./paymentErrors";
+import { PaymentStateError } from "./paymentErrors.js";
 
 export type PaymentState =
   | "PENDING"

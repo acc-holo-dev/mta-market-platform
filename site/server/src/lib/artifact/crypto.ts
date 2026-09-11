@@ -1,11 +1,11 @@
-/**
+﻿/**
  * TASK-019: Artifact Signing - Cryptography Service
  * 
  * Ed25519 keypair generation and signing/verification using Node.js crypto.
  */
 
 import { createHash, generateKeyPairSync, sign, verify } from 'crypto';
-import type { KeyPair, SigningInput, VerificationInput, VerificationResult } from './types';
+import type { KeyPair, SigningInput, VerificationInput, VerificationResult } from './types.js';
 
 /**
  * Generate Ed25519 keypair for artifact signing
@@ -75,7 +75,7 @@ export function verifyArtifactSignature(input: VerificationInput): VerificationR
     // 1. Verify artifact hash matches the manifest's declared artifact hash.
     // NOTE: manifest.sha256 is the ARTIFACT file hash, not the manifest's own
     // hash. The manifest integrity is bound via hashManifest(manifest) inside
-    // the signing payload (see createSigningPayload) — do not conflate the two.
+    // the signing payload (see createSigningPayload) вЂ” do not conflate the two.
     if (artifactHash !== manifest.sha256) {
       return {
         valid: false,

@@ -1,17 +1,17 @@
-// Services API routes (PLAN C-009/C-010/C-011).
+﻿// Services API routes (PLAN C-009/C-010/C-011).
 // Lifecycle: DRAFT -> PENDING_REVIEW -> PUBLISHED (seller cannot publish own
-// service — same policy as resource moderation, A-008) and order lifecycle
+// service вЂ” same policy as resource moderation, A-008) and order lifecycle
 // PENDING -> IN_PROGRESS -> DELIVERED -> ACCEPTED -> CLOSED (alt: CANCELLED,
 // DISPUTED). Service orders never create DRM licenses (INV-015).
 import { Router, Response } from "express";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { createServiceCheckout, CommerceError } from "../lib/commerce";
-import { affectedCount } from "../lib/discount";
-import { canCreateListings, sellerGateMessage } from "../lib/permissions";
-import { settleServiceRevenue } from "../lib/ledger";
-import { reqLog } from "../middleware/requestId";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { createServiceCheckout, CommerceError } from "../lib/commerce.js";
+import { affectedCount } from "../lib/discount.js";
+import { canCreateListings, sellerGateMessage } from "../lib/permissions.js";
+import { settleServiceRevenue } from "../lib/ledger.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 

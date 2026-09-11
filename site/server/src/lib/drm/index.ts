@@ -1,11 +1,11 @@
-/**
+﻿/**
  * TASK-020: DRM Protocol v2 Module
  * 
  * Complete DRM v2 implementation with asymmetric cryptography.
  */
 
 // Export types
-export * from './types';
+export * from './types.js';
 
 // Export cryptography functions
 export {
@@ -20,7 +20,7 @@ export {
   calculateLeaseExpiry,
   isLeaseExpired,
   getRemainingLeaseTime
-} from './crypto';
+} from './crypto.js';
 
 // Export service functions (main API)
 export {
@@ -35,4 +35,4 @@ export {
   getTrustedServerKeys,
   issueVersionDek,
   getActiveLease
-} from './service';
+} from './service.js';

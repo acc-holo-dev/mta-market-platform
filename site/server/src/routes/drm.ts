@@ -1,6 +1,6 @@
-// DRM v1 routes — DEPRECATED activation protocol (PLAN TASK A-007, ADR-001).
+﻿// DRM v1 routes вЂ” DEPRECATED activation protocol (PLAN TASK A-007, ADR-001).
 //
-// Decision: option A — v1 activation protocol is deprecated and blocked.
+// Decision: option A вЂ” v1 activation protocol is deprecated and blocked.
 // - POST /drm/activate and POST /drm/verify return 410 Gone.
 //   Reasons: fake keypairs (crypto.randomBytes as "keys"), private key
 //   returned to the client over HTTP, private key used as a bearer secret,
@@ -9,11 +9,11 @@
 // - License MANAGEMENT endpoints (my-licenses, revoke) remain active: they
 //   are authenticated, ownership-checked and not part of the activation protocol.
 import { Router, Response } from "express";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { validateCuid } from "../middleware/validateCuid";
-import { db } from "../prisma/db";
-import { reqLog } from "../middleware/requestId";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { validateCuid } from "../middleware/validateCuid.js";
+import { db } from "../prisma/db.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 

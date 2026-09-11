@@ -1,16 +1,16 @@
-// Resource Versions API routes
+﻿// Resource Versions API routes
 import { Router, Response } from "express";
 import path from "path";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { S3_ENABLED, getS3DownloadUrl, SIGNED_URL_TTL } from "../lib/s3";
-import { resolveLocalUploadPath } from "../lib/upload";
-import { loadArtifactBuffer } from "../lib/storage";
-import { validateArtifact } from "../lib/sandbox/service";
-import { signVersionArtifact } from "../lib/artifact/signing";
-import { reqLog } from "../middleware/requestId";
-import { incDownloadFailure } from "../lib/metrics";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { S3_ENABLED, getS3DownloadUrl, SIGNED_URL_TTL } from "../lib/s3.js";
+import { resolveLocalUploadPath } from "../lib/upload.js";
+import { loadArtifactBuffer } from "../lib/storage.js";
+import { validateArtifact } from "../lib/sandbox/service.js";
+import { signVersionArtifact } from "../lib/artifact/signing.js";
+import { reqLog } from "../middleware/requestId.js";
+import { incDownloadFailure } from "../lib/metrics.js";
 
 const router: Router = Router();
 
@@ -82,7 +82,7 @@ router.post(
 
       // PLAN B-001/B-002 pipeline: the artifact must live in OUR storage so it
       // can be validated, signed and later served through authorized downloads.
-      // External URLs cannot be validated or signed — reject them here.
+      // External URLs cannot be validated or signed вЂ” reject them here.
       const artifactBuffer = await loadArtifactBuffer(fileUrl);
       if (!artifactBuffer) {
         res.status(400).json({
@@ -119,7 +119,7 @@ router.post(
 
       try {
         // PLAN B-001: static validation (+ sandbox execution when Docker is
-        // available). A failed validation rolls the version back — a version
+        // available). A failed validation rolls the version back вЂ” a version
         // that cannot be validated must never enter the publication pipeline.
         const validation = await validateArtifact(newVersion.id, artifactBuffer);
         if (!validation.passed) {
@@ -135,9 +135,9 @@ router.post(
         const signed = await signVersionArtifact(newVersion.id, artifactBuffer);
 
         // PLAN-008 D-002 (Update delivery path): a new version of a PUBLISHED
-        // resource re-enters moderation — PUBLISHED → PENDING_REVIEW as a
+        // resource re-enters moderation вЂ” PUBLISHED в†’ PENDING_REVIEW as a
         // system-initiated transition recorded for audit. Moderation approval
-        // then releases the version and notifies buyers (§26) and followers.
+        // then releases the version and notifies buyers (В§26) and followers.
         let reenteredReview = false;
         if (resource.status === "PUBLISHED") {
           await db.orm.public.Resource

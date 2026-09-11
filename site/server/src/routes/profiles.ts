@@ -1,15 +1,15 @@
-// PLAN-005 Workstreams O/P: public profile + creator identity.
+﻿// PLAN-005 Workstreams O/P: public profile + creator identity.
 // One user, one identity: Server Owner / Verified Seller badges coexist on a
 // single profile. Private data never leaves the backend: email, purchases,
 // balance and private deals are not returned here.
 import { Router, Response } from "express";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { reqLog } from "../middleware/requestId";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
-// GET /profiles/:username — public identity surface.
+// GET /profiles/:username вЂ” public identity surface.
 router.get("/:username", standardRateLimit, async (req, res: Response) => {
   try {
     const username = req.params.username as string;

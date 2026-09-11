@@ -1,21 +1,21 @@
-// PLAN-008 Workstreams B/C: Follow Expansion (Creator + Resource).
-// Follows are PRIVATE relationships (DAILY-EXPERIENCE §42): only aggregate
+﻿// PLAN-008 Workstreams B/C: Follow Expansion (Creator + Resource).
+// Follows are PRIVATE relationships (DAILY-EXPERIENCE В§42): only aggregate
 // counts are public; follower lists are never exposed. /me/follows/* returns
 // the user's OWN follows only. Delivery hooks live in the mutation sites
 // (admin.ts: resource publish + version release; adminContent.ts: article
-// publish) — see lib/follows.ts helpers.
+// publish) вЂ” see lib/follows.ts helpers.
 import { Router, Response } from "express";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { reqLog } from "../middleware/requestId";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
 // ---------- creator follow (B-001) ----------
 
-// POST /creators/:username/follow — target must be a User with an APPROVED
-// SellerProfile; self-follow is forbidden; duplicates → 409.
+// POST /creators/:username/follow вЂ” target must be a User with an APPROVED
+// SellerProfile; self-follow is forbidden; duplicates в†’ 409.
 router.post("/creators/:username/follow", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const target = await db.orm.public.User
@@ -27,21 +27,21 @@ router.post("/creators/:username/follow", authenticate, standardRateLimit, async
       return;
     }
     if (target.id === req.user!.userId) {
-      res.status(400).json({ error: "Нельзя подписаться на себя" });
+      res.status(400).json({ error: "РќРµР»СЊР·СЏ РїРѕРґРїРёСЃР°С‚СЊСЃСЏ РЅР° СЃРµР±СЏ" });
       return;
     }
     const profile = await db.orm.public.SellerProfile
       .where({ userId: target.id, status: "APPROVED" })
       .first();
     if (!profile) {
-      res.status(404).json({ error: "Это не создатель (нет одобренного профиля продавца)" });
+      res.status(404).json({ error: "Р­С‚Рѕ РЅРµ СЃРѕР·РґР°С‚РµР»СЊ (РЅРµС‚ РѕРґРѕР±СЂРµРЅРЅРѕРіРѕ РїСЂРѕС„РёР»СЏ РїСЂРѕРґР°РІС†Р°)" });
       return;
     }
     const existing = await db.orm.public.SellerFollow
       .where({ followerId: req.user!.userId, sellerUserId: target.id })
       .first();
     if (existing) {
-      res.status(409).json({ error: "Вы уже подписаны" });
+      res.status(409).json({ error: "Р’С‹ СѓР¶Рµ РїРѕРґРїРёСЃР°РЅС‹" });
       return;
     }
     await db.orm.public.SellerFollow.create({
@@ -58,7 +58,7 @@ router.post("/creators/:username/follow", authenticate, standardRateLimit, async
   }
 });
 
-// DELETE /creators/:username/follow — unfollow; not following → 404.
+// DELETE /creators/:username/follow вЂ” unfollow; not following в†’ 404.
 router.delete("/creators/:username/follow", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const target = await db.orm.public.User
@@ -73,7 +73,7 @@ router.delete("/creators/:username/follow", authenticate, standardRateLimit, asy
       .where({ followerId: req.user!.userId, sellerUserId: target.id })
       .first();
     if (!existing) {
-      res.status(404).json({ error: "Вы не подписаны" });
+      res.status(404).json({ error: "Р’С‹ РЅРµ РїРѕРґРїРёСЃР°РЅС‹" });
       return;
     }
     await db.orm.public.SellerFollow.where({ id: existing.id }).delete();
@@ -89,8 +89,8 @@ router.delete("/creators/:username/follow", authenticate, standardRateLimit, asy
 
 // ---------- resource follow (B-002) ----------
 
-// POST /resources/:slug/follow — target must be PUBLISHED; sellers cannot
-// follow their own resource (self-follow forbidden); duplicates → 409.
+// POST /resources/:slug/follow вЂ” target must be PUBLISHED; sellers cannot
+// follow their own resource (self-follow forbidden); duplicates в†’ 409.
 router.post("/resources/:slug/follow", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const resource = await db.orm.public.Resource
@@ -102,14 +102,14 @@ router.post("/resources/:slug/follow", authenticate, standardRateLimit, async (r
       return;
     }
     if (resource.sellerId === req.user!.userId) {
-      res.status(400).json({ error: "Нельзя следить за своим ресурсом" });
+      res.status(400).json({ error: "РќРµР»СЊР·СЏ СЃР»РµРґРёС‚СЊ Р·Р° СЃРІРѕРёРј СЂРµСЃСѓСЂСЃРѕРј" });
       return;
     }
     const existing = await db.orm.public.ResourceFollow
       .where({ userId: req.user!.userId, resourceId: resource.id })
       .first();
     if (existing) {
-      res.status(409).json({ error: "Вы уже следите за этим ресурсом" });
+      res.status(409).json({ error: "Р’С‹ СѓР¶Рµ СЃР»РµРґРёС‚Рµ Р·Р° СЌС‚РёРј СЂРµСЃСѓСЂСЃРѕРј" });
       return;
     }
     await db.orm.public.ResourceFollow.create({
@@ -126,7 +126,7 @@ router.post("/resources/:slug/follow", authenticate, standardRateLimit, async (r
   }
 });
 
-// DELETE /resources/:slug/follow — unfollow; not following → 404.
+// DELETE /resources/:slug/follow вЂ” unfollow; not following в†’ 404.
 router.delete("/resources/:slug/follow", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const resource = await db.orm.public.Resource
@@ -141,7 +141,7 @@ router.delete("/resources/:slug/follow", authenticate, standardRateLimit, async 
       .where({ userId: req.user!.userId, resourceId: resource.id })
       .first();
     if (!existing) {
-      res.status(404).json({ error: "Вы не следите за этим ресурсом" });
+      res.status(404).json({ error: "Р’С‹ РЅРµ СЃР»РµРґРёС‚Рµ Р·Р° СЌС‚РёРј СЂРµСЃСѓСЂСЃРѕРј" });
       return;
     }
     await db.orm.public.ResourceFollow.where({ id: existing.id }).delete();
@@ -155,7 +155,7 @@ router.delete("/resources/:slug/follow", authenticate, standardRateLimit, async 
   }
 });
 
-// ---------- own follow state (§ privacy: only own lists) ----------
+// ---------- own follow state (В§ privacy: only own lists) ----------
 
 router.get("/me/follows/creators", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
@@ -177,7 +177,7 @@ router.get("/me/follows/creators", authenticate, standardRateLimit, async (req: 
   }
 });
 
-// PLAN-009: own thread follows (private list, §42).
+// PLAN-009: own thread follows (private list, В§42).
 router.get("/me/follows/threads", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const rows = await db.orm.public.ForumThreadFollow

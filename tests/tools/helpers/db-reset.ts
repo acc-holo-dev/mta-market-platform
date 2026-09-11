@@ -158,6 +158,23 @@ export async function resetTestEntities(): Promise<void> {
     console.warn("[reset] audit logs:", e instanceof Error ? e.message : e);
   }
 
+  // PLAN-012 §5: stale idempotency records from interrupted runs must not
+  // leak into later runs (a same-key replay would replay a dead response or
+  // conflict). Keys are namespaced per test file, so all test keys carry the
+  // fixed test UUID ranges or per-run suffixes; rows of test-range users are
+  // removed, plus every expired record.
+  try {
+    const idem = await db.orm.public.IdempotencyRecord.where({}).all();
+    for (const rec of idem) {
+      const expired = rec.expiresAt ? new Date(rec.expiresAt) < new Date() : false;
+      if (testUserIds.has(rec.userId ?? "") || expired) {
+        await db.orm.public.IdempotencyRecord.where({ id: rec.id }).delete().catch(() => undefined);
+      }
+    }
+  } catch (e) {
+    console.warn("[reset] idempotency records:", e instanceof Error ? e.message : e);
+  }
+
   // PLAN-005 community/server tables — FK-safe order, children first.
   // Report: keep only test-reporter rows (global queue hygiene).
   try {

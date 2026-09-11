@@ -1,14 +1,15 @@
-// Purchase API routes (buying resources)
+﻿// Purchase API routes (buying resources)
 import { Router, Response } from "express";
-import { authenticate, AuthRequest } from "../lib/auth";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { validate } from "../middleware/validate";
-import { createResourceCheckout, CommerceError } from "../lib/commerce";
-import { userRateLimit } from "../lib/rateLimit";
-import { validateCuid } from "../middleware/validateCuid";
-import { createPurchaseSchema } from "../lib/validation";
-import { reqLog } from "../middleware/requestId";
+import { authenticate, AuthRequest } from "../lib/auth.js";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { validate } from "../middleware/validate.js";
+import { createResourceCheckout, CommerceError } from "../lib/commerce.js";
+import { userRateLimit } from "../lib/rateLimit.js";
+import { validateCuid } from "../middleware/validateCuid.js";
+import { createPurchaseSchema } from "../lib/validation.js";
+import { reqLog } from "../middleware/requestId.js";
+import { withIdempotency, isIdempotencyError } from "../lib/idempotency.js";
 
 const router: Router = Router();
 
@@ -17,13 +18,17 @@ const router: Router = Router();
 // a Purchase line. Free/fully-discounted resources complete immediately via
 // the same atomic path as paid completions (no payment provider call).
 // Discount usage is consumed at completion (C-007), not at checkout.
+// PLAN-012 В§5: honored when the client sends an Idempotency-Key вЂ” a repeated
+// request replays the stored response instead of creating a second checkout.
+// The checkout is additionally protected by the purchase_buyer_resource_live_uq
+// database invariant (PLAN-012 В§4).
 router.post(
   "/",
   authenticate,
   standardRateLimit,
   userRateLimit({ windowMs: 60_000, max: 30, action: "checkout" }),
   validate(createPurchaseSchema),
-  async (req: AuthRequest, res: Response) => {
+  withIdempotency("purchases.create", async (req: AuthRequest, res: Response) => {
     try {
       const { resourceSlug, discountCode } = req.body;
 
@@ -78,10 +83,14 @@ router.post(
         res.status(error.status).json({ error: error.message, code: error.code });
         return;
       }
+      if (isIdempotencyError(error)) {
+        res.status(error.status).json({ error: error.message, code: error.code });
+        return;
+      }
       reqLog(req).error("purchase_create_failed", { error });
       res.status(500).json({ error: "Failed to create purchase" });
     }
-  }
+    })
 );
 
 // GET /purchases/my - Get user's purchases (authenticated)

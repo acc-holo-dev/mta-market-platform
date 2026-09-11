@@ -1,6 +1,6 @@
-// PLAN-003 A-002/A-004/A-005: resource media (cover/screenshots) support.
+﻿// PLAN-003 A-002/A-004/A-005: resource media (cover/screenshots) support.
 //
-// Security rules (A-005 — frontend validation is never trusted):
+// Security rules (A-005 вЂ” frontend validation is never trusted):
 // - the image type is determined by SNIFFING MAGIC BYTES, not by the declared
 //   MIME type or extension;
 // - only an allowlisted set of raster image formats is accepted;
@@ -14,8 +14,8 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { UPLOAD_DIR } from "./upload";
-import { S3_ENABLED, deleteFromS3 } from "./s3";
+import { UPLOAD_DIR } from "./upload.js";
+import { S3_ENABLED, deleteFromS3 } from "./s3.js";
 
 export const MEDIA_MAX_BYTES = 5 * 1024 * 1024; // 5 MB per image
 export const MAX_SCREENSHOTS_PER_RESOURCE = 8;
@@ -117,7 +117,7 @@ export function isMediaName(name: string): boolean {
 
 /**
  * Resolve a public media URL (/media/<name>) to a path inside UPLOAD_DIR.
- * Only bare `media-<hex>.<ext>` names are accepted — any traversal sequence,
+ * Only bare `media-<hex>.<ext>` names are accepted вЂ” any traversal sequence,
  * separator, absolute path or non-media name returns null (this route must
  * never serve paid artifacts, which live in the same directory).
  */
@@ -152,7 +152,7 @@ export function localMediaNameFromUrl(url: string): string | null {
 }
 
 /**
- * A-004: delete a local media file (best-effort — used when a cover is
+ * A-004: delete a local media file (best-effort вЂ” used when a cover is
  * replaced/removed or a screenshot is deleted). Missing files are ignored;
  * failures are swallowed by callers that log them.
  */
@@ -179,7 +179,7 @@ export function cleanupMediaUrl(url: string | null | undefined): void {
   deleteLocalMediaByName(name);
 
   // PLAN-004 B-001/B-006: in S3 mode the media object lives under the
-  // `media/` prefix in the bucket — delete it too (best-effort, async).
+  // `media/` prefix in the bucket вЂ” delete it too (best-effort, async).
   if (S3_ENABLED) {
     void deleteFromS3(`media/${name}`).catch(() => {
       // best-effort: a leftover object is handled by storage lifecycle (B-007)

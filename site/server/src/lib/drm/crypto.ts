@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TASK-020 / PLAN A-006: DRM Protocol v2 - Cryptography
  *
  * Ed25519 operations for the DRM v2 protocol, implemented directly over
@@ -16,14 +16,14 @@
  */
 
 import { randomBytes, createHash, sign, verify } from 'crypto';
-import { canonicalJSON, generatePublisherKeypair } from '../artifact/crypto';
-import { isLeaseExpiredWithSkew, isLeaseIssuanceTimeValid } from './protocol';
+import { canonicalJSON, generatePublisherKeypair } from '../artifact/crypto.js';
+import { isLeaseExpiredWithSkew, isLeaseIssuanceTimeValid } from './protocol.js';
 import type {
   InstallationKeypair,
   SignedLease,
   LeasePayload,
   LeaseVerificationResult
-} from './types';
+} from './types.js';
 
 /** Decode a base64 DER private key (PKCS8) into a node crypto key input. */
 function privateKeyInput(base64: string) {

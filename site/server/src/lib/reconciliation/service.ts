@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TASK-018 + PLAN B-003: Reconciliation Service
  *
  * Financial reconciliation between internal ledger and payment providers.
@@ -7,18 +7,18 @@
  * PLAN B-003 rules implemented here:
  * - never auto-corrects money: only creates alerts (ReconciliationReport +
  *   ReconciliationMismatch are the persistent, alertable records);
- * - every step emits structured logs (B-006) with provider/report/counts —
+ * - every step emits structured logs (B-006) with provider/report/counts вЂ”
  *   these log lines are the metrics source until O-001 lands;
  * - provider source availability is explicit: when the provider side cannot
  *   be fetched (provider disabled / refund & payout provider APIs not yet
- *   implemented — see Phase E/F), the comparison does NOT invent
+ *   implemented вЂ” see Phase E/F), the comparison does NOT invent
  *   MISSING_PROVIDER mismatches. The report honestly shows
  *   internalCount with providerCount=0 instead.
  */
 
-import { db } from '../../prisma/db';
-import { logger } from '../logger';
-import { getYooKassaPayment, YOOKASSA_ENABLED, type YooKassaPayment } from '../yookassa';
+import { db } from '../../prisma/db.js';
+import { logger } from '../logger.js';
+import { getYooKassaPayment, YOOKASSA_ENABLED, type YooKassaPayment } from '../yookassa.js';
 import type {
   ReconciliationInput,
   ReconciliationResult,
@@ -26,7 +26,7 @@ import type {
   InternalTransaction,
   ProviderTransaction,
   ReconciliationSummary
-} from './types';
+} from './types.js';
 
 const PROVIDER_FETCH_CONCURRENCY = 5;
 
@@ -156,7 +156,7 @@ export async function reconcile(input: ReconciliationInput): Promise<Reconciliat
       error,
     });
 
-    // Update report as failed — persistent alertable record.
+    // Update report as failed вЂ” persistent alertable record.
     await db.orm.public.ReconciliationReport.where({ id: report.id }).update({
       status: 'FAILED',
       completedAt: new Date().toISOString(),
@@ -291,7 +291,7 @@ async function fetchProviderTransactions(
         const message = error instanceof Error ? error.message : String(error);
         if (/\(HTTP 404\)/.test(message)) {
           // Definitive: the provider does not know this payment. Deliberately
-          // NOT recorded here — compareTransactions() flags it as
+          // NOT recorded here вЂ” compareTransactions() flags it as
           // MISSING_PROVIDER when the provider side is otherwise available,
           // which keeps mismatch accounting single-sourced.
           logger.warn("reconciliation_provider_payment_not_found", {
@@ -323,7 +323,7 @@ function toProviderTransaction(remote: YooKassaPayment): ProviderTransaction {
   const amountKopecks = Math.round(parseFloat(remote.amount.value) * 100);
   // Provider status -> internal PaymentStatus vocabulary.
   // PLAN-004 D-004 (audit GAP-9): must match paymentStateMachine's
-  // fromYooKassaStatus exactly — 'canceled' is CANCELED there, so mapping it
+  // fromYooKassaStatus exactly вЂ” 'canceled' is CANCELED there, so mapping it
   // to FAILED here produced false STATUS_MISMATCH alerts on every report.
   const statusMap: Record<string, string> = {
     succeeded: 'SUCCEEDED',

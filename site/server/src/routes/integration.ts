@@ -1,18 +1,18 @@
-// PLAN-005 Workstreams C/AC/33: server integration endpoints — the wire
+﻿// PLAN-005 Workstreams C/AC/33: server integration endpoints вЂ” the wire
 // protocol consumed by the mta-market-module.
 //
 // Proof-of-control (C-001): the module sends the integration token that the
 // owner configured; possession of the secret proves control of the server.
 // The same heartbeat carries ONLY aggregate monitoring data (online count,
-// max players, status) — never player identity, IP or chat (§33).
+// max players, status) вЂ” never player identity, IP or chat (В§33).
 import { Router, Response } from "express";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { reqLog } from "../middleware/requestId";
-import { recordAudit } from "../lib/audit";
-import { sha256Hex, issueReviewToken } from "../lib/serverIntegration";
-import { recordHeartbeatSample } from "../lib/serverMonitoring";
-import { logger } from "../lib/logger";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { reqLog } from "../middleware/requestId.js";
+import { recordAudit } from "../lib/audit.js";
+import { sha256Hex, issueReviewToken } from "../lib/serverIntegration.js";
+import { recordHeartbeatSample } from "../lib/serverMonitoring.js";
+import { logger } from "../lib/logger.js";
 
 const router: Router = Router();
 
@@ -25,7 +25,7 @@ interface HeartbeatBody {
 }
 
 /**
- * POST /integration/heartbeat — the module reports liveness + player counts.
+ * POST /integration/heartbeat вЂ” the module reports liveness + player counts.
  *
  * Effects:
  *  - valid token: server monitoring = ONLINE (or OFFLINE when the server
@@ -120,7 +120,7 @@ function wasPending(server: any): boolean {
 }
 
 /**
- * POST /integration/review-tokens — the module requests a one-time review
+ * POST /integration/review-tokens вЂ” the module requests a one-time review
  * token for a player (J-002). Bound to the authenticated server, expiring,
  * single-use; the plaintext token is returned exactly once and handed to the
  * player by the server itself (MTA Market never sees who the player is).

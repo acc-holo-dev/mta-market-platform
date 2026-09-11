@@ -1,12 +1,12 @@
-// PLAN-005 Workstream W: global search with explicit result types.
+﻿// PLAN-005 Workstream W: global search with explicit result types.
 // Extends the existing ILIKE search approach (resources.ts) to the new
 // Server + Forum domains. Every group is typed so the UI can render
 // "Resources (12) / Servers (8) / Discussions (34)".
 import { Router, Response } from "express";
-import { standardRateLimit } from "../lib/rateLimit";
-import { db } from "../prisma/db";
-import { reqLog } from "../middleware/requestId";
-import { PUBLIC_SERVER_LIFECYCLES } from "../lib/serverAccess";
+import { standardRateLimit } from "../lib/rateLimit.js";
+import { db } from "../prisma/db.js";
+import { reqLog } from "../middleware/requestId.js";
+import { PUBLIC_SERVER_LIFECYCLES } from "../lib/serverAccess.js";
 
 const router: Router = Router();
 
@@ -14,7 +14,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
   try {
     const q = (req.query.q as string | undefined)?.trim();
     if (!q || q.length < 2) {
-      res.status(400).json({ error: "Введите минимум 2 символа" });
+      res.status(400).json({ error: "Р’РІРµРґРёС‚Рµ РјРёРЅРёРјСѓРј 2 СЃРёРјРІРѕР»Р°" });
       return;
     }
     const pattern = `%${q}%`;
@@ -64,7 +64,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
       .where((t: any) => t.title.ilike(pattern))
       .aggregate((a: any) => ({ total: a.count() }));
 
-    // PLAN-007: articles (PUBLISHED only) — explicit result type (E-004).
+    // PLAN-007: articles (PUBLISHED only) вЂ” explicit result type (E-004).
     const articles = await db.orm.public.Article
       .where((a: any) => a.title.ilike(pattern))
       .where({ status: "PUBLISHED" })
