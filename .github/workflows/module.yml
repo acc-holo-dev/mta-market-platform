@@ -65,7 +65,7 @@ jobs:
       - if: matrix.toolchain == 'mingw'
         uses: msys2/setup-msys2@v2
         with:
-          msys2: UCRT64
+          msystem: UCRT64
           update: true
           install: >-
             mingw-w64-ucrt-x86_64-gcc
@@ -99,8 +99,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y ninja-build g++ libncursesw6 zlib1g libssl-dev
       - name: Build the module
-        run: python3 module/tools/mta/cli.py build --preset linux-gcc
+        run: cd module && python3 tools/mta/cli.py build --preset linux-gcc
       - name: Install pinned server and run the integration
         run: |
-          python3 module/tools/mta/cli.py server install
-          python3 module/tools/mta/cli.py test integration
+          cd module
+          python3 tools/mta/cli.py server install
+          python3 tools/mta/cli.py test integration

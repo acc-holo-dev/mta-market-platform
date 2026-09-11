@@ -38,7 +38,7 @@ npm-debug.log*
 pnpm-debug.log*
 
 # --- Runtime / transient state --------------------------------------------------
-runtime/
+/runtime/
 tmp/
 temp/
 cache/
@@ -132,6 +132,10 @@ desktop.ini
 # --- Misc ------------------------------------------------------------------------------
 *.patch.orig
 .DS_Store?
+
+# --- Module real-server harness runtime (module/tools/mock-server) ----------
+module/tools/mock-server/{downloads,servers,logs,run}/
+module/tools/mock-server/{server.pid,install.json}
 
 # --- Tool-local generated docs (prisma skills sync etc.) --------------------
 **/.cursor/
