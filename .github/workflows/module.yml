@@ -27,19 +27,20 @@ jobs:
               || { echo "ERROR: module/third_party/mta-sdk/lua/$h differs from module/third_party/lua/src/$h"; exit 1; }
           done
           echo "Lua headers: OK"
-      - name: Configure
-        run: cmake --preset linux-gcc -S module
-      - name: Build
-        run: cmake --build --preset linux-gcc -S module
-      - name: "Test (ctest: sdk_tests + config parser)"
-        run: ctest --preset linux-gcc --test-dir module --output-on-failure
+      - name: Configure + build + test (from the component root)
+        working-directory: module
+        run: |
+          cmake --preset linux-gcc
+          cmake --build --preset linux-gcc
+          ctest --preset linux-gcc --output-on-failure
       - name: Standalone DRM tests
         run: make -f module/src/drm/Makefile test
       - name: CLI smoke (docs, unit, lua filters)
+        working-directory: module
         run: |
-          python3 module/tools/mta/cli.py docs
-          python3 module/tools/mta/cli.py test unit
-          python3 module/tools/mta/cli.py test lua
+          python3 tools/mta/cli.py docs
+          python3 tools/mta/cli.py test unit
+          python3 tools/mta/cli.py test lua
       - name: Python harness unit tests
         run: python3 -m unittest discover -s tests/module
 
@@ -86,14 +87,16 @@ jobs:
       - name: Configure + build
         shell: msys2 {0}
         if: matrix.toolchain == 'mingw'
+        working-directory: module
         run: |
-          cmake --preset win-mingw -S module
-          cmake --build --preset win-mingw -S module
+          cmake --preset win-mingw
+          cmake --build --preset win-mingw
       - name: Configure + build
         if: matrix.toolchain == 'msvc'
+        working-directory: module
         run: |
-          cmake --preset win-msvc -S module
-          cmake --build --preset win-msvc -S module
+          cmake --preset win-msvc
+          cmake --build --preset win-msvc
 
   integration-linux:
     # Real-server integration against a pinned MTA server build (network

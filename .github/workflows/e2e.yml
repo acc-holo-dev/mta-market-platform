@@ -46,6 +46,12 @@ jobs:
       NEXT_PUBLIC_API_URL: http://localhost:3001
       FRONTEND_URL: http://localhost:3000
       BASE_URL: http://localhost:3001
+      # Browser (localhost:3000) talks to the API cross-origin — without the
+      # allowlist the CORS middleware rejects every browser call (the local
+      # dev .env carries this value; CI has no .env).
+      CORS_ORIGINS: http://localhost:3000
+      COOKIE_SAMESITE: lax
+      TRUST_PROXY: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
