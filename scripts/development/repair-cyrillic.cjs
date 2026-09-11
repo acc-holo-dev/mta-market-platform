@@ -143,10 +143,16 @@ function main() {
   const textExt =
     /\.(ts|tsx|cjs|cts|mjs|js|py|sql|yml|yaml|json|prisma|sh|md|txt|toml|ini|css|html)$/;
   const self = path.relative(ROOT, __filename);
+  // Files that intentionally quote corrupted literals (root-cause evidence
+  // in plan records). Real corruption elsewhere still fails the check.
+  const exceptions = new Set([
+    "documents/development/completed/PLAN-014.md", // quotes the mojibake examples
+  ]);
   const targets = tracked.filter(
     (f) =>
       f !== "pnpm-lock.yaml" &&
       f !== self && // this codemod contains the marker literals by design
+      !exceptions.has(f) &&
       textExt.test(f) &&
       fs.existsSync(path.join(ROOT, f))
   );
