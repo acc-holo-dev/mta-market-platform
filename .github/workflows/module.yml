@@ -31,7 +31,7 @@ jobs:
         run: cmake --preset linux-gcc -S module
       - name: Build
         run: cmake --build --preset linux-gcc -S module
-      - name: Test (ctest: sdk_tests + config parser)
+      - name: "Test (ctest: sdk_tests + config parser)"
         run: ctest --preset linux-gcc --test-dir module --output-on-failure
       - name: Standalone DRM tests
         run: make -f module/src/drm/Makefile test
