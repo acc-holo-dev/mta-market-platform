@@ -7,6 +7,7 @@ on:
   push:
     branches: [main, develop]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -16,11 +17,9 @@ jobs:
     name: Repository policy (documents zone, naming, hygiene)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: All markdown lives only in documents/
         run: |
-          # Tracked files only; exceptions = GitHub metadata files that GitHub
-          # requires at fixed paths (.github/pull_request_template.md).
           bad=$(git ls-files '*.md' | grep -v '^documents/' | grep -v '^\.github/' || true)
           if [ -n "$bad" ]; then
             echo "::error::.md files outside documents/ are forbidden (PLAN-010 Rule 001):"
