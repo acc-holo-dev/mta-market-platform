@@ -33,7 +33,5 @@ jobs:
         with:
           node-version: '22'
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - run: pnpm install --frozen-lockfile
       - run: bash scripts/maintenance/audit.sh
