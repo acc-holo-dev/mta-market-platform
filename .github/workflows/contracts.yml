@@ -1,12 +1,9 @@
 name: Contracts
 
-# contracts/ is the machine-readable source for API/DRM/module/events.
-# Every file must parse; this is a blocking gate.
+# Reusable machine-readable contract validation gate. Platform CI is the
+# public entry point.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
   workflow_call:
 
 permissions:
