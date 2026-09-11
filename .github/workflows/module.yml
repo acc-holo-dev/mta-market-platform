@@ -1,14 +1,8 @@
 name: Module
 
-# Native module (module/): Linux build is the blocking gate; the header-drift
-# gate keeps the two vendored Lua header sets byte-identical; the real-server
-# integration suite remains best-effort because it depends on an external MTA
-# server download.
+# Reusable native module gate. Platform CI is the public entry point.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
   workflow_call:
 
 permissions:
@@ -28,8 +22,7 @@ jobs:
             cmp -s "module/third_party/mta-sdk/lua/$h" "module/third_party/lua/src/$h" \
               || { echo "ERROR: module/third_party/mta-sdk/lua/$h differs from module/third_party/lua/src/$h"; exit 1; }
           done
-          echo "Lua headers: OK"
-      - name: Configure + build + test (from the component root)
+      - name: Configure + build + test
         working-directory: module
         run: |
           cmake --preset linux-gcc
@@ -37,7 +30,7 @@ jobs:
           ctest --preset linux-gcc --output-on-failure
       - name: Standalone DRM tests
         run: make -f module/src/drm/Makefile test
-      - name: CLI smoke (docs, unit, lua filters)
+      - name: CLI smoke
         working-directory: module
         run: |
           python3 tools/mta/cli.py docs
@@ -105,7 +98,7 @@ jobs:
       - name: Build the module
         working-directory: module
         run: python3 tools/mta/cli.py build --preset linux-gcc
-      - name: Install pinned server and run the integration
+      - name: Install pinned server and run integration
         working-directory: module
         run: |
           python3 tools/mta/cli.py server install
