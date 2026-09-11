@@ -70,7 +70,7 @@
 - [x] аудит трёх репозиториев (внутренние отчёты);
 - [x] скелет + gitignore/gitattributes/workspace;
 - [x] documents: перенос 27 файлов, разбиение IDEAS, новые api/architecture/drm/
-      operations/history (33 новых документа), обновление путей;
+      operations/history (35 новых документов), обновление путей;
 - [x] site: перенос, тесты централизованы, shared-пакет, attic удалён;
 - [x] module: перенос, CMake-пути, исправление 5 pre-existing дефектов (см.
       [../../history/MIGRATION.md](../../history/MIGRATION.md) §2), spike_luac восстановлен;

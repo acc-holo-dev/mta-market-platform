@@ -70,7 +70,10 @@ test.describe("PLAN-005 Servers", () => {
 
   test("news page of a server renders content (H-004)", async ({ page }) => {
     await page.goto("/servers/night-city-rp");
-    await page.getByText("Новости", { exact: true }).first().click();
+    // The page has two «Новости» elements (tab button + footer link to the
+    // global /news feed). Target the tab button by role — the ambiguous
+    // getByText().first() raced the footer link depending on load order.
+    await page.getByRole("button", { name: "Новости", exact: true }).first().click();
     const newsLink = page.locator('a[href*="/news/"]').first();
     await expect(newsLink).toBeVisible({ timeout: 15_000 });
     await newsLink.click();

@@ -19,11 +19,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: All markdown lives only in documents/
         run: |
-          bad=$(find . -name '*.md' \
-            -not -path './documents/*' \
-            -not -path './node_modules/*' \
-            -not -path './site/*/node_modules/*' \
-            -not -path './.git/*')
+          # Tracked files only; exceptions = GitHub metadata files that GitHub
+          # requires at fixed paths (.github/pull_request_template.md).
+          bad=$(git ls-files '*.md' | grep -v '^documents/' | grep -v '^\.github/' || true)
           if [ -n "$bad" ]; then
             echo "::error::.md files outside documents/ are forbidden (PLAN-010 Rule 001):"
             echo "$bad"
