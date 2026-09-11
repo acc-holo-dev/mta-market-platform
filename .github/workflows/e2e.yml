@@ -52,6 +52,14 @@ jobs:
       CORS_ORIGINS: http://localhost:3000
       COOKIE_SAMESITE: lax
       TRUST_PROXY: "false"
+      # Intentionally loose dev/E2E rate-limit profile (.env.example: "loose
+      # for browser E2E runs") — without it the catalog/API returns 429 and
+      # the UI renders the error state mid-suite.
+      AUTH_RATE_LIMIT_MAX: "10000"
+      STANDARD_RATE_LIMIT_MAX: "10000"
+      STRICT_RATE_LIMIT_MAX: "10000"
+      LOGIN_RATE_LIMIT_MAX: "10000"
+      REFRESH_RATE_LIMIT_MAX: "10000"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

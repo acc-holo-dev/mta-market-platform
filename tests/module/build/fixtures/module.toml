@@ -1,0 +1,24 @@
+# Fixture for the CMake TOML reader test (other/tests/unit/module_config_parse.cmake).
+# Exercises comments, blank lines, both quote styles, integers, booleans and
+# hashes inside quoted strings.
+
+[module]
+name = "fixture_mod"       # output binary name
+title = "Fixture #1 Module"
+author = 'Fixture Author'  # single quotes are valid too
+version = "9.9.9"
+
+[build]
+cxx_standard = 23
+unity = false
+lto = true                 # keep LTO enabled
+
+[async]
+# "auto" lets the runtime pick the worker count; an integer pins it.
+# (this comment contains a semicolon; the parser must not split on it)
+workers = "auto"
+queue = 4096
+
+[features]
+async = true
+userdata = false

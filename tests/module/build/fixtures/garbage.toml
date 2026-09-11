@@ -1,0 +1,4 @@
+# Fixture that must be REJECTED by the CMake TOML reader: no '=' on the line.
+this is not valid toml
+[module]
+name = "x"

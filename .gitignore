@@ -64,8 +64,8 @@ backups/
 *.sql.zst
 
 # --- Build output ---------------------------------------------------------------
-build/
-**/build/
+/build/
+module/build/
 dist/
 **/dist/
 out/
