@@ -1,12 +1,8 @@
 name: Tests
 
-# Blocking gate: unit + integration against real PostgreSQL/Redis, plus
-# type-check of every workspace package.
+# Reusable unit/integration test gate. Platform CI is the public entry point.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
   workflow_call:
 
 permissions:
