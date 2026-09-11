@@ -87,6 +87,20 @@ jobs:
       - name: Seed E2E admin
         run: pnpm test:e2e:admin
 
+      # The plan005/plan006 specs run against the documented seed datasets
+      # (scripts/dev-* are idempotent) and need fresh server heartbeats for
+      # the LIVE layer (docs: documents/operations/DEVELOPMENT.md).
+      - name: Seed dev datasets (marketplace + community/servers)
+        working-directory: site/server
+        run: |
+          pnpm exec tsx scripts/seed-plan003.ts
+          pnpm exec tsx scripts/seed-plan005.ts
+
+      - name: Keep server heartbeats fresh
+        working-directory: site/server
+        run: |
+          ( pnpm exec tsx scripts/dev-heartbeat.ts ) &> /tmp/heartbeat.log &
+
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
