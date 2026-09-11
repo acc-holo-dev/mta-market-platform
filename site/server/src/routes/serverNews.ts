@@ -1,7 +1,7 @@
 ﻿// PLAN-005 Workstreams H/I: Server news and updates.
 //
 // One News object feeds every surface (server page, global feed, follower
-// dashboard) вЂ” content is never duplicated across surfaces. Updates are a
+// dashboard) — content is never duplicated across surfaces. Updates are a
 // separate entity from news (I-001): a versioned changelog entry.
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
@@ -40,7 +40,7 @@ async function createNewsDiscussionThread(
     authorId,
     serverId: server.id,
     newsId,
-    title: `РћР±СЃСѓР¶РґРµРЅРёРµ РЅРѕРІРѕСЃС‚Рё: ${title}`,
+    title: `Обсуждение новости: ${title}`,
     state: "OPEN",
     replyCount: 0,
   });
@@ -48,7 +48,7 @@ async function createNewsDiscussionThread(
 }
 
 /**
- * Update discussions (I-003) link only to the server вЂ” updates carry no
+ * Update discussions (I-003) link only to the server — updates carry no
  * dedicated thread FK; the title keeps the connection readable.
  */
 async function createUpdateDiscussionThread(
@@ -64,7 +64,7 @@ async function createUpdateDiscussionThread(
     categoryId: category.id,
     authorId,
     serverId: server.id,
-    title: `РћР±СЃСѓР¶РґРµРЅРёРµ РѕР±РЅРѕРІР»РµРЅРёСЏ: ${title}`,
+    title: `Обсуждение обновления: ${title}`,
     state: "OPEN",
     replyCount: 0,
   });
@@ -75,7 +75,7 @@ async function createUpdateDiscussionThread(
 // News (H)
 // ---------------------------------------------------------------------------
 
-// GET /servers/:slug/news вЂ” public list of PUBLISHED news (staff also sees drafts).
+// GET /servers/:slug/news — public list of PUBLISHED news (staff also sees drafts).
 router.get("/:slug/news", standardRateLimit, async (req, res: Response) => {
   try {
     const server = await loadServer(req.params.slug as string);
@@ -123,7 +123,7 @@ router.get("/:slug/news", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// POST /servers/:slug/news вЂ” create a DRAFT news item (owner/admins, H-002).
+// POST /servers/:slug/news — create a DRAFT news item (owner/admins, H-002).
 router.post(
   "/:slug/news",
   authenticate,
@@ -143,11 +143,11 @@ router.post(
       }
       const { title, content, coverUrl } = req.body ?? {};
       if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 120) {
-        res.status(400).json({ error: "Р—Р°РіРѕР»РѕРІРѕРє РЅРѕРІРѕСЃС‚Рё: РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ" });
+        res.status(400).json({ error: "Заголовок новости: от 3 до 120 символов" });
         return;
       }
       if (typeof content !== "string" || content.trim().length < 3 || content.length > 50000) {
-        res.status(400).json({ error: "РўРµРєСЃС‚ РЅРѕРІРѕСЃС‚Рё РѕР±СЏР·Р°С‚РµР»РµРЅ (РґРѕ 50000 СЃРёРјРІРѕР»РѕРІ)" });
+        res.status(400).json({ error: "Текст новости обязателен (до 50000 символов)" });
         return;
       }
       if (coverUrl !== undefined && coverUrl !== null && coverUrl !== "" &&
@@ -171,7 +171,7 @@ router.post(
   }
 );
 
-// PATCH /servers/:slug/news/:id вЂ” edit (owner/admins or the author).
+// PATCH /servers/:slug/news/:id — edit (owner/admins or the author).
 router.patch("/:slug/news/:id", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const server = await loadServer(req.params.slug as string);
@@ -193,14 +193,14 @@ router.patch("/:slug/news/:id", authenticate, standardRateLimit, async (req: Aut
     const update: Record<string, unknown> = {};
     if (title !== undefined) {
       if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 120) {
-        res.status(400).json({ error: "Р—Р°РіРѕР»РѕРІРѕРє РЅРѕРІРѕСЃС‚Рё: РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ" });
+        res.status(400).json({ error: "Заголовок новости: от 3 до 120 символов" });
         return;
       }
       update.title = title.trim();
     }
     if (content !== undefined) {
       if (typeof content !== "string" || content.trim().length < 3 || content.length > 50000) {
-        res.status(400).json({ error: "РўРµРєСЃС‚ РЅРѕРІРѕСЃС‚Рё РѕР±СЏР·Р°С‚РµР»РµРЅ" });
+        res.status(400).json({ error: "Текст новости обязателен" });
         return;
       }
       update.content = content;
@@ -221,7 +221,7 @@ router.patch("/:slug/news/:id", authenticate, standardRateLimit, async (req: Aut
   }
 });
 
-// POST /servers/:slug/news/:id/publish вЂ” DRAFT -> PUBLISHED (H-002), notifies
+// POST /servers/:slug/news/:id/publish — DRAFT -> PUBLISHED (H-002), notifies
 // followers (L-003) and optionally opens the discussion thread (H-004).
 router.post(
   "/:slug/news/:id/publish",
@@ -253,7 +253,7 @@ router.post(
         publishedAt: new Date().toISOString(),
       });
 
-      // Optional discussion thread (H-004) вЂ” linked to the news object at creation.
+      // Optional discussion thread (H-004) — linked to the news object at creation.
       let thread = null;
       if (req.body?.createDiscussion === true) {
         thread = await createNewsDiscussionThread(server, news.title, req.user!.userId, news.id);
@@ -265,7 +265,7 @@ router.post(
         follows.map((f: any) => ({
           recipientId: f.userId as string,
           type: "SERVER_NEWS" as const,
-          title: `РќРѕРІРѕСЃС‚СЊ СЃРµСЂРІРµСЂР° В«${server.name}В»: ${news.title}`,
+          title: `МеУесть серУера «${server.name}»: ${news.title}`,
           body: news.content.slice(0, 200),
           entityType: "serverNews",
           entityId: news.id,
@@ -282,7 +282,7 @@ router.post(
         ip: req.ip,
         requestId: req.id ?? null,
       });
-      // PLAN-006: published news is a high-value activity item вЂ” bust the
+      // PLAN-006: published news is a high-value activity item — bust the
       // snapshot cache so Home reflects it immediately.
       await bustActivityCache();
       res.json({ news: published, thread });
@@ -293,7 +293,7 @@ router.post(
   }
 );
 
-// GET /servers/:slug/news/:id вЂ” public news page payload (H-004).
+// GET /servers/:slug/news/:id — public news page payload (H-004).
 router.get("/:slug/news/:id", standardRateLimit, async (req, res: Response) => {
   try {
     const server = await loadServer(req.params.slug as string);
@@ -337,7 +337,7 @@ router.get("/:slug/news/:id", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// DELETE /servers/:slug/news/:id вЂ” manage role or author (H flow allows
+// DELETE /servers/:slug/news/:id — manage role or author (H flow allows
 // archive/removal; the audit trail records who removed it).
 router.delete(
   "/:slug/news/:id",
@@ -381,7 +381,7 @@ router.delete(
 // Updates (I)
 // ---------------------------------------------------------------------------
 
-// GET /servers/:slug/updates вЂ” public update history (I-002).
+// GET /servers/:slug/updates — public update history (I-002).
 router.get("/:slug/updates", standardRateLimit, async (req, res: Response) => {
   try {
     const server = await loadServer(req.params.slug as string);
@@ -410,7 +410,7 @@ router.get("/:slug/updates", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// POST /servers/:slug/updates вЂ” publish an update immediately (I-002), notify
+// POST /servers/:slug/updates — publish an update immediately (I-002), notify
 // followers (SERVER_UPDATE).
 router.post(
   "/:slug/updates",
@@ -431,15 +431,15 @@ router.post(
       }
       const { version, title, changelog } = req.body ?? {};
       if (typeof version !== "string" || version.trim().length < 1 || version.trim().length > 40) {
-        res.status(400).json({ error: "РЈРєР°Р¶РёС‚Рµ РІРµСЂСЃРёСЋ (РґРѕ 40 СЃРёРјРІРѕР»РѕРІ)" });
+        res.status(400).json({ error: "Укажите версию (до 40 символов)" });
         return;
       }
       if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 120) {
-        res.status(400).json({ error: "Р—Р°РіРѕР»РѕРІРѕРє РѕР±РЅРѕРІР»РµРЅРёСЏ: РѕС‚ 3 РґРѕ 120 СЃРёРјРІРѕР»РѕРІ" });
+        res.status(400).json({ error: "Заголовок обновления: от 3 до 120 символов" });
         return;
       }
       if (typeof changelog !== "string" || changelog.trim().length < 3 || changelog.length > 20000) {
-        res.status(400).json({ error: "РЎРїРёСЃРѕРє РёР·РјРµРЅРµРЅРёР№ РѕР±СЏР·Р°С‚РµР»РµРЅ" });
+        res.status(400).json({ error: "Список изменений обязателен" });
         return;
       }
       const duplicate = await db.orm.public.ServerUpdate.where({
@@ -447,7 +447,7 @@ router.post(
         version: version.trim(),
       }).first();
       if (duplicate) {
-        res.status(409).json({ error: "РћР±РЅРѕРІР»РµРЅРёРµ СЃ С‚Р°РєРѕР№ РІРµСЂСЃРёРµР№ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓРµС‚" });
+        res.status(409).json({ error: "Обновление с такой версией уже существует" });
         return;
       }
       const update = await db.orm.public.ServerUpdate.create({
@@ -469,7 +469,7 @@ router.post(
         follows.map((f: any) => ({
           recipientId: f.userId,
           type: "SERVER_UPDATE" as const,
-          title: `РЎРµСЂРІРµСЂ В«${server.name}В» РІС‹РїСѓСЃС‚РёР» РѕР±РЅРѕРІР»РµРЅРёРµ ${version.trim()}`,
+          title: `Сервер «${server.name}» выпустил обновление ${version.trim()}`,
           body: update.title,
           entityType: "serverUpdate",
           entityId: update.id,
@@ -496,7 +496,7 @@ router.post(
   }
 );
 
-// DELETE /servers/:slug/updates/:id вЂ” manage role.
+// DELETE /servers/:slug/updates/:id — manage role.
 router.delete(
   "/:slug/updates/:id",
   authenticate,

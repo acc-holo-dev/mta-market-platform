@@ -1,5 +1,5 @@
 ﻿// PLAN-005 Workstream H-005: global news feed. One ServerNews object, many
-// surfaces вЂ” the global feed joins the same ServerNews rows the server page
+// surfaces — the global feed joins the same ServerNews rows the server page
 // and follower dashboards read. No content duplication.
 import { Router, Response } from "express";
 import { standardRateLimit } from "../lib/rateLimit.js";
@@ -8,7 +8,7 @@ import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
-// GET /news вЂ” global feed of published server news (+updates mixed view).
+// GET /news — global feed of published server news (+updates mixed view).
 router.get("/", standardRateLimit, async (req, res: Response) => {
   try {
     const page = Math.max(parseInt((req.query.page as string) || "1", 10) || 1, 1);

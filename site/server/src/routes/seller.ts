@@ -27,7 +27,7 @@ router.get("/profile", authenticate, standardRateLimit, async (req: AuthRequest,
 });
 
 // POST /seller/apply - apply for seller onboarding (L-001)
-// PLAN-010 B-002: creator analytics вЂ” honest demand signal for the seller.
+// PLAN-010 B-002: creator analytics — honest demand signal for the seller.
 // Views are aggregate page-opens of the seller's own resources; no viewer
 // identities exist. Conversion = completed purchases / views (30 days).
 const ANALYTICS_DAYS = 30;

@@ -9,7 +9,7 @@ import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
-// GET /profiles/:username вЂ” public identity surface.
+// GET /profiles/:username — public identity surface.
 router.get("/:username", standardRateLimit, async (req, res: Response) => {
   try {
     const username = req.params.username as string;

@@ -14,7 +14,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
   try {
     const q = (req.query.q as string | undefined)?.trim();
     if (!q || q.length < 2) {
-      res.status(400).json({ error: "Р’РІРµРґРёС‚Рµ РјРёРЅРёРјСѓРј 2 СЃРёРјРІРѕР»Р°" });
+      res.status(400).json({ error: "Введите минимум 2 символа" });
       return;
     }
     const pattern = `%${q}%`;
@@ -64,7 +64,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
       .where((t: any) => t.title.ilike(pattern))
       .aggregate((a: any) => ({ total: a.count() }));
 
-    // PLAN-007: articles (PUBLISHED only) вЂ” explicit result type (E-004).
+    // PLAN-007: articles (PUBLISHED only) — explicit result type (E-004).
     const articles = await db.orm.public.Article
       .where((a: any) => a.title.ilike(pattern))
       .where({ status: "PUBLISHED" })

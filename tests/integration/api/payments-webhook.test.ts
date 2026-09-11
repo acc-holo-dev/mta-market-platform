@@ -24,6 +24,7 @@ const app = request(createApp());
 const mockedGetPayment = vi.mocked(getYooKassaPayment);
 
 const BUYER_ID = "550e8400-e29b-41d4-a716-446655440040";
+const OTHER_BUYER_ID = "550e8400-e29b-41d4-a716-446655440041";
 const SELLER_ID = "550e8400-e29b-41d4-a716-446655440041";
 const SUFFIX = Date.now().toString(36);
 
@@ -77,6 +78,7 @@ beforeAll(async () => {
 
   await createTestUser(BUYER_ID, `whb_${SUFFIX}`, "USER", generateAccessToken);
   await createTestUser(SELLER_ID, `whs_${SUFFIX}`, "USER", generateAccessToken);
+  await createTestUser(OTHER_BUYER_ID, `whb2_${SUFFIX}`, "USER", generateAccessToken);
 
   const resource = await db.orm.public.Resource.create({
     sellerId: SELLER_ID,
@@ -139,7 +141,7 @@ beforeAll(async () => {
   purchaseId = purchase.id;
 
   const otherPurchase = await db.orm.public.Purchase.create({
-    buyerId: BUYER_ID,
+    buyerId: OTHER_BUYER_ID,
     resourceId: resource.id,
     versionId: version.id,
     status: "PENDING",

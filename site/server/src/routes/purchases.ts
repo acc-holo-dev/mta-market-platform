@@ -18,7 +18,7 @@ const router: Router = Router();
 // a Purchase line. Free/fully-discounted resources complete immediately via
 // the same atomic path as paid completions (no payment provider call).
 // Discount usage is consumed at completion (C-007), not at checkout.
-// PLAN-012 В§5: honored when the client sends an Idempotency-Key вЂ” a repeated
+// PLAN-012 §5: honored when the client sends an Idempotency-Key — a repeated
 // request replays the stored response instead of creating a second checkout.
 // The checkout is additionally protected by the purchase_buyer_resource_live_uq
 // database invariant (PLAN-012 В§4).

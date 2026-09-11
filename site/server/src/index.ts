@@ -16,7 +16,7 @@ dotenv.config();
 enforceEnvironmentValidation();
 
 // PLAN-004 J-003 (audit): a pending rejection must not kill the process
-// silently mid-request вЂ” log it with context (kept non-fatal: an in-flight
+// silently mid-request — log it with context (kept non-fatal: an in-flight
 // request should still try to finish during the graceful window).
 process.on("unhandledRejection", (reason) => {
   logger.error("unhandled_rejection", { error: reason });

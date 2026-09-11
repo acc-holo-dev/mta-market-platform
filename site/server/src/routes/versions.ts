@@ -82,7 +82,7 @@ router.post(
 
       // PLAN B-001/B-002 pipeline: the artifact must live in OUR storage so it
       // can be validated, signed and later served through authorized downloads.
-      // External URLs cannot be validated or signed вЂ” reject them here.
+      // External URLs cannot be validated or signed — reject them here.
       const artifactBuffer = await loadArtifactBuffer(fileUrl);
       if (!artifactBuffer) {
         res.status(400).json({
@@ -119,7 +119,7 @@ router.post(
 
       try {
         // PLAN B-001: static validation (+ sandbox execution when Docker is
-        // available). A failed validation rolls the version back вЂ” a version
+        // available). A failed validation rolls the version back — a version
         // that cannot be validated must never enter the publication pipeline.
         const validation = await validateArtifact(newVersion.id, artifactBuffer);
         if (!validation.passed) {
@@ -135,7 +135,7 @@ router.post(
         const signed = await signVersionArtifact(newVersion.id, artifactBuffer);
 
         // PLAN-008 D-002 (Update delivery path): a new version of a PUBLISHED
-        // resource re-enters moderation вЂ” PUBLISHED в†’ PENDING_REVIEW as a
+        // resource re-enters moderation — PUBLISHED → PENDING_REVIEW as a
         // system-initiated transition recorded for audit. Moderation approval
         // then releases the version and notifies buyers (В§26) and followers.
         let reenteredReview = false;

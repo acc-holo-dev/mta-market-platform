@@ -30,7 +30,7 @@ router.get("/:slug/reviews", standardRateLimit, async (req, res: Response) => {
       return;
     }
 
-    // PLAN B-004: honest pagination вЂ” COUNT aggregate for the total, SQL
+    // PLAN B-004: honest pagination — COUNT aggregate for the total, SQL
     // limit/offset for the page. Average rating is computed over ALL reviews
     // via an aggregate, not over the current page.
     const reviews = await db.orm.public.Review.where({ resourceId: resource.id })
@@ -104,7 +104,7 @@ router.post(
         return;
       }
 
-      // PLAN K-001: self-purchase reviews are review fraud вЂ” the resource
+      // PLAN K-001: self-purchase reviews are review fraud — the resource
       // seller can never review their own listing.
       if (resource.sellerId === req.user!.userId) {
         res.status(403).json({ error: "You cannot review your own resource" });

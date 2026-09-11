@@ -1,5 +1,5 @@
 ﻿/**
- * PLAN G-005: artifact encryption вЂ” envelope-encrypted per-version DEKs.
+ * PLAN G-005: artifact encryption — envelope-encrypted per-version DEKs.
  *
  * - every resource version gets a unique DEK (32 bytes);
  * - the DEK itself is wrapped (AES-256-GCM) under the server master key

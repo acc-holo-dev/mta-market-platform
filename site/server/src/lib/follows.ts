@@ -1,6 +1,6 @@
 ﻿// PLAN-008 Workstream D: delivery helpers for the Follow Expansion.
 // Events are delivered synchronously inside the mutations (no jobs), with
-// recipient dedup вЂ” a user who is simultaneously a buyer, resource follower
+// recipient dedup — a user who is simultaneously a buyer, resource follower
 // and creator follower receives exactly one notification.
 import { db } from "../prisma/db.js";
 import { createNotifications } from "./notify.js";

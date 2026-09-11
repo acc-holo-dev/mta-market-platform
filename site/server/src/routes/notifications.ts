@@ -8,7 +8,7 @@ import { unreadNotificationCount } from "../lib/notify.js";
 
 const router: Router = Router();
 
-// GET /notifications?filter=unread|all вЂ” the notification center (M-003).
+// GET /notifications?filter=unread|all — the notification center (M-003).
 router.get("/", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const filter = (req.query.filter as string | undefined) || "all";
@@ -51,7 +51,7 @@ router.get("/", authenticate, standardRateLimit, async (req: AuthRequest, res: R
   }
 });
 
-// POST /notifications/:id/read вЂ” mark one as read (M-004).
+// POST /notifications/:id/read — mark one as read (M-004).
 router.post("/:id/read", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const notification = await db.orm.public.Notification.where({
@@ -72,7 +72,7 @@ router.post("/:id/read", authenticate, standardRateLimit, async (req: AuthReques
   }
 });
 
-// POST /notifications/read-all вЂ” mark all as read (M-004).
+// POST /notifications/read-all — mark all as read (M-004).
 router.post("/read-all", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const unread = await db.orm.public.Notification.where({

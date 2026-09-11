@@ -105,7 +105,7 @@ router.post("/", authenticate, standardRateLimit, async (req: AuthRequest, res: 
       }
     }
 
-    // One open dispute per order вЂ” application pre-check, backed by the
+    // One open dispute per order — application pre-check, backed by the
     // dispute_purchase_open_uq / dispute_service_purchase_open_uq partial
     // unique indexes (PLAN-012 В§13): two concurrent OPEN requests for one
     // order cannot both commit.
@@ -137,7 +137,7 @@ router.post("/", authenticate, standardRateLimit, async (req: AuthRequest, res: 
         isUniqueViolation(error, "dispute_service_purchase_open_uq")
       ) {
         // A parallel request (possibly on another instance) opened the
-        // dispute first вЂ” the database rejected the duplicate.
+        // dispute first — the database rejected the duplicate.
         res.status(409).json({ error: "An open dispute already exists for this order" });
         return;
       }
@@ -271,7 +271,7 @@ router.post("/:id/transition", authenticate, requireRole("ADMIN"), validateCuid(
       return;
     }
 
-    // PLAN-012 В§14: the transition is a CAS on the current state вЂ” parallel
+    // PLAN-012 §14: the transition is a CAS on the current state — parallel
     // admin requests cannot both drive the machine. A loser either observes
     // its own transition already applied (idempotent replay) or is rejected.
     const transitioned = await db.orm.public.Dispute
@@ -332,7 +332,7 @@ router.post("/:id/transition", authenticate, requireRole("ADMIN"), validateCuid(
         if (status === "RESOLVED_SELLER" || status === "CLOSED") {
           // Settled without buyer refund: restore the completed purchase.
           // CAS on DISPUTED: a concurrent refund already flipped the row to
-          // REFUNDED вЂ” the restore must not overwrite it.
+          // REFUNDED — the restore must not overwrite it.
           await db.orm.public.Purchase
             .where({ id: purchase.id, status: "DISPUTED" })
             .updateAndCount({ status: "COMPLETED" });

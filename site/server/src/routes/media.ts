@@ -4,13 +4,13 @@
 // isMediaName / resolveLocalMediaPath). Paid artifacts use plain random
 // names, so this route can never serve them.
 //
-// PLAN-004 B-002: production media delivery strategy вЂ”
+// PLAN-004 B-002: production media delivery strategy —
 // - local storage: bytes are streamed from UPLOAD_DIR;
 // - S3/R2 storage: if MEDIA_PUBLIC_BASE_URL is configured, the route issues a
 //   302 redirect to the controlled public/CDN media URL (same `/media/<name>`
 //   path, e.g. a bucket/CDN host mirroring the `media/` prefix); otherwise
 //   the object is fetched from the private bucket and streamed by the
-//   backend. Arbitrary external URLs remain forbidden вЂ” the name policy
+//   backend. Arbitrary external URLs remain forbidden — the name policy
 //   applies in every mode, and paid artifacts (plain random names) are
 //   unreachable through this route.
 import { Router, Response } from "express";
@@ -43,7 +43,7 @@ router.get("/:name", standardRateLimit, async (req, res: Response) => {
   if (S3_ENABLED) {
     if (MEDIA_PUBLIC_BASE_URL) {
       // 302 to the CDN/public object URL. Images are immutable
-      // (content-addressed by random name) вЂ” cache the redirect too.
+      // (content-addressed by random name) — cache the redirect too.
       res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       res.redirect(302, `${MEDIA_PUBLIC_BASE_URL}/media/${name}`);
       return;

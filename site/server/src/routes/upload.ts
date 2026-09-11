@@ -18,7 +18,7 @@ import { reqLog } from "../middleware/requestId.js";
 
 const router: Router = Router();
 
-// PLAN-003 A-005: media uploads get their own multer instance вЂ” strict size
+// PLAN-003 A-005: media uploads get their own multer instance — strict size
 // limit and image-only storage naming (opaque media-<hex><ext> names, so a
 // media upload can never shadow an artifact file).
 const mediaUpload = multer({
@@ -34,7 +34,7 @@ const mediaUpload = multer({
 });
 
 /**
- * PLAN-004 B-001: store validated media bytes under the unified contract вЂ”
+ * PLAN-004 B-001: store validated media bytes under the unified contract —
  * opaque `media-<hex>` name, object under `media/` in S3 mode, local file
  * renamed in place in local mode. Returns the bare media filename; callers
  * respond with the controlled public URL `/media/<name>`.
@@ -60,7 +60,7 @@ async function storeMediaObject(
 }
 
 /**
- * POST /upload/media вЂ” upload a cover/screenshot image (authenticated).
+ * POST /upload/media — upload a cover/screenshot image (authenticated).
  * PLAN-003 A-002/A-005: magic-byte sniffed validation, opaque naming,
  * 5 MB limit. Returns the public URL used by the resource media endpoints.
  */
@@ -146,7 +146,7 @@ router.post(
           mimeType: req.file.mimetype,
           folder: "resources",
         });
-        // TASK A-009: store the OBJECT KEY, never a public URL вЂ” paid
+        // TASK A-009: store the OBJECT KEY, never a public URL — paid
         // artifacts are downloaded exclusively via short-lived signed URLs.
         fileUrl = fileKey;
 
@@ -181,7 +181,7 @@ router.post(
 );
 
 // POST /upload/avatar - Upload user avatar (authenticated)
-// PLAN-004 B-001: unified media storage contract вЂ” same magic-byte validated
+// PLAN-004 B-001: unified media storage contract — same magic-byte validated
 // pipeline as /upload/media (opaque media-<hex> name, /media/<name> delivery
 // URL in every storage mode). The avatar itself is still not persisted here.
 router.post(

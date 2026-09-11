@@ -1,7 +1,7 @@
 ﻿// PLAN-005 Workstream F (+G surfaces): global community forum.
 //
 // Category -> Thread -> Posts. Threads may carry an explicit Server link
-// (G-004: server discussion) or a ServerNews link (news discussion) вЂ” links
+// (G-004: server discussion) or a ServerNews link (news discussion) — links
 // are created deliberately, never automatically (MODEL rule).
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
@@ -65,7 +65,7 @@ function authorOf(map: Map<string, PublicAuthor>, userId: string) {
 // Hub + categories (F-001/F-002)
 // ---------------------------------------------------------------------------
 
-// GET /community вЂ” hub payload: categories, latest, active, pinned, activity.
+// GET /community — hub payload: categories, latest, active, pinned, activity.
 router.get("/", standardRateLimit, async (req, res: Response) => {
   try {
     const categories = await db.orm.public.ForumCategory.where({}).orderBy((c: any) => c.position.asc()).all();
@@ -122,7 +122,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// GET /community/categories вЂ” category list with thread counts.
+// GET /community/categories — category list with thread counts.
 router.get("/categories", standardRateLimit, async (_req, res: Response) => {
   try {
     const categories = await db.orm.public.ForumCategory.where({}).orderBy((c: any) => c.position.asc()).all();
@@ -141,7 +141,7 @@ router.get("/categories", standardRateLimit, async (_req, res: Response) => {
   }
 });
 
-// GET /community/categories/:slug/threads вЂ” category listing.
+// GET /community/categories/:slug/threads — category listing.
 router.get("/categories/:slug/threads", standardRateLimit, async (req, res: Response) => {
   try {
     const category = await db.orm.public.ForumCategory.where({ slug: req.params.slug as string }).first();
@@ -193,7 +193,7 @@ router.get("/categories/:slug/threads", standardRateLimit, async (req, res: Resp
   }
 });
 
-// POST /community/categories/:slug/threads вЂ” create thread + first post (F-004).
+// POST /community/categories/:slug/threads — create thread + first post (F-004).
 router.post(
   "/categories/:slug/threads",
   authenticate,
@@ -208,15 +208,15 @@ router.post(
       }
       const { title, content } = req.body ?? {};
       if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 150) {
-        res.status(400).json({ error: "Р—Р°РіРѕР»РѕРІРѕРє С‚РµРјС‹ РѕР±СЏР·Р°С‚РµР»РµРЅ (3-150 СЃРёРјРІРѕР»РѕРІ)" });
+        res.status(400).json({ error: "Заголовок темы обязателен (3-150 символов)" });
         return;
       }
       if (typeof content !== "string" || content.trim().length < 3 || content.length > 20000) {
-        res.status(400).json({ error: "РўРµРєСЃС‚ РїРµСЂРІРѕРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ РѕР±СЏР·Р°С‚РµР»РµРЅ" });
+        res.status(400).json({ error: "Текст первого сообщения обязателен" });
         return;
       }
       // G-004: an explicit server link is allowed only for public servers and
-      // only by that server's own staff вЂ” the link is a deliberate act.
+      // only by that server's own staff — the link is a deliberate act.
       let linkedServerId: string | null = null;
       if (req.body?.serverId) {
         const server = await db.orm.public.Server.where({ id: req.body.serverId as string }).first();
@@ -226,7 +226,7 @@ router.post(
         }
         const role = await loadStaffRole(server, req.user!.userId);
         if (!role) {
-          res.status(403).json({ error: "РўРѕР»СЊРєРѕ РїРµСЂСЃРѕРЅР°Р» СЃРµСЂРІРµСЂР° РјРѕР¶РµС‚ РїСЂРёРІСЏР·Р°С‚СЊ С‚РµРјСѓ Рє СЃРµСЂРІРµСЂСѓ" });
+          res.status(403).json({ error: "Только персонал сервера может привязать тему к серверу" });
           return;
         }
         linkedServerId = server.id;
@@ -260,7 +260,7 @@ router.post(
 // Thread + posts (F-003/F-004/F-005)
 // ---------------------------------------------------------------------------
 
-// GET /community/threads/:id вЂ” thread + posts; views increment on real reads.
+// GET /community/threads/:id — thread + posts; views increment on real reads.
 router.get("/threads/:id", standardRateLimit, async (req, res: Response) => {
   try {
     const thread = await db.orm.public.ForumThread.where({ id: req.params.id as string }).first();
@@ -301,13 +301,13 @@ router.get("/threads/:id", standardRateLimit, async (req, res: Response) => {
       }
     }
 
-    // PLAN-009 B-002: aggregate follower count only вЂ” the list is never
+    // PLAN-009 B-002: aggregate follower count only — the list is never
     // exposed (DAILY-EXPERIENCE В§42).
     const threadFollowersAgg = await db.orm.public.ForumThreadFollow
       .where({ threadId: thread.id })
       .aggregate((a: any) => ({ total: a.count() }));
 
-    // Real view counting (F-003 "views if real") вЂ” fire and forget.
+    // Real view counting (F-003 "views if real") — fire and forget.
     db.orm.public.ForumThread
       .where({ id: thread.id })
       .update({ views: (thread.views ?? 0) + 1 })
@@ -369,7 +369,7 @@ router.get("/threads/:id", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// POST /community/threads/:id/posts вЂ” reply (F-004). Locked/archived threads
+// POST /community/threads/:id/posts — reply (F-004). Locked/archived threads
 // reject replies. Thread author + participants receive FORUM_REPLY (M-002).
 router.post(
   "/threads/:id/posts",
@@ -384,12 +384,12 @@ router.post(
         return;
       }
       if (thread.state !== "OPEN") {
-        res.status(409).json({ error: "РўРµРјР° Р·Р°РєСЂС‹С‚Р° РґР»СЏ РѕС‚РІРµС‚РѕРІ" });
+        res.status(409).json({ error: "Тема закрыта для ответов" });
         return;
       }
       const { content } = req.body ?? {};
       if (typeof content !== "string" || content.trim().length < 1 || content.length > 20000) {
-        res.status(400).json({ error: "РўРµРєСЃС‚ РѕС‚РІРµС‚Р° РѕР±СЏР·Р°С‚РµР»РµРЅ" });
+        res.status(400).json({ error: "Текст ответа обязателен" });
         return;
       }
       const lastPosts = await db.orm.public.ForumPost
@@ -430,7 +430,7 @@ router.post(
       ].map((recipientId) => ({
         recipientId,
         type: "FORUM_REPLY" as const,
-        title: `РќРѕРІС‹Р№ РѕС‚РІРµС‚ РІ С‚РµРјРµ В«${thread.title}В»`,
+        title: `МеУъй етУет У теКе «${thread.title}»`,
         body: content.slice(0, 120),
         entityType: "forumThread",
         entityId: thread.id,
@@ -446,7 +446,7 @@ router.post(
   }
 );
 
-// PATCH /community/posts/:id вЂ” author edits own post.
+// PATCH /community/posts/:id — author edits own post.
 router.patch("/posts/:id", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const post = await db.orm.public.ForumPost.where({ id: req.params.id as string }).first();
@@ -455,12 +455,12 @@ router.patch("/posts/:id", authenticate, standardRateLimit, async (req: AuthRequ
       return;
     }
     if (post.authorId !== req.user!.userId) {
-      res.status(403).json({ error: "РњРѕР¶РЅРѕ СЂРµРґР°РєС‚РёСЂРѕРІР°С‚СЊ С‚РѕР»СЊРєРѕ СЃРІРѕРё СЃРѕРѕР±С‰РµРЅРёСЏ" });
+      res.status(403).json({ error: "Можно редактировать только свои сообщения" });
       return;
     }
     const { content } = req.body ?? {};
     if (typeof content !== "string" || content.trim().length < 1 || content.length > 20000) {
-      res.status(400).json({ error: "РўРµРєСЃС‚ РѕС‚РІРµС‚Р° РѕР±СЏР·Р°С‚РµР»РµРЅ" });
+      res.status(400).json({ error: "Текст ответа обязателен" });
       return;
     }
     const updated = await db.orm.public.ForumPost.where({ id: post.id }).update({
@@ -474,7 +474,7 @@ router.patch("/posts/:id", authenticate, standardRateLimit, async (req: AuthRequ
   }
 });
 
-// DELETE /community/posts/:id вЂ” author or moderation; soft delete keeps
+// DELETE /community/posts/:id — author or moderation; soft delete keeps
 // moderation recoverable and keeps thread counters honest (replyCount--).
 router.delete("/posts/:id", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
@@ -511,7 +511,7 @@ router.delete("/posts/:id", authenticate, standardRateLimit, async (req: AuthReq
   }
 });
 
-// PUT /community/posts/:id/reactions/:kind вЂ” toggle own reaction (F-004).
+// PUT /community/posts/:id/reactions/:kind — toggle own reaction (F-004).
 router.put(
   "/posts/:id/reactions/:kind",
   authenticate,
@@ -547,7 +547,7 @@ router.put(
   }
 );
 
-// POST /community/threads/:id/state вЂ” moderation only (F-005), audited.
+// POST /community/threads/:id/state — moderation only (F-005), audited.
 router.post(
   "/threads/:id/state",
   authenticate,
@@ -583,7 +583,7 @@ router.post(
           {
             recipientId: thread.authorId,
             type: "MODERATION",
-            title: `РўРµРјР° В«${thread.title}В» РїРµСЂРµРІРµРґРµРЅР° РІ СЃРѕСЃС‚РѕСЏРЅРёРµ ${state}`,
+            title: `Тема «${thread.title}» переведена в состояние ${state}`,
             entityType: "forumThread",
             entityId: thread.id,
           },
@@ -608,10 +608,10 @@ router.post(
 );
 
 // ---------------------------------------------------------------------------
-// Server community surfaces (G) вЂ” privacy-gated here, not in the UI (S)
+// Server community surfaces (G) — privacy-gated here, not in the UI (S)
 // ---------------------------------------------------------------------------
 
-// GET /community/servers/:slug/threads вЂ” server-linked discussions.
+// GET /community/servers/:slug/threads — server-linked discussions.
 router.get("/servers/:slug/threads", standardRateLimit, async (req, res: Response) => {
   try {
     const server = await db.orm.public.Server.where({ slug: req.params.slug as string }).first();
@@ -654,7 +654,7 @@ router.get("/servers/:slug/threads", standardRateLimit, async (req, res: Respons
   }
 });
 
-// GET /community/servers/:slug/members вЂ” aggregate always; list only opt-in.
+// GET /community/servers/:slug/members — aggregate always; list only opt-in.
 router.get("/servers/:slug/members", standardRateLimit, async (req, res: Response) => {
   try {
     const server = await db.orm.public.Server.where({ slug: req.params.slug as string }).first();
@@ -762,7 +762,7 @@ router.post(
         .where({ userId: req.user!.userId, threadId: thread.id })
         .first();
       if (existing) {
-        res.status(409).json({ error: "Р’С‹ СѓР¶Рµ СЃР»РµРґРёС‚Рµ Р·Р° СЌС‚РѕР№ С‚РµРјРѕР№" });
+        res.status(409).json({ error: "Вы уже следите за этой темой" });
         return;
       }
       await db.orm.public.ForumThreadFollow.create({
@@ -790,7 +790,7 @@ router.delete(
         .where({ userId: req.user!.userId, threadId: req.params.id as string })
         .first();
       if (!existing) {
-        res.status(404).json({ error: "Р’С‹ РЅРµ СЃР»РµРґРёС‚Рµ Р·Р° СЌС‚РѕР№ С‚РµРјРѕР№" });
+        res.status(404).json({ error: "Вы не следите за этой темой" });
         return;
       }
       await db.orm.public.ForumThreadFollow.where({ id: existing.id }).delete();

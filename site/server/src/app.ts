@@ -161,7 +161,7 @@ export function createApp(): Express {
   app.use("/payments", paymentsRoutes);
   app.use("/services", servicesRoutes);
   app.use("/seller", sellerRoutes);
-  // PLAN-003 E-001: public seller storefront (С‡РёС‚Р°РµРјС‹Р№ username РІ URL).
+  // PLAN-003 E-001: public seller storefront (читаеКъй username У URL).
   app.use("/sellers", sellersRoutes);
   app.use("/disputes", disputesRoutes);
   app.use("/admin", adminRoutes);
@@ -189,7 +189,7 @@ export function createApp(): Express {
   // /me/follows/...); a single root mount avoids double prefixes.
   app.use("/", followsRoutes);
 
-  // PLAN-004 J-003 (audit): global error handler вЂ” in Express 4 a rejected
+  // PLAN-004 J-003 (audit): global error handler — in Express 4 a rejected
   // async handler would otherwise become an unhandledRejection and crash the
   // process. Must be registered after all routes (4 args make it an error
   // middleware).

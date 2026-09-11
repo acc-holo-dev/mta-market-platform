@@ -172,7 +172,7 @@ export function withIdempotency<T extends IdempotencyRequest>(
         .catch(() => undefined);
       // Handler errors keep flowing to the route's own error handling when
       // it exists; when the error escaped the handler (headers not sent),
-      // the wrapper answers 500 itself вЂ” express 4 leaves async rejections
+      // the wrapper answers 500 itself — express 4 leaves async rejections
       // unanswered, which would hang the client.
       if (isIdempotencyError(error)) {
         if (!res.headersSent) {
@@ -208,7 +208,7 @@ export function withIdempotency<T extends IdempotencyRequest>(
         });
     } else {
       // The handler answered without res.json (e.g. ended the response
-      // directly) вЂ” the record cannot be replayed; drop it so a retry
+      // directly) — the record cannot be replayed; drop it so a retry
       // re-executes instead of hanging on PROCESSING.
       await deleteRecord(recordId);
     }

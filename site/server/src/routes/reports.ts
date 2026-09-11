@@ -10,7 +10,7 @@ const router: Router = Router();
 
 const TARGET_TYPES = ["THREAD", "POST", "REVIEW", "NEWS", "SERVER", "PROFILE", "ARTICLE"] as const;
 
-// POST /reports вЂ” file a report against any reportable surface.
+// POST /reports — file a report against any reportable surface.
 router.post(
   "/",
   authenticate,
@@ -28,7 +28,7 @@ router.post(
         return;
       }
       if (typeof reason !== "string" || reason.trim().length < 3 || reason.length > 2000) {
-        res.status(400).json({ error: "РћРїРёС€РёС‚Рµ РїСЂРёС‡РёРЅСѓ Р¶Р°Р»РѕР±С‹ (3-2000 СЃРёРјРІРѕР»РѕРІ)" });
+        res.status(400).json({ error: "Опишите причину жалобы (3-2000 символов)" });
         return;
       }
 
@@ -53,7 +53,7 @@ router.post(
   }
 );
 
-// GET /reports/my вЂ” the reporter's own submissions.
+// GET /reports/my — the reporter's own submissions.
 router.get("/my", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const reports = await db.orm.public.Report.where({ reporterId: req.user!.userId })

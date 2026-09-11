@@ -6,7 +6,7 @@
 // INV-013: the sum of refunds on a payment can never exceed the captured
 // amount. The ceiling check and the PENDING refund insert run inside ONE
 // database transaction guarded by a per-payment advisory lock
-// (pg_advisory_xact_lock) вЂ” two instances creating refunds for the same
+// (pg_advisory_xact_lock) — two instances creating refunds for the same
 // payment serialize, so the ceiling holds whatever the topology.
 //
 // K-004 policy (documented): the license is revoked only when a refund is
@@ -22,7 +22,7 @@
 //
 // PLAN-012 В§12: the confirmed-refund business effects (payment CAS, purchase
 // state, license revocation, seller cache, ledger posting, audit) run in ONE
-// database transaction вЂ” "balance updated without ledger" states are no
+// database transaction — "balance updated without ledger" states are no
 // longer reachable.
 import crypto from "crypto";
 import { db } from "../prisma/db.js";
@@ -242,7 +242,7 @@ export async function applyRefundEffects(input: {
 
   await db.transaction(async (tx: DbOrTx) => {
     // Idempotency marker: the balanced ledger transaction `refund:<id>` is
-    // written in the same transaction as every other effect вЂ” its existence
+    // written in the same transaction as every other effect — its existence
     // proves the effects were already committed (unique
     // transactionId+account+direction makes the second posting impossible).
     const posted = await tx.orm.public.LedgerEntry

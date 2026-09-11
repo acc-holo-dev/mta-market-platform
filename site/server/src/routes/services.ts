@@ -1,6 +1,6 @@
 ﻿// Services API routes (PLAN C-009/C-010/C-011).
 // Lifecycle: DRAFT -> PENDING_REVIEW -> PUBLISHED (seller cannot publish own
-// service вЂ” same policy as resource moderation, A-008) and order lifecycle
+// service — same policy as resource moderation, A-008) and order lifecycle
 // PENDING -> IN_PROGRESS -> DELIVERED -> ACCEPTED -> CLOSED (alt: CANCELLED,
 // DISPUTED). Service orders never create DRM licenses (INV-015).
 import { Router, Response } from "express";

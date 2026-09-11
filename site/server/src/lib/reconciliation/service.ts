@@ -7,11 +7,11 @@
  * PLAN B-003 rules implemented here:
  * - never auto-corrects money: only creates alerts (ReconciliationReport +
  *   ReconciliationMismatch are the persistent, alertable records);
- * - every step emits structured logs (B-006) with provider/report/counts вЂ”
+ * - every step emits structured logs (B-006) with provider/report/counts —
  *   these log lines are the metrics source until O-001 lands;
  * - provider source availability is explicit: when the provider side cannot
  *   be fetched (provider disabled / refund & payout provider APIs not yet
- *   implemented вЂ” see Phase E/F), the comparison does NOT invent
+ *   implemented — see Phase E/F), the comparison does NOT invent
  *   MISSING_PROVIDER mismatches. The report honestly shows
  *   internalCount with providerCount=0 instead.
  */
@@ -156,7 +156,7 @@ export async function reconcile(input: ReconciliationInput): Promise<Reconciliat
       error,
     });
 
-    // Update report as failed вЂ” persistent alertable record.
+    // Update report as failed — persistent alertable record.
     await db.orm.public.ReconciliationReport.where({ id: report.id }).update({
       status: 'FAILED',
       completedAt: new Date().toISOString(),
@@ -291,7 +291,7 @@ async function fetchProviderTransactions(
         const message = error instanceof Error ? error.message : String(error);
         if (/\(HTTP 404\)/.test(message)) {
           // Definitive: the provider does not know this payment. Deliberately
-          // NOT recorded here вЂ” compareTransactions() flags it as
+          // NOT recorded here — compareTransactions() flags it as
           // MISSING_PROVIDER when the provider side is otherwise available,
           // which keeps mismatch accounting single-sourced.
           logger.warn("reconciliation_provider_payment_not_found", {
@@ -323,7 +323,7 @@ function toProviderTransaction(remote: YooKassaPayment): ProviderTransaction {
   const amountKopecks = Math.round(parseFloat(remote.amount.value) * 100);
   // Provider status -> internal PaymentStatus vocabulary.
   // PLAN-004 D-004 (audit GAP-9): must match paymentStateMachine's
-  // fromYooKassaStatus exactly вЂ” 'canceled' is CANCELED there, so mapping it
+  // fromYooKassaStatus exactly — 'canceled' is CANCELED there, so mapping it
   // to FAILED here produced false STATUS_MISMATCH alerts on every report.
   const statusMap: Record<string, string> = {
     succeeded: 'SUCCEEDED',

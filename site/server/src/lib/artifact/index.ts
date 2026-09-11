@@ -28,7 +28,7 @@ export {
   serializeManifest
 } from './manifest.js';
 
-// Export signing service (main API) вЂ” PLAN B-002: single signing
+// Export signing service (main API) — PLAN B-002: single signing
 // implementation shared by the web pipeline (and later the CLI).
 export {
   signVersionArtifact,

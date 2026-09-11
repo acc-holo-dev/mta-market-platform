@@ -22,7 +22,7 @@ export function isAdmin(actor: Pick<Actor, "role">): boolean {
 /**
  * L-001: seller publish/create capability. A user can create and submit
  * resources/services only with an APPROVED seller profile (moderators and
- * admins are always allowed вЂ” they moderate the marketplace).
+ * admins are always allowed — they moderate the marketplace).
  */
 export async function canCreateListings(actor: Actor): Promise<boolean> {
   if (isAdminOrModerator(actor)) return true;

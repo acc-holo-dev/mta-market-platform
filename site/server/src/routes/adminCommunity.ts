@@ -1,5 +1,5 @@
 ﻿// PLAN-005 Workstreams Q/R (+AA): admin moderation for the Server/Community
-// domains. Every critical action is audited and вЂ” where a user is affected вЂ”
+// domains. Every critical action is audited and — where a user is affected —
 // produces a MODERATION notification. Mounted under /admin alongside the
 // existing resource moderation router.
 import { Router, Response } from "express";
@@ -24,7 +24,7 @@ function adminOnly(req: AuthRequest, res: Response, next: () => void) {
 // Servers (Q): inspect, approve/reject verification, suspend
 // ---------------------------------------------------------------------------
 
-// GET /admin/servers вЂ” full server list for inspection (private fields shown
+// GET /admin/servers — full server list for inspection (private fields shown
 // to admins only inside this endpoint).
 router.get("/servers", authenticate, adminOnly, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
@@ -74,7 +74,7 @@ router.get("/servers", authenticate, adminOnly, standardRateLimit, async (req: A
   }
 });
 
-// GET /admin/servers/:id вЂ” inspect a single server with private data.
+// GET /admin/servers/:id — inspect a single server with private data.
 router.get("/servers/:id", authenticate, adminOnly, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const server = await db.orm.public.Server.where({ id: req.params.id as string }).first();
@@ -108,7 +108,7 @@ router.get("/servers/:id", authenticate, adminOnly, standardRateLimit, async (re
   }
 });
 
-// PATCH /admin/servers/:id/status вЂ” lifecycle moderation (suspend/restore).
+// PATCH /admin/servers/:id/status — lifecycle moderation (suspend/restore).
 router.patch(
   "/servers/:id/status",
   authenticate,
@@ -145,7 +145,7 @@ router.patch(
           {
             recipientId: server.ownerId,
             type: "MODERATION",
-            title: `РЎРµСЂРІРµСЂ В«${server.name}В» РїСЂРёРѕСЃС‚Р°РЅРѕРІР»РµРЅ РјРѕРґРµСЂР°С†РёРµР№`,
+            title: `Сервер «${server.name}» приостановлен модерацией`,
             body: reason ? String(reason).slice(0, 300) : null,
             entityType: "server",
             entityId: server.id,
@@ -156,7 +156,7 @@ router.patch(
           {
             recipientId: server.ownerId,
             type: "MODERATION",
-            title: `РЎРµСЂРІРµСЂ В«${server.name}В» РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅ`,
+            title: `Сервер «${server.name}» восстановлен`,
             entityType: "server",
             entityId: server.id,
           },
@@ -170,7 +170,7 @@ router.patch(
   }
 );
 
-// PATCH /admin/servers/:id/verification вЂ” approve/reject (Q) with a reason.
+// PATCH /admin/servers/:id/verification — approve/reject (Q) with a reason.
 router.patch(
   "/servers/:id/verification",
   authenticate,
@@ -213,8 +213,8 @@ router.patch(
           type: "MODERATION",
           title:
             verification === "VERIFIED"
-              ? `РЎРµСЂРІРµСЂ В«${server.name}В» РІРµСЂРёС„РёС†РёСЂРѕРІР°РЅ`
-              : `Р’РµСЂРёС„РёРєР°С†РёСЏ СЃРµСЂРІРµСЂР° В«${server.name}В» РѕС‚РєР»РѕРЅРµРЅР°`,
+              ? `Сервер «${server.name}» верифицирован`
+              : `Верификация сервера «${server.name}» отклонена`,
           body: typeof note === "string" ? note.slice(0, 200) : null,
           entityType: "server",
           entityId: server.id,
@@ -232,7 +232,7 @@ router.patch(
 // Reports queue (R)
 // ---------------------------------------------------------------------------
 
-// GET /admin/reports вЂ” moderation queue.
+// GET /admin/reports — moderation queue.
 router.get("/reports", authenticate, adminOnly, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const status = (req.query.status as string | undefined) || "OPEN";
@@ -262,7 +262,7 @@ router.get("/reports", authenticate, adminOnly, standardRateLimit, async (req: A
   }
 });
 
-// POST /admin/reports/:id/resolve вЂ” human decision; no automatic bans (R).
+// POST /admin/reports/:id/resolve — human decision; no automatic bans (R).
 router.post(
   "/reports/:id/resolve",
   authenticate,
@@ -301,7 +301,7 @@ router.post(
         {
           recipientId: report.reporterId,
           type: "MODERATION",
-          title: `Р’Р°С€Р° Р¶Р°Р»РѕР±Р° (${report.targetType.toLowerCase()}) РѕР±СЂР°Р±РѕС‚Р°РЅР°: ${status === "RESOLVED" ? "РјРµСЂС‹ РїСЂРёРЅСЏС‚С‹" : "РЅР°СЂСѓС€РµРЅРёРµ РЅРµ РїРѕРґС‚РІРµСЂР¶РґРµРЅРѕ"}`,
+          title: `Ваша жалоба (${report.targetType.toLowerCase()}) обработана: ${status === "RESOLVED" ? "меры приняты" : "нарушение не подтверждено"}`,
           entityType: "report",
           entityId: report.id,
         },
@@ -318,7 +318,7 @@ router.post(
 // Content moderation: news, reviews, forum
 // ---------------------------------------------------------------------------
 
-// PATCH /admin/server-news/:id вЂ” unpublish or restore a news item.
+// PATCH /admin/server-news/:id — unpublish or restore a news item.
 router.patch(
   "/server-news/:id",
   authenticate,
@@ -355,7 +355,7 @@ router.patch(
           {
             recipientId: news.authorId,
             type: "MODERATION",
-            title: `РќРѕРІРѕСЃС‚СЊ В«${news.title}В» СЃРЅСЏС‚Р° СЃ РїСѓР±Р»РёРєР°С†РёРё РјРѕРґРµСЂР°С‚РѕСЂРѕРј`,
+            title: `Новость «${news.title}» снята с публикации модератором`,
             entityType: "serverNews",
             entityId: news.id,
           },
@@ -369,7 +369,7 @@ router.patch(
   }
 );
 
-// PATCH /admin/server-reviews/:id вЂ” hide/restore a review (moderation).
+// PATCH /admin/server-reviews/:id — hide/restore a review (moderation).
 router.patch(
   "/server-reviews/:id",
   authenticate,
@@ -405,7 +405,7 @@ router.patch(
           {
             recipientId: review.userId,
             type: "MODERATION",
-            title: "Р’Р°С€ РѕС‚Р·С‹РІ СЃРєСЂС‹С‚ РјРѕРґРµСЂР°С†РёРµР№",
+            title: "Ваш отзыв скрыт модерацией",
             body: typeof reason === "string" ? reason.slice(0, 200) : null,
             entityType: "serverReview",
             entityId: review.id,
@@ -420,7 +420,7 @@ router.patch(
   }
 );
 
-// PATCH /admin/forum-threads/:id вЂ” lock/pin/restore (Q).
+// PATCH /admin/forum-threads/:id — lock/pin/restore (Q).
 router.patch(
   "/forum-threads/:id",
   authenticate,

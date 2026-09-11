@@ -1,5 +1,5 @@
 ﻿// PLAN-005 A-004/Q/AA: server-side authorization for the Server domain.
-// Frontend UI hiding is never trusted вЂ” every ownership/management rule is
+// Frontend UI hiding is never trusted — every ownership/management rule is
 // enforced here and called from every mutating server route.
 import { db } from "../prisma/db.js";
 

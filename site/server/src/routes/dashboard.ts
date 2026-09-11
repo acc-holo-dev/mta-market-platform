@@ -1,9 +1,9 @@
 ﻿// PLAN-005 Workstream N: dashboard community data. Uses the existing
-// dashboard (no new dashboard) вЂ” this endpoint feeds the new widgets:
+// dashboard (no new dashboard) — this endpoint feeds the new widgets:
 // owned servers, followed servers, forum activity, unread notifications.
-// PLAN-006 Workstream I: GET /dashboard/now вЂ” "РЎРµР№С‡Р°СЃ / Р—Р° РЅРѕС‡СЊ" summary
+// PLAN-006 Workstream I: GET /dashboard/now — "Сейчас / За ночь" summary
 // measured since the user's previous dashboard visit (User.dashboardSeenAt).
-// Only real, personal facts (existing relations) вЂ” no algorithmic
+// Only real, personal facts (existing relations) — no algorithmic
 // personalization (DAILY-EXPERIENCE В§6/В§15).
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
@@ -14,11 +14,11 @@ import { unreadNotificationCount } from "../lib/notify.js";
 
 const router: Router = Router();
 
-// First visit baseline: the last 24 hours ("Р·Р° РЅРѕС‡СЊ" semantics). Later
+// First visit baseline: the last 24 hours ("за ночь" semantics). Later
 // visits measure from the previous dashboardSeenAt.
 const FIRST_VISIT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-// GET /dashboard/now вЂ” summary since last visit. Reads the baseline, computes
+// GET /dashboard/now — summary since last visit. Reads the baseline, computes
 // counts from existing personal relations, then advances the baseline.
 router.get("/now", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
@@ -31,7 +31,7 @@ router.get("/now", authenticate, standardRateLimit, async (req: AuthRequest, res
       new Date(Date.now() - FIRST_VISIT_WINDOW_MS).toISOString();
     const sinceMs = Date.parse(since);
 
-    // Followed servers (not owned вЂ” the owner authored their updates).
+    // Followed servers (not owned — the owner authored their updates).
     const follows = await db.orm.public.ServerFollow
       .where({ userId })
       .limit(50)
@@ -173,7 +173,7 @@ router.get("/now", authenticate, standardRateLimit, async (req: AuthRequest, res
     const followedResourceById = new Map(followedResources.map((r: any) => [r.id, r]));
 
     // PLAN-009 D-002: new replies in threads the user follows (since last
-    // visit) вЂ” the Follow step of the Community Loop reaches the summary.
+    // visit) — the Follow step of the Community Loop reaches the summary.
     const threadFollows = await db.orm.public.ForumThreadFollow
       .where({ userId })
       .limit(100)
@@ -284,7 +284,7 @@ router.get("/now", authenticate, standardRateLimit, async (req: AuthRequest, res
   }
 });
 
-// GET /dashboard/community вЂ” widget payload for My MTA.
+// GET /dashboard/community — widget payload for My MTA.
 router.get("/community", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     // My servers (owner role) with live state.

@@ -43,7 +43,7 @@ export async function issueReviewToken(
 
 /**
  * Resolves a claimed review token to its row. Enforces server binding,
- * expiry (re-checked here вЂ” the sweep is a background nicety) and one-time
+ * expiry (re-checked here — the sweep is a background nicety) and one-time
  * consumption (replay protection) at the claim site.
  */
 export type ReviewTokenLookup =
@@ -53,7 +53,7 @@ export type ReviewTokenLookup =
 
 /**
  * Resolves a claimed review token. Enforces server binding, expiry
- * (re-checked here вЂ” the sweep is a background nicety) and one-time
+ * (re-checked here — the sweep is a background nicety) and one-time
  * consumption state so the claim site can answer 409 for replays vs 400
  * for unknown/wrong-server tokens.
  */

@@ -2,7 +2,7 @@
  * TASK-022 / PLAN B-001: Upload Sandbox Service
  *
  * Main service for artifact validation and sandbox execution.
- * Rewritten against the contract ORM (db.orm.public.*) вЂ” the original
+ * Rewritten against the contract ORM (db.orm.public.*) — the original
  * targeted a classic Prisma Client API that does not exist in this project.
  */
 

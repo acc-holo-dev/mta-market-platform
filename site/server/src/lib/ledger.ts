@@ -10,18 +10,18 @@
 // every posted transaction must balance: sum(debits) == sum(credits).
 //
 // F-005: free orders create commerce/audit records but never money movement
-// вЂ” zero-amount settlements post nothing.
+// — zero-amount settlements post nothing.
 //
 // PLAN-012 В§8/В§9/В§10 (transactional correctness):
 //   - the cached SellerBalance is mutated ATOMICALLY in SQL
-//     ("availableAmount = availableAmount + delta" via the raw lane) вЂ” the
+//     ("availableAmount = availableAmount + delta" via the raw lane) — the
 //     read-then-write race is gone;
 //   - the legacy FinancialTransaction + balance delta + double-entry ledger
 //     posting for one settlement happen in ONE database transaction;
 //   - the deterministic settlement transaction id
 //     (`settle:purchase:<id>` / `settle:service_purchase:<id>`) is enforced
 //     by the ledger_entry_tx_account_direction_uq unique index, and the
-//     one-SELLER_REVENUE-per-line rule by financial_txn_settlement_once_uq вЂ”
+//     one-SELLER_REVENUE-per-line rule by financial_txn_settlement_once_uq —
 //     both hold across backend instances, not just within one process.
 import { db } from "../prisma/db.js";
 import { logger } from "./logger.js";
@@ -76,7 +76,7 @@ export async function ensureLedgerAccount(
     });
   } catch (error) {
     // Two instances ensuring the same account concurrently: the unique code
-    // decides вЂ” re-read the winner's row.
+    // decides — re-read the winner's row.
     if (isUniqueViolation(error, "ledgerAccount_code_key")) {
       const winner = await executor.orm.public.LedgerAccount.where({ code }).first();
       if (winner) return { id: winner.id };
@@ -130,7 +130,7 @@ export function affectedCount(result: unknown): number {
  * LedgerUnbalancedError when sum(debits) != sum(credits) or an entry amount
  * is non-positive.
  *
- * PLAN-012 В§10: idempotency is now a DATABASE invariant вЂ” the unique
+ * PLAN-012 §10: idempotency is now a DATABASE invariant — the unique
  * (transactionId, accountId, direction) index rejects the second posting of
  * the same balanced transaction even across backend instances. The
  * check-before-insert below stays as the cheap fast path; the insert is
@@ -145,7 +145,7 @@ export async function postLedgerEntries(
 
   const existing = await executor.orm.public.LedgerEntry.where({ transactionId }).first();
   if (existing) {
-    return; // already posted вЂ” idempotent repair pass
+    return; // already posted — idempotent repair pass
   }
 
   const debits = entries
@@ -206,7 +206,7 @@ export async function isLedgerTransactionBalanced(transactionId: string): Promis
 /**
  * PLAN-012 В§8: ATOMIC balance mutation. The delta is applied by the database
  * itself ("availableAmount = availableAmount + delta" in a single UPDATE with
- * RETURNING) вЂ” two concurrent mutations can no longer overwrite each other,
+ * RETURNING) — two concurrent mutations can no longer overwrite each other,
  * whatever the number of backend instances. The row is created if missing.
  */
 export async function applySellerBalanceDelta(
@@ -215,7 +215,7 @@ export async function applySellerBalanceDelta(
   totalEarnedDelta: number,
   executor: DbOrTx = db
 ): Promise<number> {
-  // Ensure the row exists (the userId is the primary key вЂ” a parallel
+  // Ensure the row exists (the userId is the primary key — a parallel
   // creation is resolved by the primary key, not by a read-then-write race).
   const existing = await executor.orm.public.SellerBalance.where({ userId: sellerId }).first();
   if (!existing) {
@@ -255,7 +255,7 @@ export async function applySellerBalanceDelta(
  * seller gets finalPrice - platformFee; platform keeps platformFee.
  * Reads fee breakdown from the purchase snapshot (immutable).
  * INVARIANT: the split is validated against the FINAL price (after
- * discounts) вЂ” the pre-discount priceSnapshot is not the settled amount.
+ * discounts) — the pre-discount priceSnapshot is not the settled amount.
  * F-003: also posts the balanced double-entry settlement transaction.
  */
 /**
@@ -264,8 +264,8 @@ export async function applySellerBalanceDelta(
  * passes within one process; the database invariants (unique
  * financialTransaction row per SELLER_REVENUE settlement, unique ledger
  * (transactionId, accountId, direction)) make it exactly-once across
- * instances. The whole settlement вЂ” legacy cache, legacy transaction and
- * double-entry rows вЂ” is ONE database transaction.
+ * instances. The whole settlement — legacy cache, legacy transaction and
+ * double-entry rows — is ONE database transaction.
  */
 export async function settlePurchaseRevenue(purchase: SettleInput): Promise<void> {
   return withKeyLock(`settle:${purchase.id}`, () => settlePurchaseRevenueUnlocked(purchase));
@@ -309,7 +309,7 @@ async function settlePurchaseRevenueUnlocked(purchase: SettleInput): Promise<voi
   // transaction row and the double-entry settlement (В§9). Free orders post
   // nothing (F-005). Exactly-once: the FinancialTransaction row is the dedup
   // marker (pre-checked here, enforced by the
-  // financial_txn_settlement_once_uq unique index across instances) вЂ” a
+  // financial_txn_settlement_once_uq unique index across instances) — a
   // losing race aborts atomically with nothing applied.
   try {
     await db.transaction(async (tx: DbOrTx) => {
@@ -346,7 +346,7 @@ async function settlePurchaseRevenueUnlocked(purchase: SettleInput): Promise<voi
     });
   } catch (error) {
     // A parallel settlement (other instance) won the unique race: the
-    // committed winner already applied every effect вЂ” our abort is the
+    // committed winner already applied every effect — our abort is the
     // exactly-once no-op. The ledger unique (transactionId, accountId,
     // direction) covers the free-revenue and partial paths.
     if (
@@ -392,7 +392,7 @@ async function postSettlementLedger(
   // service line, ever); the unique (transactionId, accountId, direction)
   // index turns it into a hard invariant. A crash between purchase
   // completion and settlement leaves a repairable gap: the retry re-runs
-  // settlePurchaseRevenue вЂ” already-posted entries make it a no-op.
+  // settlePurchaseRevenue — already-posted entries make it a no-op.
   const transactionId = `settle:${input.memo}`;
   const entries: LedgerEntryInput[] = [
     {
@@ -440,7 +440,7 @@ async function postSettlementLedger(
  *     delta ... RETURNING), never read-then-write in JS;
  *   - the FinancialTransaction row is the dedup marker: for SELLER_REVENUE a
  *     unique partial index (financial_txn_settlement_once_uq) admits exactly
- *     one row per related purchase вЂ” a concurrent/repair settlement loses
+ *     one row per related purchase — a concurrent/repair settlement loses
  *     the race at the database and the balance delta it already applied is
  *     rolled back with the transaction;
  *   - when `executor` is supplied the caller owns the transaction boundary

@@ -114,8 +114,8 @@ router.patch(
 
       // PLAN B-001 publication gate: a version may only go PUBLISHED when
       // every version of the resource is signed and passed validation
-      // (sandbox execution may be PENDING when Docker is unavailable вЂ”
-      // manual review path вЂ” but FAILED validation blocks publication).
+      // (sandbox execution may be PENDING when Docker is unavailable —
+      // manual review path — but FAILED validation blocks publication).
       if (status === "PUBLISHED") {
         // PLAN I-002: the declared dependency graph must resolve against the
         // published catalog (missing/circular/unsupported).
@@ -190,7 +190,7 @@ router.patch(
               .update({ releaseStatus: "PUBLISHED" });
             // PLAN-006: RESOURCE_UPDATE activity item.
             await bustActivityCache();
-            // PLAN-008 D-002: buyers (В§26 вЂ” purchase already creates the
+            // PLAN-008 D-002: buyers (§26 — purchase already creates the
             // relationship), resource followers and creator followers, with
             // recipient dedup (one notification per user).
             const recipients = Array.from(
@@ -205,7 +205,7 @@ router.patch(
               (recipientId) => ({
                 recipientId,
                 type: "RESOURCE_UPDATE" as const,
-                title: `${resource.title} вЂ” РЅРѕРІР°СЏ РІРµСЂСЃРёСЏ ${version.version}`,
+                title: `${resource.title} — новая версия ${version.version}`,
                 body: version.changelog ? version.changelog.slice(0, 200) : undefined,
                 entityType: "resource",
                 entityId: resource.id,
@@ -219,7 +219,7 @@ router.patch(
       const creatorName =
         (await db.orm.public.User.where({ id: resource.sellerId }).select("displayName", "username").first()) ??
         ({ displayName: null, username: null } as any);
-      const creatorLabel = creatorName.displayName || creatorName.username || "РЎРѕР·РґР°С‚РµР»СЊ";
+      const creatorLabel = creatorName.displayName || creatorName.username || "Создатель";
 
       // PLAN-006: RESOURCE_RELEASE is a high-value activity item.
       if (status === "PUBLISHED" && resource.status !== "PUBLISHED") {
@@ -231,7 +231,7 @@ router.patch(
           (recipientId) => ({
             recipientId,
             type: "CREATOR_RESOURCE" as const,
-            title: `РќРѕРІРёРЅРєР° РѕС‚ ${creatorName}: ${resource.title}`,
+            title: `Новинка от ${creatorName}: ${resource.title}`,
             body: resource.description.slice(0, 200),
             entityType: "resource",
             entityId: resource.id,
@@ -267,10 +267,10 @@ router.patch(
   }
 );
 
-// PLAN-003 M-001/M-002: РїРѕР»РЅРѕС†РµРЅРЅС‹Р№ product presentation РґР»СЏ РјРѕРґРµСЂР°С†РёРё вЂ”
-// Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ РІРёРґРёС‚ СЂРѕРІРЅРѕ С‚Рѕ, С‡С‚Рѕ СѓРІРёРґРёС‚ РїРѕРєСѓРїР°С‚РµР»СЊ: cover, screenshots,
-// РѕРїРёСЃР°РЅРёРµ, РїСЂРѕРґР°РІС†Р°, С†РµРЅСѓ, С‚РёРї, РІРµСЂСЃРёРё СЃ artifact-РёРЅС„РѕСЂРјР°С†РёРµР№ Рё СЃС‚Р°С‚СѓСЃРѕРј
-// РІР°Р»РёРґР°С†РёРё. State machine РЅРµ РјРµРЅСЏРµС‚СЃСЏ (M-003).
+// PLAN-003 M-001/M-002: полноценный product presentation для модерации —
+// администратор видит ровно то, что увидит покупатель: cover, screenshots,
+// описание, продавца, цену, тип, версии с artifact-информацией и статусом
+// валидации. State machine не меняется (M-003).
 router.get(
   "/resources/:id",
   authenticate,
@@ -307,7 +307,7 @@ router.get(
         })),
       ]);
 
-      // Artifact + validation status per version (M-002: С‡С‚Рѕ РёРјРµРЅРЅРѕ РїСѓР±Р»РёРєСѓРµРј).
+      // Artifact + validation status per version (M-002: что именно публикуем).
       const versionDetails = await Promise.all(
         (versions as any[]).map(async (v) => {
           const [signature, run] = await Promise.all([
@@ -319,7 +319,7 @@ router.get(
           const { fileChecksum: _c, ...rest } = v;
           return {
             ...rest,
-            artifactHash: v.fileChecksum ? v.fileChecksum.slice(0, 16) + "вЂ¦" : null,
+            artifactHash: v.fileChecksum ? v.fileChecksum.slice(0, 16) + "…" : null,
             signed: Boolean(signature),
             signedAt: signature?.signedAt ?? null,
             validationStatus: run?.status ?? "PENDING",

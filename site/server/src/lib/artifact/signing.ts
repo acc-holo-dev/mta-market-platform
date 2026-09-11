@@ -30,7 +30,7 @@ async function ensurePublisherKey(sellerId: string): Promise<{ id: string; publi
   }
 
   // Derive the public key (SPKI DER, base64) from the platform private key
-  // (stored as base64-encoded PKCS8 DER вЂ” same encoding the CLI generates).
+  // (stored as base64-encoded PKCS8 DER — same encoding the CLI generates).
   const privateKeyObject = createPrivateKey({
     key: Buffer.from(privateKey, "base64"),
     format: "der",

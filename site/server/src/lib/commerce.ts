@@ -71,17 +71,17 @@ export interface ResourceCheckoutInput {
 /** C-003/C-012: create a resource checkout (Order + OrderItem + Purchase). */
 /**
  * PLAN-011 concurrency foundation: the already-owned check and the purchase
- * creation are a check-then-insert pair вЂ” parallel checkouts of the same
+ * creation are a check-then-insert pair — parallel checkouts of the same
  * resource by the same buyer must be exactly-once. The key lock serializes
  * them within the backend process (single-instance deployment topology).
  * Cross-instance exactly-once needs a unique partial index (formal
- * migration path) вЂ” see documents/history/MIGRATION.md.
+ * migration path) — see documents/history/MIGRATION.md.
  */
 /**
  * PLAN-012 В§4: checkout exactly-once is a DATABASE invariant. The in-process
  * key lock serializes same-buyer checkouts within one instance (cheap fast
  * path); the partial unique index purchase_buyer_resource_live_uq (at most
- * one PENDING|COMPLETED purchase per buyer+resource) is the hard guarantee вЂ”
+ * one PENDING|COMPLETED purchase per buyer+resource) is the hard guarantee —
  * two backend instances racing the same checkout converge on one purchase:
  * the loser re-presents the winner's checkout instead of creating a
  * duplicate (cross-instance correctness; see documents/history/MIGRATION.md).
@@ -277,7 +277,7 @@ async function createResourceCheckoutUnlocked(input: ResourceCheckoutInput): Pro
   });
 
   if (finalPrice === 0) {
-    // C-003/C-008: free acquisition вЂ” no payment provider call (INV-002).
+    // C-003/C-008: free acquisition — no payment provider call (INV-002).
     try {
       const completion = await completeResourceOrderItem(created.orderItemId);
       return {
@@ -314,7 +314,7 @@ export interface ServiceCheckoutInput {
 
 /**
  * PLAN-012 В§4: re-present the winning checkout of a lost create race (same
- * buyer + resource) instead of surfacing an error вЂ” the loser's HTTP answer
+ * buyer + resource) instead of surfacing an error — the loser's HTTP answer
  * is the winner's checkout state, exactly as the in-process pending path
  * behaves. Null when the winner cannot be re-presented (caller rejects).
  */
@@ -598,7 +598,7 @@ export async function completeResourceOrderItem(orderItemId: string): Promise<Co
   } else {
     // PLAN-004 D-006/E-003 (audit GAP-2): repair the settlement crash window.
     // If the process died between purchase completion and ledger settlement,
-    // a webhook retry lands here with `alreadyCompleted` вЂ” previously the
+    // a webhook retry lands here with `alreadyCompleted` — previously the
     // settlement never ran and the gap was only a WARNING log. Settlement is
     // now idempotent (deterministic ledger transaction id
     // `settle:purchase:<id>`), so re-running it is always safe.

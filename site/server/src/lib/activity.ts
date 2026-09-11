@@ -2,11 +2,11 @@
 //
 // Activity is a DERIVED aggregation layer (DAILY-EXPERIENCE В§17/В§45): the
 // sources of truth remain Server / Resource / Forum / ServerNews /
-// ServerUpdate / Review. Nothing here writes to those domains вЂ” every item
+// ServerUpdate / Review. Nothing here writes to those domains — every item
 // is computed from bounded, indexed window queries over existing tables and
 // merged deterministically (chronological + type priority, no ML В§19).
 //
-// Publicity rules (PLAN-006 E, DAILY-EXPERIENCE В§41вЂ“42) are enforced HERE,
+// Publicity rules (PLAN-006 E, DAILY-EXPERIENCE §41–42) are enforced HERE,
 // at the read layer, not by hiding things in the UI:
 // - only public entity states (PUBLISHED news/resources/versions, VISIBLE
 //   reviews, non-deleted posts, VERIFIED/ACTIVE servers);
@@ -23,7 +23,7 @@ export const PUBLIC_SERVER_LIFECYCLES = ["VERIFIED", "ACTIVE"] as const;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_DAYS = Math.min(Math.max(parseInt(process.env.ACTIVITY_WINDOW_DAYS || "7", 10) || 7, 1), 30);
 
-// PLAN-006 K-001: cache TTL вЂ” a fast signal, not a monitor (В§4).
+// PLAN-006 K-001: cache TTL — a fast signal, not a monitor (§4).
 const CACHE_TTL_SECONDS = 45;
 const LIVE_CACHE_KEY = "plan006:activity:live:v1";
 const snapshotCacheKey = (limit: number) => `plan006:activity:snapshot:v1:${limit}`;
@@ -148,7 +148,7 @@ export async function bustActivityCache(): Promise<void> {
 // ---------- WORKSTREAM B: live aggregates ----------
 
 // B-002 honesty rules: only VERIFIED/ACTIVE + ONLINE + showStats=true
-// servers with a real playerCount are counted. UNKNOWN в‰  ONLINE, OFFLINE is
+// servers with a real playerCount are counted. UNKNOWN ≠ ONLINE, OFFLINE is
 // not online, suspended/pending servers do not exist publicly.
 export async function computeLiveAggregates(): Promise<LiveAggregates> {
   const rows = await db.orm.public.Server
@@ -214,7 +214,7 @@ async function usersByIds(ids: string[]) {
 
 // ---------- WORKSTREAM C/D: source builders ----------
 
-// PLAN-007 F-001: NEW_ARTICLE вЂ” published articles within the window. Only
+// PLAN-007 F-001: NEW_ARTICLE — published articles within the window. Only
 // PUBLISHED rows exist publicly; DRAFT/PENDING/ARCHIVED never appear.
 async function buildArticleItems(since: string): Promise<ActivityItem[]> {
   const rows = await db.orm.public.Article
@@ -315,7 +315,7 @@ async function buildNewServerItems(since: string): Promise<ActivityItem[]> {
   })) satisfies ActivityItem[];
 }
 
-// D-003: SERVER_ONLINE derived from real monitoring samples вЂ” a server that
+// D-003: SERVER_ONLINE derived from real monitoring samples — a server that
 // is ONLINE now and crossed into ONLINE at the window boundary. Bounded:
 // only the K most recently seen eligible servers are inspected (2 indexed
 // point queries each on [serverId, sampledAt]). Ambiguous histories are
@@ -347,7 +347,7 @@ async function buildServerOnlineItems(since: string, sinceMs: number): Promise<A
       .orderBy((w: any) => w.sampledAt.desc())
       .limit(1)
       .first();
-    if (!lastBeforeWindow) continue; // no honest pre-window state вЂ” skip
+    if (!lastBeforeWindow) continue; // no honest pre-window state — skip
     if (lastBeforeWindow.state === "ONLINE") continue; // was already online
     items.push({
       type: "SERVER_ONLINE",
@@ -420,7 +420,7 @@ async function buildResourceUpdateItems(since: string): Promise<ActivityItem[]> 
 
 // Discussions: NEW_DISCUSSION (thread created in window) and DISCUSSION_REPLY
 // (replies to older threads), one item per thread (D-005). News-linked
-// threads are excluded вЂ” the news itself is already an item (noise, В§40).
+// threads are excluded — the news itself is already an item (noise, §40).
 // ARCHIVED threads and showCommunity=false server-linked threads are
 // excluded (E-001/E-004).
 async function visibleThreadFilter(threadIds: string[]) {
@@ -570,7 +570,7 @@ async function buildReviewItems(since: string): Promise<ActivityItem[]> {
 // ---------- WORKSTREAM H: popular blocks (real metrics only) ----------
 
 async function buildPopular(since: string): Promise<PopularBlock> {
-  // Nullable playerCount is sorted in JS (never in the DB orderBy) вЂ” same
+  // Nullable playerCount is sorted in JS (never in the DB orderBy) — same
   // discipline as the /servers "players" sort (no fabricated ordering).
   const onlineServers = await db.orm.public.Server
     .where((s: any) => s.lifecycle.in(PUBLIC_SERVER_LIFECYCLES as unknown as string[]))
@@ -631,7 +631,7 @@ export interface ActivitySnapshot {
 }
 
 // Deterministic merge: chronological desc, then type priority, then
-// type/href lexicographic вЂ” stable ordering for equal timestamps (D-004).
+// type/href lexicographic — stable ordering for equal timestamps (D-004).
 function sortItems(items: ActivityItem[]): ActivityItem[] {
   return items.sort((a, b) => {
     const d = Date.parse(b.at) - Date.parse(a.at);

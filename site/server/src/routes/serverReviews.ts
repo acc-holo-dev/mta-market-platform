@@ -1,8 +1,8 @@
 ﻿// PLAN-005 Workstream J (+K discipline): Server reviews with token-based
 // eligibility. A plain registered user CANNOT rate a server: a review is
 // allowed only after claiming a valid one-time interaction token issued by
-// the server integration (mta-market-module). "вњ“ Verified Interaction"
-// means "the system confirmed an interaction" вЂ” nothing about the content.
+// the server integration (mta-market-module). "✓ Verified Interaction"
+// means "the system confirmed an interaction" — nothing about the content.
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
 import { standardRateLimit, userRateLimit } from "../lib/rateLimit.js";
@@ -16,7 +16,7 @@ import { createNotifications } from "../lib/notify.js";
 
 const router: Router = Router();
 
-// GET /servers/:slug/reviews вЂ” public reviews (VISIBLE only) + rating stats.
+// GET /servers/:slug/reviews — public reviews (VISIBLE only) + rating stats.
 router.get("/:slug/reviews", standardRateLimit, async (req, res: Response) => {
   try {
     const server = await db.orm.public.Server.where({ slug: req.params.slug as string }).first();
@@ -81,7 +81,7 @@ router.get("/:slug/reviews", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// GET /servers/:slug/reviews/eligibility вЂ” the form shows ONLY for eligible
+// GET /servers/:slug/reviews/eligibility — the form shows ONLY for eligible
 // users (SURFACE В§12); everyone else gets an explanation, not a dead form.
 router.get(
   "/:slug/reviews/eligibility",
@@ -105,10 +105,10 @@ router.get(
       res.json({
         eligible: !!eligibility,
         reason: isStaff
-          ? "Р’Р»Р°РґРµР»СЊС†С‹ Рё РїРµСЂСЃРѕРЅР°Р» СЃРµСЂРІРµСЂР° РЅРµ РјРѕРіСѓС‚ РѕСЃС‚Р°РІР»СЏС‚СЊ РѕС‚Р·С‹РІС‹ Рѕ СЃРІРѕС‘Рј СЃРµСЂРІРµСЂРµ"
+          ? "Владельцы и персонал сервера не могут оставлять отзывы о своём сервере"
           : eligibility
             ? null
-            : "Р”Р»СЏ РѕС‚Р·С‹РІР° РЅСѓР¶РЅРѕ РїРѕРґС‚РІРµСЂРґРёС‚СЊ РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёРµ СЃ СЃРµСЂРІРµСЂРѕРј: РїРѕР»СѓС‡РёС‚Рµ С‚РѕРєРµРЅ РІ РёРіСЂРµ Рё РІРІРµРґРёС‚Рµ РµРіРѕ Р·РґРµСЃСЊ",
+            : "Для отзыва нужно подтвердить взаимодействие с сервером: получите токен в игре и введите его здесь",
         alreadyReviewed: !!existing,
         verifiedInteraction: !!eligibility,
       });
@@ -119,7 +119,7 @@ router.get(
   }
 );
 
-// POST /servers/:slug/review-token/claim вЂ” exchange a one-time token for
+// POST /servers/:slug/review-token/claim — exchange a one-time token for
 // eligibility (J-002). Replay/expiry/wrong-server protection lives in
 // findActiveReviewToken + the atomic consumption update below.
 router.post(
@@ -136,25 +136,25 @@ router.post(
       }
       const token = req.body?.token;
       if (typeof token !== "string") {
-        res.status(400).json({ error: "Р’РІРµРґРёС‚Рµ С‚РѕРєРµРЅ РёР· РёРіСЂС‹" });
+        res.status(400).json({ error: "Введите токен из игры" });
         return;
       }
       const lookup = await findActiveReviewToken(token, server.id);
       if (lookup.kind === "unknown") {
         // Do not leak which failure mode occurred (wrong server / forged):
         // one user-facing state for unknown tokens (C-003 discipline).
-        res.status(400).json({ error: "РўРѕРєРµРЅ РЅРµРґРµР№СЃС‚РІРёС‚РµР»РµРЅ РёР»Рё РїСЂРёРІСЏР·Р°РЅ Рє РґСЂСѓРіРѕРјСѓ СЃРµСЂРІРµСЂСѓ" });
+        res.status(400).json({ error: "Токен недействителен или привязан к другому серверу" });
         return;
       }
       if (lookup.kind === "replayed") {
         // Consumed/expired: an honest replay answer (J-002 replay protection).
-        res.status(409).json({ error: "РўРѕРєРµРЅ СѓР¶Рµ РёСЃРїРѕР»СЊР·РѕРІР°РЅ РёР»Рё РёСЃС‚С‘Рє" });
+        res.status(409).json({ error: "Токен уже использован или истёк" });
         return;
       }
       // Self-review prevention: server staff never gain review eligibility.
       const staffRole = await loadStaffRole(server, req.user!.userId);
       if (staffRole) {
-        res.status(403).json({ error: "Р’Р»Р°РґРµР»СЊС†С‹ Рё РїРµСЂСЃРѕРЅР°Р» СЃРµСЂРІРµСЂР° РЅРµ РјРѕРіСѓС‚ РїРѕР»СѓС‡Р°С‚СЊ С‚РѕРєРµРЅС‹ СЃРІРѕРµРіРѕ СЃРµСЂРІРµСЂР°" });
+        res.status(403).json({ error: "Владельцы и персонал сервера не могут получать токены своего сервера" });
         return;
       }
 
@@ -164,7 +164,7 @@ router.post(
         .where({ id: lookup.id, status: "ACTIVE" })
         .update({ status: "CONSUMED", consumedAt: new Date().toISOString(), consumedBy: req.user!.userId });
       if (!consumed || (consumed as any).status !== "CONSUMED") {
-        res.status(409).json({ error: "РўРѕРєРµРЅ СѓР¶Рµ РёСЃРїРѕР»СЊР·РѕРІР°РЅ" });
+        res.status(409).json({ error: "Токен уже использован" });
         return;
       }
 
@@ -187,7 +187,7 @@ router.post(
   }
 );
 
-// POST /servers/:slug/reviews вЂ” create a review; requires eligibility (J-001).
+// POST /servers/:slug/reviews — create a review; requires eligibility (J-001).
 router.post(
   "/:slug/reviews",
   authenticate,
@@ -218,7 +218,7 @@ router.post(
         .first();
       if (!eligibility) {
         res.status(403).json({
-          error: "РћС‚Р·С‹РІ РґРѕСЃС‚СѓРїРµРЅ С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ РїРѕРґС‚РІРµСЂР¶РґС‘РЅРЅРѕРіРѕ РІР·Р°РёРјРѕРґРµР№СЃС‚РІРёСЏ СЃ СЃРµСЂРІРµСЂРѕРј",
+          error: "Отзыв доступен только после подтверждённого взаимодействия с сервером",
         });
         return;
       }
@@ -228,7 +228,7 @@ router.post(
         userId: req.user!.userId,
       }).first();
       if (existing) {
-        res.status(409).json({ error: "Р’С‹ СѓР¶Рµ РѕСЃС‚Р°РІРёР»Рё РѕС‚Р·С‹РІ РѕР± СЌС‚РѕРј СЃРµСЂРІРµСЂРµ" });
+        res.status(409).json({ error: "Вы уже оставили отзыв об этом сервере" });
         return;
       }
 
@@ -241,12 +241,12 @@ router.post(
         status: "VISIBLE",
       });
 
-      // REVIEW_EVENT в†’ server owner learns about the new review (M-002).
+      // REVIEW_EVENT → server owner learns about the new review (M-002).
       await createNotifications([
         {
           recipientId: server.ownerId,
           type: "REVIEW_EVENT",
-          title: `РќРѕРІС‹Р№ РѕС‚Р·С‹РІ (${ratingNum}/5) Рѕ СЃРµСЂРІРµСЂРµ В«${server.name}В»`,
+          title: `МеУъй етзъУ (${ratingNum}/5) е серУере «${server.name}»`,
           entityType: "serverReview",
           entityId: review.id,
         },
@@ -262,7 +262,7 @@ router.post(
   }
 );
 
-// PATCH /servers/:slug/reviews вЂ” update own review (rating/comment only).
+// PATCH /servers/:slug/reviews — update own review (rating/comment only).
 router.patch(
   "/:slug/reviews",
   authenticate,
@@ -307,7 +307,7 @@ router.patch(
   }
 );
 
-// DELETE /servers/:slug/reviews вЂ” the author may withdraw their review.
+// DELETE /servers/:slug/reviews — the author may withdraw their review.
 // Eligibility survives (anti-abuse): a withdrawn voice is not a fresh vote.
 router.delete(
   "/:slug/reviews",

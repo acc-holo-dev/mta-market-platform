@@ -1,6 +1,6 @@
 ﻿// PLAN-007 Workstream D: article moderation queue. Every action is a human
 // moderation decision: audit + MODERATION notification to the author. Hiding
-// a published article removes it from every public surface immediately вЂ”
+// a published article removes it from every public surface immediately —
 // including the PLAN-006 activity read layer (cache bust).
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
@@ -23,7 +23,7 @@ function adminOnly(req: AuthRequest, res: Response, next: () => void) {
   next();
 }
 
-// GET /admin/content?status=PENDING_REVIEW|ALL вЂ” moderation queue/list.
+// GET /admin/content?status=PENDING_REVIEW|ALL — moderation queue/list.
 router.get("/content", authenticate, adminOnly, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const status = (req.query.status as string | undefined) || "PENDING_REVIEW";
@@ -53,7 +53,7 @@ router.get("/content", authenticate, adminOnly, standardRateLimit, async (req: A
   }
 });
 
-// POST /admin/content/:id/approve вЂ” PENDING_REVIEW в†’ PUBLISHED (D-001).
+// POST /admin/content/:id/approve — PENDING_REVIEW → PUBLISHED (D-001).
 router.post("/content/:id/approve", authenticate, adminOnly, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const article = await db.orm.public.Article.where({ id: req.params.id as string }).first();
@@ -62,7 +62,7 @@ router.post("/content/:id/approve", authenticate, adminOnly, standardRateLimit, 
       return;
     }
     if (article.status !== "PENDING_REVIEW") {
-      res.status(409).json({ error: "РЎС‚Р°С‚СЊСЏ РЅРµ РІ РѕС‡РµСЂРµРґРё РјРѕРґРµСЂР°С†РёРё" });
+      res.status(409).json({ error: "Статья не в очереди модерации" });
       return;
     }
     const published = await db.orm.public.Article
@@ -82,8 +82,8 @@ router.post("/content/:id/approve", authenticate, adminOnly, standardRateLimit, 
         {
           recipientId: article.authorId,
           type: "MODERATION" as const,
-          title: `РЎС‚Р°С‚СЊСЏ В«${article.title}В» РѕРїСѓР±Р»РёРєРѕРІР°РЅР°`,
-          body: "Р’Р°С€Р° СЃС‚Р°С‚СЊСЏ РїСЂРѕС€Р»Р° РјРѕРґРµСЂР°С†РёСЋ Рё РґРѕСЃС‚СѓРїРЅР° РІ /content.",
+          title: `Статья «${article.title}» опубликована`,
+          body: "Ваша статья прошла модерацию и доступна в /content.",
           entityType: "article",
           entityId: article.id,
         },
@@ -101,7 +101,7 @@ router.post("/content/:id/approve", authenticate, adminOnly, standardRateLimit, 
         (recipientId) => ({
           recipientId,
           type: "CREATOR_ARTICLE" as const,
-          title: `РќРѕРІР°СЏ СЃС‚Р°С‚СЊСЏ РѕС‚ Р°РІС‚РѕСЂР°: ${article.title}`,
+          title: `МеУаџ статьџ ет аУтера: ${article.title}`,
           body: article.excerpt.slice(0, 200),
           entityType: "article",
           entityId: article.id,
@@ -116,7 +116,7 @@ router.post("/content/:id/approve", authenticate, adminOnly, standardRateLimit, 
   }
 });
 
-// POST /admin/content/:id/reject вЂ” PENDING_REVIEW в†’ DRAFT with reason (D-001).
+// POST /admin/content/:id/reject — PENDING_REVIEW → DRAFT with reason (D-001).
 router.post(
   "/content/:id/reject",
   authenticate,
@@ -126,7 +126,7 @@ router.post(
     try {
       const { reason } = req.body ?? {};
       if (typeof reason !== "string" || reason.trim().length < 3 || reason.length > 500) {
-        res.status(400).json({ error: "РЈРєР°Р¶РёС‚Рµ РїСЂРёС‡РёРЅСѓ РѕС‚РєР°Р·Р° (3вЂ“500 СЃРёРјРІРѕР»РѕРІ)" });
+        res.status(400).json({ error: "Укажите причину отказа (3–500 символов)" });
         return;
       }
       const article = await db.orm.public.Article.where({ id: req.params.id as string }).first();
@@ -135,7 +135,7 @@ router.post(
         return;
       }
       if (article.status !== "PENDING_REVIEW") {
-        res.status(409).json({ error: "РЎС‚Р°С‚СЊСЏ РЅРµ РІ РѕС‡РµСЂРµРґРё РјРѕРґРµСЂР°С†РёРё" });
+        res.status(409).json({ error: "Статья не в очереди модерации" });
         return;
       }
       const updated = await db.orm.public.Article
@@ -155,8 +155,8 @@ router.post(
           {
             recipientId: article.authorId,
             type: "MODERATION" as const,
-            title: `РЎС‚Р°С‚СЊСЏ В«${article.title}В» РІРѕР·РІСЂР°С‰РµРЅР° Р°РІС‚РѕСЂСѓ`,
-            body: `РџСЂРёС‡РёРЅР°: ${reason.trim()}`,
+            title: `Статья «${article.title}» возвращена автору`,
+            body: `Причина: ${reason.trim()}`,
             entityType: "article",
             entityId: article.id,
           },
@@ -171,7 +171,7 @@ router.post(
   }
 );
 
-// POST /admin/content/:id/hide вЂ” PUBLISHED в†’ ARCHIVED with reason (D-002).
+// POST /admin/content/:id/hide — PUBLISHED → ARCHIVED with reason (D-002).
 router.post(
   "/content/:id/hide",
   authenticate,
@@ -181,7 +181,7 @@ router.post(
     try {
       const { reason } = req.body ?? {};
       if (typeof reason !== "string" || reason.trim().length < 3 || reason.length > 500) {
-        res.status(400).json({ error: "РЈРєР°Р¶РёС‚Рµ РїСЂРёС‡РёРЅСѓ СЃРєСЂС‹С‚РёСЏ (3вЂ“500 СЃРёРјРІРѕР»РѕРІ)" });
+        res.status(400).json({ error: "Укажите причину скрытия (3–500 символов)" });
         return;
       }
       const article = await db.orm.public.Article.where({ id: req.params.id as string }).first();
@@ -190,7 +190,7 @@ router.post(
         return;
       }
       if (article.status !== "PUBLISHED") {
-        res.status(409).json({ error: "РЎРєСЂС‹РІР°С‚СЊ РјРѕР¶РЅРѕ С‚РѕР»СЊРєРѕ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅС‹Рµ СЃС‚Р°С‚СЊРё" });
+        res.status(409).json({ error: "Скрывать можно только опубликованные статьи" });
         return;
       }
       const updated = await db.orm.public.Article
@@ -210,15 +210,15 @@ router.post(
           {
             recipientId: article.authorId,
             type: "MODERATION" as const,
-            title: `РЎС‚Р°С‚СЊСЏ В«${article.title}В» СЃРєСЂС‹С‚Р° РјРѕРґРµСЂР°С†РёРµР№`,
-            body: `РџСЂРёС‡РёРЅР°: ${reason.trim()}`,
+            title: `Статья «${article.title}» скрыта модерацией`,
+            body: `Причина: ${reason.trim()}`,
             entityType: "article",
             entityId: article.id,
           },
         ],
         { excludeActorId: req.user!.userId }
       );
-      // Remove from every public surface вЂ” including the activity snapshot.
+      // Remove from every public surface — including the activity snapshot.
       await bustActivityCache();
       res.json(updated);
     } catch (error) {

@@ -1,4 +1,4 @@
-﻿// PLAN C-004..C-008: discount campaigns вЂ” backend-only validation,
+﻿// PLAN C-004..C-008: discount campaigns — backend-only validation,
 // calculation and ATOMIC usage consumption.
 // The frontend price is never trusted: every amount is recomputed here from
 // the immutable base price. Usage is consumed inside the order-completion
@@ -16,7 +16,7 @@ export type DbOrTx = any;
 export interface DiscountValidationInput {
   code?: string;
   campaignId?: string;
-  /** Kind of line being purchased вЂ” must match the campaign scope (C-004). */
+  /** Kind of line being purchased — must match the campaign scope (C-004). */
   scope: "RESOURCE" | "SERVICE";
   resourceId?: string;
   serviceId?: string;
@@ -215,7 +215,7 @@ export async function consumeDiscount(
     .updateAndCount({ usedCount: nextCount });
 
   if (affectedCount(cas) !== 1) {
-    // Lost the race вЂ” the authoritative limit has been consumed elsewhere.
+    // Lost the race — the authoritative limit has been consumed elsewhere.
     throw new DiscountUnavailableError("Discount usage limit reached");
   }
 

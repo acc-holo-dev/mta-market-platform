@@ -32,7 +32,7 @@ const router: Router = Router();
 // Rules:
 // - media URLs must reference media uploaded through POST /upload/media
 //   (A-005: arbitrary URLs are rejected);
-// - media is editable while the resource is DRAFT or PENDING_REVIEW вЂ”
+// - media is editable while the resource is DRAFT or PENDING_REVIEW —
 //   published listings were approved by moderation as complete products
 //   (B-006: no unrestricted changes to published resources);
 // - replacement/deletion cleans up the underlying file (A-004);
@@ -55,7 +55,7 @@ async function loadOwnResource(req: AuthRequest, slug: string) {
   return { resource };
 }
 
-// PUT /resources/:slug/media/cover вЂ” set or replace the cover
+// PUT /resources/:slug/media/cover — set or replace the cover
 router.put(
   "/:slug/media/cover",
   authenticate,
@@ -79,7 +79,7 @@ router.put(
       }
       if (!mediaEditable(resource)) {
         res.status(409).json({
-          error: "РћС„РѕСЂРјР»РµРЅРёРµ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР° РёР·РјРµРЅРёС‚СЊ РЅРµР»СЊР·СЏ. РћС‚Р·РѕРІРёС‚Рµ СЂРµСЃСѓСЂСЃ РёР»Рё СЃРѕР·РґР°Р№С‚Рµ РЅРѕРІСѓСЋ РІРµСЂСЃРёСЋ С‡РµСЂРµР· РјРѕРґРµСЂР°С†РёСЋ.",
+          error: "Оформление опубликованного ресурса изменить нельзя. Отзовите ресурс или создайте новую версию через модерацию.",
         });
         return;
       }
@@ -100,7 +100,7 @@ router.put(
   }
 );
 
-// DELETE /resources/:slug/media/cover вЂ” remove the cover
+// DELETE /resources/:slug/media/cover — remove the cover
 router.delete(
   "/:slug/media/cover",
   authenticate,
@@ -117,7 +117,7 @@ router.delete(
         return;
       }
       if (!mediaEditable(resource)) {
-        res.status(409).json({ error: "РћС„РѕСЂРјР»РµРЅРёРµ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР° РёР·РјРµРЅРёС‚СЊ РЅРµР»СЊР·СЏ" });
+        res.status(409).json({ error: "Оформление опубликованного ресурса изменить нельзя" });
         return;
       }
 
@@ -133,7 +133,7 @@ router.delete(
   }
 );
 
-// POST /resources/:slug/media/screenshots вЂ” append a screenshot
+// POST /resources/:slug/media/screenshots — append a screenshot
 router.post(
   "/:slug/media/screenshots",
   authenticate,
@@ -156,7 +156,7 @@ router.post(
         return;
       }
       if (!mediaEditable(resource)) {
-        res.status(409).json({ error: "РћС„РѕСЂРјР»РµРЅРёРµ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР° РёР·РјРµРЅРёС‚СЊ РЅРµР»СЊР·СЏ" });
+        res.status(409).json({ error: "Оформление опубликованного ресурса изменить нельзя" });
         return;
       }
 
@@ -164,11 +164,11 @@ router.post(
         .where({ resourceId: resource.id, kind: "SCREENSHOT" })
         .all();
       if (existing.length >= MAX_SCREENSHOTS_PER_RESOURCE) {
-        res.status(409).json({ error: `РњР°РєСЃРёРјСѓРј ${MAX_SCREENSHOTS_PER_RESOURCE} СЃРєСЂРёРЅС€РѕС‚РѕРІ РЅР° СЂРµСЃСѓСЂСЃ` });
+        res.status(409).json({ error: `Максимум ${MAX_SCREENSHOTS_PER_RESOURCE} скриншотов на ресурс` });
         return;
       }
       if (existing.some((m: any) => m.url === url)) {
-        res.status(409).json({ error: "Р­С‚РѕС‚ СЃРєСЂРёРЅС€РѕС‚ СѓР¶Рµ РґРѕР±Р°РІР»РµРЅ" });
+        res.status(409).json({ error: "Этот скриншот уже добавлен" });
         return;
       }
 
@@ -187,7 +187,7 @@ router.post(
   }
 );
 
-// DELETE /resources/:slug/media/screenshots/:mediaId вЂ” remove a screenshot
+// DELETE /resources/:slug/media/screenshots/:mediaId — remove a screenshot
 router.delete(
   "/:slug/media/screenshots/:mediaId",
   authenticate,
@@ -204,7 +204,7 @@ router.delete(
         return;
       }
       if (!mediaEditable(resource)) {
-        res.status(409).json({ error: "РћС„РѕСЂРјР»РµРЅРёРµ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР° РёР·РјРµРЅРёС‚СЊ РЅРµР»СЊР·СЏ" });
+        res.status(409).json({ error: "Оформление опубликованного ресурса изменить нельзя" });
         return;
       }
 
@@ -238,7 +238,7 @@ router.delete(
   }
 );
 
-// PUT /resources/:slug/media/screenshots/order вЂ” reorder screenshots
+// PUT /resources/:slug/media/screenshots/order — reorder screenshots
 router.put(
   "/:slug/media/screenshots/order",
   authenticate,
@@ -261,7 +261,7 @@ router.put(
         return;
       }
       if (!mediaEditable(resource)) {
-        res.status(409).json({ error: "РћС„РѕСЂРјР»РµРЅРёРµ РѕРїСѓР±Р»РёРєРѕРІР°РЅРЅРѕРіРѕ СЂРµСЃСѓСЂСЃР° РёР·РјРµРЅРёС‚СЊ РЅРµР»СЊР·СЏ" });
+        res.status(409).json({ error: "Оформление опубликованного ресурса изменить нельзя" });
         return;
       }
 
@@ -286,10 +286,10 @@ router.put(
   }
 );
 
-// PLAN-002 E-006/E-007 + PLAN-003 C/K: РєР°СЂС‚РѕС‡РєР° С‚РѕРІР°СЂР° РїРѕРєР°Р·С‹РІР°РµС‚ РїСЂРѕРґР°РІС†Р°,
-// СЂРµР№С‚РёРЅРі Рё cover. Rating/reviewCount Р°РіСЂРµРіРёСЂСѓСЋС‚СЃСЏ РѕРґРЅРёРј include-Р·Р°РїСЂРѕСЃРѕРј
-// (PLAN-003 S-002: РЅРµ РІС‹РїРѕР»РЅСЏС‚СЊ РїРѕ 2 Р·Р°РїСЂРѕСЃР° РЅР° РєР°Р¶РґС‹Р№ СЂРµСЃСѓСЂСЃ СЃС‚СЂР°РЅРёС†С‹).
-// Additive fields вЂ” СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєРѕРЅС‚СЂР°РєС‚ РЅРµ РјРµРЅСЏРµС‚СЃСЏ.
+// PLAN-002 E-006/E-007 + PLAN-003 C/K: карточка товара показывает продавца,
+// рейтинг и cover. Rating/reviewCount агрегируются одним include-запросом
+// (PLAN-003 S-002: не выполнять по 2 запроса на каждый ресурс страницы).
+// Additive fields — существующий контракт не меняется.
 function withCardEnrichment(resource: any): any {
   const agg = resource.reviews as { total?: number; avg?: number | null } | undefined;
   const total = Number(agg?.total ?? 0);
@@ -306,8 +306,8 @@ function withCardEnrichment(resource: any): any {
   };
 }
 
-// Р—Р°РіСЂСѓР·РєР° РєР°СЂС‚РѕС‡РµРє c seller + review-Р°РіСЂРµРіР°С‚Р°РјРё РѕРґРЅРёРј Р·Р°РїСЂРѕСЃРѕРј.
-// Р’РЎР•Р“Р”Рђ С‚РѕР»СЊРєРѕ PUBLISHED: РєР°СЂС‚РѕС‡РєРё РїСЂРµРґРЅР°Р·РЅР°С‡РµРЅС‹ РґР»СЏ РїРѕРєСѓРїР°С‚РµР»РµР№.
+// Загрузка карточек c seller + review-агрегатами одним запросом.
+// ВСЕГДА только PUBLISHED: карточки предназначены для покупателей.
 function cardsWithAggregates() {
   return db.orm.public.Resource
     .where({ status: "PUBLISHED" })
@@ -315,17 +315,17 @@ function cardsWithAggregates() {
     .include("reviews", (r: any) => r.combine({ total: r.count(), avg: r.avg("rating") }));
 }
 
-// ---------- PLAN-003 F-002/G/H/I/T: РµРґРёРЅС‹Р№ query contract ----------
+// ---------- PLAN-003 F-002/G/H/I/T: единый query contract ----------
 // GET /resources?q=&type=&price=&sort=&page=&limit=
-//   q     вЂ” РїРѕРґСЃС‚СЂРѕРєР° РїРѕ title, description Рё РёРјРµРЅРё РїСЂРѕРґР°РІС†Р° (ILIKE)
-//   type  вЂ” RESOURCE TYPE enum (SCRIPT|MAP|MODEL|TEXTURE|SOUND|GAMEMODE)
-//   price вЂ” free | paid
-//   sort  вЂ” newest | rating | price_asc | price_desc | popular
-// Р‘РµР· РїР°СЂР°РјРµС‚СЂРѕРІ РїРѕРІРµРґРµРЅРёРµ РїСЂРµР¶РЅРµРµ: published, РЅРѕРІС‹Рµ СЃРЅР°С‡Р°Р»Р° (U-003).
+//   q     — подстрока по title, description и имени продавца (ILIKE)
+//   type  — RESOURCE TYPE enum (SCRIPT|MAP|MODEL|TEXTURE|SOUND|GAMEMODE)
+//   price — free | paid
+//   sort  — newest | rating | price_asc | price_desc | popular
+// Без параметров поведение прежнее: published, новые сначала (U-003).
 
 const RESOURCE_SORTS = ["newest", "rating", "price_asc", "price_desc", "popular"] as const;
 
-/** Р Р°Р·СЂРµС€РµРЅРёРµ РїСЂРѕРґР°РІС†РѕРІ, С‡СЊС‘ РёРјСЏ/username СЃРѕРІРїР°РґР°РµС‚ СЃ РїРѕРёСЃРєРѕРІС‹Рј Р·Р°РїСЂРѕСЃРѕРј. */
+/** Разрешение продавцов, чьё имя/username совпадает с поисковым запросом. */
 async function resolveSellerIds(q: string): Promise<string[]> {
   const pattern = `%${q}%`;
   const [byUsername, byDisplay] = await Promise.all([
@@ -338,9 +338,9 @@ async function resolveSellerIds(q: string): Promise<string[]> {
 }
 
 /**
- * F-002/F-006: РЅР°СЃС‚РѕСЏС‰РёР№ РїРѕРёСЃРє РїРѕ title/description/РёРјРµРЅРё РїСЂРѕРґР°РІС†Р°.
- * РЈ СѓСЃС‚Р°РЅРѕРІР»РµРЅРЅРѕР№ СЃР±РѕСЂРєРё ORM РЅРµС‚ OR-РєРѕРјР±РёРЅР°С‚РѕСЂР°, РїРѕСЌС‚РѕРјСѓ РІРµС‚РєРё РїРѕРёСЃРєР°
- * РѕР±СЉРµРґРёРЅСЏСЋС‚СЃСЏ РїРѕ id (РєР°Р¶РґР°СЏ РІРµС‚РєР° вЂ” ILIKE-Р·Р°РїСЂРѕСЃ СЃ Р»РёРјРёС‚РѕРј).
+ * F-002/F-006: настоящий поиск по title/description/имени продавца.
+ * У установленной сборки ORM нет OR-комбинатора, поэтому ветки поиска
+ * объединяются по id (каждая ветка — ILIKE-запрос с лимитом).
  */
 async function resolveSearchIds(q: string): Promise<string[]> {
   const pattern = `%${q}%`;
@@ -367,8 +367,8 @@ async function resolveSearchIds(q: string): Promise<string[]> {
 }
 
 /**
- * I-004: РЅР°СЃС‚РѕСЏС‰РёР№ popularity signal вЂ” РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РІРµСЂС€С‘РЅРЅС‹С… РїРѕРєСѓРїРѕРє
- * (COMPLETED purchases), СЃРіСЂСѓРїРїРёСЂРѕРІР°РЅРЅС‹С… РїРѕ СЂРµСЃСѓСЂСЃСѓ. РќРёРєР°РєРѕРіРѕ fake ranking.
+ * I-004: настоящий popularity signal — количество завершённых покупок
+ * (COMPLETED purchases), сгруппированных по ресурсу. Никакого fake ranking.
  */
 async function loadPopularity(): Promise<Map<string, number>> {
   const rows = await db.orm.public.Purchase
@@ -393,8 +393,8 @@ router.get(
       const skip = (page - 1) * limit;
       const sortValue: string = RESOURCE_SORTS.includes(sort) ? sort : "newest";
 
-      // Р‘Р°Р·РѕРІС‹Рµ РїСЂРµРґРёРєР°С‚С‹ СЃРѕР±РёСЂР°СЋС‚СЃСЏ С†РµРїРѕС‡РєРѕР№ where (AND-РєРѕРјРїРѕР·РёС†РёСЏ).
-      // РљРѕР»Р»РµРєС†РёРё ORM РёРјРјСѓС‚Р°Р±РµР»СЊРЅС‹ вЂ” РєРѕРїРёСЏ СЃ С„РёР»СЊС‚СЂР°РјРё СЃС‚СЂРѕРёС‚СЃСЏ С„СѓРЅРєС†РёРµР№.
+      // Базовые предикаты собираются цепочкой where (AND-композиция).
+      // Коллекции ORM иммутабельны — копия с фильтрами строится функцией.
       const buildFiltered = () => {
         let q2: any = db.orm.public.Resource.where({ status: "PUBLISHED" });
         if (type) {
@@ -408,7 +408,7 @@ router.get(
         return q2;
       };
 
-      // F-002: РїРѕРёСЃРє вЂ” РѕР±СЉРµРґРёРЅСЏРµРј СЃРѕРІРїР°РІС€РёРµ id Рё С„РёР»СЊС‚СЂСѓРµРј РїРѕ РЅРёРј.
+      // F-002: поиск — объединяем совпавшие id и фильтруем по ним.
       let searchIds: string[] | null = null;
       if (q && typeof q === "string" && q.trim().length > 0) {
         const ids = await resolveSearchIds(q.trim());
@@ -433,8 +433,8 @@ router.get(
         });
       };
 
-      // РџСЂРѕСЃС‚С‹Рµ СЃРѕСЂС‚РёСЂРѕРІРєРё РІС‹РїРѕР»РЅСЏСЋС‚СЃСЏ РІ Р‘Р”: СЃРЅР°С‡Р°Р»Р° id-СЃС‚СЂР°РЅРёС†Р°, Р·Р°С‚РµРј
-      // РєР°СЂС‚РѕС‡РєРё РѕРґРЅРёРј Р·Р°РїСЂРѕСЃРѕРј (S-002: Р±РµР· N+1 enrichment).
+      // Простые сортировки выполняются в БД: сначала id-страница, затем
+      // карточки одним запросом (S-002: без N+1 enrichment).
       if (sortValue === "newest" || sortValue === "price_asc" || sortValue === "price_desc") {
         const orderBy =
           sortValue === "newest"
@@ -454,8 +454,8 @@ router.get(
         return;
       }
 
-      // rating / popular: РЅСѓР¶РЅС‹ Р°РіСЂРµРіР°С‚С‹ РѕС‚Р·С‹РІРѕРІ/РїРѕРєСѓРїРѕРє вЂ” Р±РµСЂС‘Рј
-      // РѕС‚С„РёР»СЊС‚СЂРѕРІР°РЅРЅС‹Р№ РЅР°Р±РѕСЂ (РєР°Рї 1000) Рё СЃРѕСЂС‚РёСЂСѓРµРј РІ РїР°РјСЏС‚Рё.
+      // rating / popular: нужны агрегаты отзывов/покупок — берём
+      // отфильтрованный набор (кап 1000) и сортируем в памяти.
       const rows = await filtered().select("id").limit(1000).all();
       const matchIds = rows.map((r: any) => r.id);
       if (matchIds.length === 0) {
@@ -506,9 +506,9 @@ router.get(
   }
 );
 
-// PLAN-003 J-006: Р°РіСЂРµРіРёСЂРѕРІР°РЅРЅС‹Рµ РґР°РЅРЅС‹Рµ РґР»СЏ homepage вЂ” РѕРґРёРЅ Р·Р°РїСЂРѕСЃ РІРјРµСЃС‚Рѕ
-// С‚СЂС‘С… РЅРµР·Р°РІРёСЃРёРјС‹С… РІС‹Р·РѕРІРѕРІ СЃ С„СЂРѕРЅС‚РµРЅРґР°. Р РµР°Р»СЊРЅС‹Рµ СЃРµРєС†РёРё: РЅРѕРІРёРЅРєРё (createdAt),
-// РїРѕРїСѓР»СЏСЂРЅРѕРµ (Р·Р°РІРµСЂС€С‘РЅРЅС‹Рµ РїРѕРєСѓРїРєРё; fallback вЂ” СЂРµР№С‚РёРЅРі РѕС‚Р·С‹РІРѕРІ), Р±РµСЃРїР»Р°С‚РЅС‹Рµ.
+// PLAN-003 J-006: агрегированные данные для homepage — один запрос вместо
+// трёх независимых вызовов с фронтенда. Реальные секции: новинки (createdAt),
+// популярное (завершённые покупки; fallback — рейтинг отзывов), бесплатные.
 router.get("/homepage", standardRateLimit, async (req, res: Response) => {
   try {
     const [newest, popularRows, free, popularity] = await Promise.all([
@@ -532,8 +532,8 @@ router.get("/homepage", standardRateLimit, async (req, res: Response) => {
       })
       .slice(0, 8);
 
-    // Р•СЃР»Рё РїРѕРєСѓРїРѕРє РїРѕРєР° РЅРµС‚ вЂ” В«РїРѕРїСѓР»СЏСЂРЅРѕРµВ» РґРµРіСЂР°РґРёСЂСѓРµС‚ РІ РІС‹СЃРѕРєРёР№ СЂРµР№С‚РёРЅРі
-    // (СЂРµР°Р»СЊРЅС‹Р№ СЃРёРіРЅР°Р» РѕС‚Р·С‹РІРѕРІ), Р±РµР· РІС‹РґСѓРјР°РЅРЅРѕРіРѕ ranking.
+    // Если покупок пока нет — «популярное» деградирует в высокий рейтинг
+    // (реальный сигнал отзывов), без выдуманного ranking.
     const popular =
       withPurchases.length > 0
         ? withPurchases
@@ -573,7 +573,7 @@ router.get("/my", authenticate, standardRateLimit, async (req: AuthRequest, res:
   }
 });
 
-// GET /resources/:slug/media вЂ” owner-only media state for editing (B-006):
+// GET /resources/:slug/media — owner-only media state for editing (B-006):
 // drafts are not publicly visible, but the seller must be able to manage
 // their presentation before publication.
 router.get(
@@ -617,7 +617,7 @@ router.get(
 
 // GET /resources/:slug - Get resource by slug (with media, D-001/D-002)
 // PLAN-010 B-001: honest page-view counter. Public (guests count too);
-// no viewer identities are ever stored вЂ” resource Г— day Г— count only.
+// no viewer identities are ever stored — resource × day × count only.
 // Views are shown exclusively to the resource's seller (not a public metric).
 router.post("/:slug/view", standardRateLimit, async (req, res: Response) => {
   try {
@@ -668,7 +668,7 @@ router.get("/:slug", standardRateLimit, async (req, res: Response) => {
       return;
     }
 
-    // PLAN-008: aggregate follower count only вЂ” lists never exposed (В§42).
+    // PLAN-008: aggregate follower count only — lists never exposed (§42).
     const followersAgg = await db.orm.public.ResourceFollow
       .where({ resourceId: resource.id })
       .aggregate((a: any) => ({ total: a.count() }));
@@ -761,7 +761,7 @@ router.patch("/:slug", authenticate, standardRateLimit, async (req: AuthRequest,
 
     // TASK A-008: sellers may only submit (DRAFT -> PENDING_REVIEW) or
     // withdraw (PENDING_REVIEW -> DRAFT). Publishing, suspending, unsuspending
-    // and unpublishing are moderation-only вЂ” transition matrix, not a blocklist
+    // and unpublishing are moderation-only — transition matrix, not a blocklist
     // (the old allowlist let sellers "unsuspend" via SUSPENDED -> DRAFT).
     if (status) {
       if (!isResourceStatus(status)) {
@@ -822,8 +822,8 @@ router.delete(
         return;
       }
 
-      // PLAN-003 A-004: РјРµРґРёР° РЅРµ РґРѕР»Р¶РЅРѕ РѕСЃС‚Р°РІР°С‚СЊСЃСЏ Р±РµСЃС…РѕР·РЅС‹Рј РїСЂРё СѓРґР°Р»РµРЅРёРё
-      // СЂРµСЃСѓСЂСЃР° (rows СѓС…РѕРґСЏС‚ РїРѕ cascade вЂ” С„Р°Р№Р»С‹ СѓРґР°Р»СЏРµРј СЏРІРЅРѕ, best-effort).
+      // PLAN-003 A-004: медиа не должно оставаться бесхозным при удалении
+      // ресурса (rows уходят по cascade — файлы удаляем явно, best-effort).
       cleanupMediaUrl(resource.coverUrl);
       const mediaRows = await db.orm.public.ResourceMedia
         .where({ resourceId: resource.id })

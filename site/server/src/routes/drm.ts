@@ -1,6 +1,6 @@
-﻿// DRM v1 routes вЂ” DEPRECATED activation protocol (PLAN TASK A-007, ADR-001).
+﻿// DRM v1 routes — DEPRECATED activation protocol (PLAN TASK A-007, ADR-001).
 //
-// Decision: option A вЂ” v1 activation protocol is deprecated and blocked.
+// Decision: option A — v1 activation protocol is deprecated and blocked.
 // - POST /drm/activate and POST /drm/verify return 410 Gone.
 //   Reasons: fake keypairs (crypto.randomBytes as "keys"), private key
 //   returned to the client over HTTP, private key used as a bearer secret,

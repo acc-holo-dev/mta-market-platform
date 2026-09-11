@@ -1,5 +1,5 @@
 ﻿// PLAN E-002/E-006/E-008: canonical YooKassa implementation of IPaymentProvider.
-// Wraps the YooKassa HTTP transport (lib/yookassa.ts) вЂ” the only place where
+// Wraps the YooKassa HTTP transport (lib/yookassa.ts) — the only place where
 // YooKassa specifics meet the neutral payment layer. Verification follows the
 // actual provider protocol: IP allowlist + HTTP Basic auth on the transport
 // side (lib/yookassaWebhook.ts) and provider re-fetch for business checks

@@ -399,7 +399,7 @@ router.get('/v2/public-keys', async (req: Request, res: Response) => {
  * PLAN G-005: release the per-version DEK to an installation that proves
  * possession of its private key and holds a valid lease covering this
  * version. The server master key never leaves the server.
- * Body: { installationId, nonce, signature } вЂ” signature (base64 Ed25519)
+ * Body: { installationId, nonce, signature } — signature (base64 Ed25519)
  * over the ASCII bytes `dek:${versionId}:${nonce}`.
  */
 router.post('/v2/versions/:versionId/dek', strictRateLimit, async (req: Request, res: Response) => {

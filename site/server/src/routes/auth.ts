@@ -64,7 +64,7 @@ function isRealEmail(email: string): boolean {
 
 // ---------------------------------------------------------------------------
 // PLAN-001 A-001/A-002: local registration + login (username/email + password).
-// Uses the existing session/token/cookie infrastructure вЂ” no parallel auth
+// Uses the existing session/token/cookie infrastructure — no parallel auth
 // system. OAuth-only accounts keep passwordHash = null.
 // ---------------------------------------------------------------------------
 
@@ -425,7 +425,7 @@ router.post("/logout", authRateLimit, async (req: Request, res: Response) => {
 
 // PATCH /auth/me - edit allowed profile fields (PLAN-001 B-002).
 // role, status, email, username and any protected/identity fields are NOT
-// editable here вЂ” attempts are ignored/rejected.
+// editable here — attempts are ignored/rejected.
 router.patch("/me", authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const allowed: Record<string, unknown> = {};

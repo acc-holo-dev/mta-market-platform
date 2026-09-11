@@ -37,9 +37,9 @@ function yooKassaProvider(): IPaymentProvider | null {
 /**
  * E-003: apply a state-machine transition to a Payment row. No-op when the
  * row is already in the target state; throws PaymentStateError on illegal
- * transitions (surfacing as 500 вЂ” a programming error, not a client one).
+ * transitions (surfacing as 500 — a programming error, not a client one).
  *
- * PLAN-012 В§6: the transition is a compare-and-set on the observed state вЂ”
+ * PLAN-012 §6: the transition is a compare-and-set on the observed state —
  * parallel webhook deliveries (or two instances) cannot interleave two
  * different transitions; a loser re-reads and either acknowledges the
  * already-applied state or retries onto the new current state.
@@ -72,7 +72,7 @@ async function transitionPaymentTo(providerPaymentId: string, to: PaymentState):
 // POST /payments/create - Create payment (authenticated)
 // Accepts { purchaseId } for resource lines (legacy) or { servicePurchaseId }
 // for service lines (C-010). The provider amount is always the FINAL total.
-// PLAN-012 В§5: honored when the client sends an Idempotency-Key вЂ” a repeated
+// PLAN-012 §5: honored when the client sends an Idempotency-Key — a repeated
 // request replays the stored response instead of creating a second payment.
 router.post(
   "/create",
@@ -124,7 +124,7 @@ router.post(
 
       const created = await provider.createPayment({
         amount: { value: servicePurchase.finalPrice, currency: "RUB" },
-        description: "Р—Р°РєР°Р· СѓСЃР»СѓРіРё",
+        description: "Заказ услуги",
         orderId: servicePurchase.id,
         returnUrl: `${process.env.FRONTEND_URL}/services/orders/${servicePurchase.id}`,
       });
@@ -174,10 +174,10 @@ router.post(
 
     if (provider) {
       // TASK A-011: the provider amount must equal the order FINAL total
-      // (after discounts) вЂ” never the pre-discount snapshot.
+      // (after discounts) — never the pre-discount snapshot.
       const created = await provider.createPayment({
         amount: { value: purchase.finalPrice, currency: "RUB" },
-        description: `РџРѕРєСѓРїРєР° СЂРµСЃСѓСЂСЃР°: ${resource.title}`,
+        description: `Покупка ресурса: ${resource.title}`,
         orderId: purchase.id.toString(),
         returnUrl: `${process.env.FRONTEND_URL}/purchases/${purchase.id}`,
       });
@@ -212,7 +212,7 @@ router.post(
         isUniqueViolation(error, "payment_orderitem_captured_uq")
       ) {
         // PLAN-012 В§6: a parallel request already captured money for this
-        // line вЂ” the database rejected the second capture.
+        // line — the database rejected the second capture.
         res.status(409).json({ error: "Payment for this order is already captured" });
         return;
       }
@@ -234,7 +234,7 @@ router.post(
 router.post("/webhook", async (req: Request, res: Response) => {
   try {
     // TASK A-010: when the provider is not configured there is no way to
-    // verify transport authenticity or re-fetch provider state вЂ” the endpoint
+    // verify transport authenticity or re-fetch provider state — the endpoint
     // must be DISABLED, not open.
     const provider = yooKassaProvider();
     if (!provider) {
@@ -301,7 +301,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
           )
         ) {
           // PLAN-012 В§7: a parallel delivery (other instance) persisted the
-          // same event first вЂ” adopt its record instead of failing.
+          // same event first — adopt its record instead of failing.
           eventRecord = await db.orm.public.PaymentProviderEvent.where({
             provider: "YUKASSA",
             providerEventId: object.id,
@@ -344,7 +344,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
     // PLAN-004 D-004 (audit GAP-1): real cancellation lifecycle. A
     // `payment.canceled` event closes the local PENDING payment/purchase so
-    // it does not hang forever, and вЂ” critically вЂ” when the provider reports
+    // it does not hang forever, and — critically — when the provider reports
     // a *succeeded* payment while the local state is already CANCELED (user
     // canceled at the provider after capture, or a race with
     // /payments/cancel), provider truth wins: the transition is repaired to
@@ -363,7 +363,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
       if (cancelOrderRef) {
         // CAS: only a still-PENDING purchase is closed; a completed one is
         // money already captured (handled by the succeeded flow / refund).
-        // PurchaseStatus has no CANCELED вЂ” FAILED is the terminal "no
+        // PurchaseStatus has no CANCELED — FAILED is the terminal "no
         // entitlement" state (the provider-side cancel is reflected on the
         // Payment row, which does have CANCELED).
         await db.orm.public.Purchase.where({ id: cancelOrderRef, status: "PENDING" }).update({
@@ -381,7 +381,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
     if (localPayment && localPayment.status === "CANCELED") {
       // Provider says SUCCEEDED after a local cancel: repair the state
       // (provider truth wins) and fall through to the normal succeeded flow
-      // below вЂ” the buyer paid, the entitlement must be granted.
+      // below — the buyer paid, the entitlement must be granted.
       const repaired = await db.orm.public.Payment
         .where({ providerPaymentId: object.id, status: "CANCELED" })
         .updateAndCount({ status: "PENDING" });

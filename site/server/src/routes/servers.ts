@@ -2,7 +2,7 @@
 //
 // Server is the hub entity: identity + monitoring + news + community + reviews.
 // Privacy discipline (S/T): private technical data is filtered from every
-// public payload HERE, in the backend authorization layer вЂ” frontend UI
+// public payload HERE, in the backend authorization layer — frontend UI
 // hiding is never trusted (workstream AA).
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
@@ -40,7 +40,7 @@ function optionalUserId(req: AuthRequest): string | null {
   return payload?.userId ?? null;
 }
 
-/** Public projection of a Server row вЂ” connection data never included (S). */
+/** Public projection of a Server row — connection data never included (S). */
 function publicServerFields(server: any) {
   return {
     id: server.id,
@@ -86,7 +86,7 @@ async function followerCount(serverId: string): Promise<number> {
 // Registration + discovery
 // ---------------------------------------------------------------------------
 
-// GET /servers вЂ” public discovery list (VERIFIED/ACTIVE only; W: typed results).
+// GET /servers — public discovery list (VERIFIED/ACTIVE only; W: typed results).
 router.get("/", standardRateLimit, async (req, res: Response) => {
   try {
     const { page, limit, skip } = parsePaging(req.query);
@@ -140,7 +140,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
     );
 
     // "players" sort uses the real reported online count; servers without a
-    // current value go last (never fabricated вЂ” workstream E/AA).
+    // current value go last (never fabricated — workstream E/AA).
     if (sort === "players") {
       cards.sort((a: any, b: any) => (b.playerCount ?? -1) - (a.playerCount ?? -1));
     }
@@ -152,7 +152,7 @@ router.get("/", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// POST /servers вЂ” register a server (B-001..B-003). lifecycle CREATED.
+// POST /servers — register a server (B-001..B-003). lifecycle CREATED.
 router.post(
   "/",
   authenticate,
@@ -162,7 +162,7 @@ router.post(
     try {
       const { name, description, host, port, region, websiteUrl, discordUrl } = req.body ?? {};
       if (typeof name !== "string" || name.trim().length < 3 || name.trim().length > 60) {
-        res.status(400).json({ error: "РќР°Р·РІР°РЅРёРµ СЃРµСЂРІРµСЂР°: РѕС‚ 3 РґРѕ 60 СЃРёРјРІРѕР»РѕРІ" });
+        res.status(400).json({ error: "Название сервера: от 3 до 60 символов" });
         return;
       }
       if (host !== undefined && host !== null && (typeof host !== "string" || host.length > 255)) {
@@ -222,7 +222,7 @@ router.post(
   }
 );
 
-// GET /servers/my вЂ” the caller's own servers (must precede /:slug).
+// GET /servers/my — the caller's own servers (must precede /:slug).
 router.get("/my", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const memberships = await db.orm.public.ServerMember.where({ userId: req.user!.userId }).all();
@@ -237,7 +237,7 @@ router.get("/my", authenticate, standardRateLimit, async (req: AuthRequest, res:
   }
 });
 
-// GET /servers/:slug вЂ” public server page payload (D-001..D-003), privacy
+// GET /servers/:slug — public server page payload (D-001..D-003), privacy
 // filtered. Staff sees the unfiltered view through caller.isStaff.
 router.get("/:slug", standardRateLimit, async (req, res: Response) => {
   try {
@@ -268,7 +268,7 @@ router.get("/:slug", standardRateLimit, async (req, res: Response) => {
       server: {
         ...publicServerFields(server),
         // Stats visibility (S): hidden stats withhold live numbers and last
-        // seen вЂ” the aggregate follower count and rating remain public.
+        // seen — the aggregate follower count and rating remain public.
         playerCount: server.showStats ? server.playerCount : null,
         maxPlayers: server.showStats ? server.maxPlayers : null,
         lastSeenAt: server.showStats ? server.lastSeenAt : null,
@@ -290,7 +290,7 @@ router.get("/:slug", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// PATCH /servers/:slug вЂ” identity/branding/connection edit (owner+admins).
+// PATCH /servers/:slug — identity/branding/connection edit (owner+admins).
 router.patch("/:slug", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const server = await db.orm.public.Server.where({ slug: req.params.slug as string }).first();
@@ -309,7 +309,7 @@ router.patch("/:slug", authenticate, standardRateLimit, async (req: AuthRequest,
 
     if (b.name !== undefined) {
       if (typeof b.name !== "string" || b.name.trim().length < 3 || b.name.trim().length > 60) {
-        res.status(400).json({ error: "РќР°Р·РІР°РЅРёРµ СЃРµСЂРІРµСЂР°: РѕС‚ 3 РґРѕ 60 СЃРёРјРІРѕР»РѕРІ" });
+        res.status(400).json({ error: "Название сервера: от 3 до 60 символов" });
         return;
       }
       update.name = b.name.trim();
@@ -359,7 +359,7 @@ router.patch("/:slug", authenticate, standardRateLimit, async (req: AuthRequest,
         }
       }
     }
-    // Connection data вЂ” owner-managed, never publicly rendered (S).
+    // Connection data — owner-managed, never publicly rendered (S).
     if (b.host !== undefined) {
       if (b.host === null || b.host === "") update.host = null;
       else if (typeof b.host === "string" && b.host.length <= 255) update.host = b.host;
@@ -405,7 +405,7 @@ router.patch("/:slug", authenticate, standardRateLimit, async (req: AuthRequest,
   }
 });
 
-// DELETE /servers/:slug вЂ” owner archives the server (archiving is not history
+// DELETE /servers/:slug — owner archives the server (archiving is not history
 // deletion: rows persist, the page becomes unreachable for non-staff).
 router.delete("/:slug", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
@@ -415,7 +415,7 @@ router.delete("/:slug", authenticate, standardRateLimit, async (req: AuthRequest
       return;
     }
     if (server.ownerId !== req.user!.userId) {
-      res.status(403).json({ error: "РўРѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† РјРѕР¶РµС‚ Р°СЂС…РёРІРёСЂРѕРІР°С‚СЊ СЃРµСЂРІРµСЂ" });
+      res.status(403).json({ error: "Только владелец может архивировать сервер" });
       return;
     }
     const updated = await db.orm.public.Server.where({ id: server.id }).update({
@@ -438,7 +438,7 @@ router.delete("/:slug", authenticate, standardRateLimit, async (req: AuthRequest
   }
 });
 
-// PATCH /servers/:slug/privacy вЂ” owner-only switches (S/T), enforced here.
+// PATCH /servers/:slug/privacy — owner-only switches (S/T), enforced here.
 router.patch(
   "/:slug/privacy",
   authenticate,
@@ -451,7 +451,7 @@ router.patch(
         return;
       }
       if (server.ownerId !== req.user!.userId) {
-        res.status(403).json({ error: "РўРѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† РјРѕР¶РµС‚ РјРµРЅСЏС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РїСЂРёРІР°С‚РЅРѕСЃС‚Рё" });
+        res.status(403).json({ error: "Только владелец может менять настройки приватности" });
         return;
       }
       const b = req.body ?? {};
@@ -491,7 +491,7 @@ router.patch(
 // Ownership verification (C-001..C-003)
 // ---------------------------------------------------------------------------
 
-// POST /servers/:slug/integration-token вЂ” owner issues/rotates the module
+// POST /servers/:slug/integration-token — owner issues/rotates the module
 // secret. The plaintext token is returned exactly once.
 router.post(
   "/:slug/integration-token",
@@ -505,7 +505,7 @@ router.post(
         return;
       }
       if (server.ownerId !== req.user!.userId) {
-        res.status(403).json({ error: "РўРѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† РјРѕР¶РµС‚ РІС‹РїСѓСЃС‚РёС‚СЊ С‚РѕРєРµРЅ РёРЅС‚РµРіСЂР°С†РёРё" });
+        res.status(403).json({ error: "Только владелец может выпустить токен интеграции" });
         return;
       }
       const token = generateIntegrationToken();
@@ -515,8 +515,8 @@ router.post(
         integrationTokenIssuedAt: new Date().toISOString(),
         verification: verified ? "PENDING" : server.verification,
         verificationNote: verified
-          ? "РўРѕРєРµРЅ РїРµСЂРµРІС‹РїСѓС‰РµРЅ. РџРѕРґС‚РІРµСЂРґРёС‚Рµ РІР»Р°РґРµРЅРёРµ Р·Р°РЅРѕРІРѕ вЂ” СЃС‚Р°С‚СѓСЃ РѕР±РЅРѕРІРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ heartbeat."
-          : "РўРѕРєРµРЅ РІС‹РїСѓС‰РµРЅ. РќР°СЃС‚СЂРѕР№С‚Рµ РёРЅС‚РµРіСЂР°С†РёСЋ РЅР° СЃРµСЂРІРµСЂРµ вЂ” СЃС‚Р°С‚СѓСЃ РѕР±РЅРѕРІРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ heartbeat.",
+          ? "Токен перевыпущен. Подтвердите владение заново — статус обновится после первого heartbeat."
+          : "Токен выпущен. Настройте интеграцию на сервере — статус обновится после первого heartbeat.",
         lifecycle:
           server.lifecycle === "CREATED" && !verified ? "PENDING_VERIFICATION" : server.lifecycle,
       });
@@ -536,7 +536,7 @@ router.post(
   }
 );
 
-// GET /servers/:slug/verification вЂ” staff view of the state machine (C-003).
+// GET /servers/:slug/verification — staff view of the state machine (C-003).
 router.get(
   "/:slug/verification",
   authenticate,
@@ -568,7 +568,7 @@ router.get(
 );
 
 // ---------------------------------------------------------------------------
-// Staff (G/Q) вЂ” public only with owner opt-in (showStaff)
+// Staff (G/Q) — public only with owner opt-in (showStaff)
 // ---------------------------------------------------------------------------
 
 router.get("/:slug/staff", standardRateLimit, async (req, res: Response) => {
@@ -609,7 +609,7 @@ router.get("/:slug/staff", standardRateLimit, async (req, res: Response) => {
   }
 });
 
-// POST /servers/:slug/staff вЂ” owner appoints ADMIN/MODERATOR staff.
+// POST /servers/:slug/staff — owner appoints ADMIN/MODERATOR staff.
 router.post(
   "/:slug/staff",
   authenticate,
@@ -622,7 +622,7 @@ router.post(
         return;
       }
       if (server.ownerId !== req.user!.userId) {
-        res.status(403).json({ error: "РўРѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† РјРѕР¶РµС‚ СѓРїСЂР°РІР»СЏС‚СЊ РїРµСЂСЃРѕРЅР°Р»РѕРј" });
+        res.status(403).json({ error: "Только владелец может управлять персоналом" });
         return;
       }
       const { userId, role } = req.body ?? {};
@@ -643,7 +643,7 @@ router.post(
         {
           recipientId: userId,
           type: "MODERATION",
-          title: `Р’Р°Рј РІС‹РґР°РЅР° СЂРѕР»СЊ ${role} РЅР° СЃРµСЂРІРµСЂРµ В«${server.name}В»`,
+          title: `Вам выдана роль ${role} на сервере «${server.name}»`,
           entityType: "server",
           entityId: server.id,
         },
@@ -665,7 +665,7 @@ router.post(
   }
 );
 
-// DELETE /servers/:slug/staff/:userId вЂ” owner removes a staff member.
+// DELETE /servers/:slug/staff/:userId — owner removes a staff member.
 router.delete(
   "/:slug/staff/:userId",
   authenticate,
@@ -678,11 +678,11 @@ router.delete(
         return;
       }
       if (server.ownerId !== req.user!.userId) {
-        res.status(403).json({ error: "РўРѕР»СЊРєРѕ РІР»Р°РґРµР»РµС† РјРѕР¶РµС‚ СѓРїСЂР°РІР»СЏС‚СЊ РїРµСЂСЃРѕРЅР°Р»РѕРј" });
+        res.status(403).json({ error: "Только владелец может управлять персоналом" });
         return;
       }
       if (req.params.userId === server.ownerId) {
-        res.status(400).json({ error: "Р’Р»Р°РґРµР»СЊС†Р° РЅРµР»СЊР·СЏ СѓРґР°Р»РёС‚СЊ" });
+        res.status(400).json({ error: "Владельца нельзя удалить" });
         return;
       }
       await db.orm.public.ServerMember
@@ -763,10 +763,10 @@ router.get(
 );
 
 // ---------------------------------------------------------------------------
-// Used resources вЂ” the opt-in relationship (T)
+// Used resources — the opt-in relationship (T)
 // ---------------------------------------------------------------------------
 
-// POST /servers/:slug/resources вЂ” owner explicitly links a used resource.
+// POST /servers/:slug/resources — owner explicitly links a used resource.
 router.post(
   "/:slug/resources",
   authenticate,
@@ -801,7 +801,7 @@ router.post(
         displayName:
           typeof displayName === "string" && displayName.trim()
             ? displayName.trim().slice(0, 120)
-            : "Р РµСЃСѓСЂСЃ",
+            : "Ресурс",
         note: typeof note === "string" ? note.slice(0, 300) : null,
       });
       await recordAudit({
@@ -821,7 +821,7 @@ router.post(
   }
 );
 
-// DELETE /servers/:slug/resources/:rowId вЂ” owner removes the link.
+// DELETE /servers/:slug/resources/:rowId — owner removes the link.
 router.delete(
   "/:slug/resources/:rowId",
   authenticate,
@@ -847,7 +847,7 @@ router.delete(
   }
 );
 
-// GET /servers/:slug/resources вЂ” public ONLY while the owner keeps the opt-in
+// GET /servers/:slug/resources — public ONLY while the owner keeps the opt-in
 // enabled; the backend, not the UI, decides what leaves the database.
 router.get("/:slug/resources", standardRateLimit, async (req, res: Response) => {
   try {
@@ -939,7 +939,7 @@ router.delete("/:slug/follow", authenticate, standardRateLimit, async (req: Auth
 });
 
 // ---------------------------------------------------------------------------
-// Statistics (E-004/E-005) вЂ” computed from real samples only
+// Statistics (E-004/E-005) — computed from real samples only
 // ---------------------------------------------------------------------------
 
 router.get("/:slug/statistics", standardRateLimit, async (req, res: Response) => {
