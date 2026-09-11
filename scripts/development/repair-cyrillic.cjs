@@ -142,8 +142,13 @@ function main() {
 
   const textExt =
     /\.(ts|tsx|cjs|cts|mjs|js|py|sql|yml|yaml|json|prisma|sh|md|txt|toml|ini|css|html)$/;
+  const self = path.relative(ROOT, __filename);
   const targets = tracked.filter(
-    (f) => f !== "pnpm-lock.yaml" && textExt.test(f) && fs.existsSync(path.join(ROOT, f))
+    (f) =>
+      f !== "pnpm-lock.yaml" &&
+      f !== self && // this codemod contains the marker literals by design
+      textExt.test(f) &&
+      fs.existsSync(path.join(ROOT, f))
   );
 
   const log = [];
