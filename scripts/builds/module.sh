@@ -5,8 +5,9 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 require() { command -v "$1" >/dev/null || { echo "missing tool: $1 (see documents/module/BUILD.md)" >&2; exit 2; }; }
 require cmake; require ninja; require g++
-cmake --preset linux-gcc -S module
-cmake --build --preset linux-gcc -S module
+( cd module
+cmake --preset linux-gcc
+cmake --build --preset linux-gcc
 if [ "${1:-}" != "--no-tests" ]; then
-  ctest --preset linux-gcc --test-dir module --output-on-failure
-fi
+  ctest --preset linux-gcc --output-on-failure
+fi )

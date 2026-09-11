@@ -263,11 +263,12 @@ def cmd_module() -> int:
     if not have("cmake", "ninja", "g++"):
         print("  ✖ cmake/ninja/g++ missing (see documents/module/BUILD.md)")
         return 2
-    if sh(["cmake", "--preset", "linux-gcc", "-S", "module"]).returncode:
+    mod = ROOT / "module"
+    if sh(["cmake", "--preset", "linux-gcc"], cwd=mod).returncode:
         return 1
-    if sh(["cmake", "--build", "--preset", "linux-gcc", "-S", "module"]).returncode:
+    if sh(["cmake", "--build", "--preset", "linux-gcc"], cwd=mod).returncode:
         return 1
-    return sh(["ctest", "--preset", "linux-gcc", "--test-dir", "module", "--output-on-failure"]).returncode
+    return sh(["ctest", "--preset", "linux-gcc", "--output-on-failure"], cwd=mod).returncode
 
 
 def cmd_build() -> int:
