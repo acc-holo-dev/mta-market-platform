@@ -27,7 +27,7 @@
     "@types/multer": "^2.2.0",
     "@types/nodemailer": "^8.0.1",
     "bcryptjs": "^3.0.3",
-    "commander": "^12.1.0",
+    "commander": "^15.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
