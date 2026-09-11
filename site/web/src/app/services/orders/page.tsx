@@ -40,8 +40,8 @@ export default function ServiceOrdersPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Мои заказы услуг</h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400">
+        <h1 className="text-3xl font-bold tracking-tight mb-2">Мои заказы услуг</h1>
+        <p className="text-sm text-content-secondary">
           Статусы, приёмка и споры по заказам услуг
         </p>
       </div>
@@ -91,14 +91,18 @@ function ServiceOrderCard({ order: o }: { order: ServiceOrder }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <CardTitle className="text-base">{o.service.title}</CardTitle>
-            <CardDescription>
+            <CardDescription className="tabular-nums">
               {formatRub(o.finalPrice)} · {new Date(o.createdAt).toLocaleDateString("ru-RU")} · #
               {o.id.slice(0, 8)}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <StatusBadge status={o.status} />
-            <button onClick={() => setExpanded((v) => !v)} aria-label="Подробнее">
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              aria-label="Подробнее"
+              className="rounded-md p-1 text-content-muted transition-colors duration-fast hover:bg-surface-hover hover:text-content"
+            >
               {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             </button>
           </div>
@@ -110,10 +114,10 @@ function ServiceOrderCard({ order: o }: { order: ServiceOrder }) {
           {STEPS.map((step, i) => (
             <span
               key={step}
-              className={`px-2 py-0.5 rounded ${
+              className={`rounded-pill px-2.5 py-1 text-xs font-medium ${
                 idx >= 0 && i <= idx
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300"
-                  : "bg-slate-100 text-slate-400 dark:bg-slate-800"
+                  ? "bg-accent-soft text-accent-strong"
+                  : "bg-surface-inset text-content-muted"
               }`}
             >
               {step}
@@ -167,11 +171,15 @@ function ServiceOrderCard({ order: o }: { order: ServiceOrder }) {
           </div>
         ) : null}
 
-        {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+        {error ? (
+          <p className="text-sm text-bad" role="alert">
+            {error}
+          </p>
+        ) : null}
 
         {expanded ? (
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-            <p className="text-sm font-medium mb-2">Сообщения по заказу</p>
+          <div className="pt-4 border-t border-line">
+            <p className="text-sm font-semibold mb-2">Сообщения по заказу</p>
             {o.status !== "DISPUTED" ? (
               <MessageThread
                 messageIdPrefix={`service-order-${o.id}`}
@@ -179,7 +187,7 @@ function ServiceOrderCard({ order: o }: { order: ServiceOrder }) {
                 currentUserId={user?.id ?? null}
               />
             ) : (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-content-muted">
                 Заказ оспорен — переписка ведётся в разделе споров.
               </p>
             )}

@@ -14,14 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: All markdown lives only in documents/
-        run: |
-          bad=$(git ls-files '*.md' | grep -v '^documents/' | grep -v '^\.github/' || true)
-          if [ -n "$bad" ]; then
-            echo "::error::.md files outside documents/ are forbidden (PLAN-010 Rule 001):"
-            echo "$bad"
-            exit 1
-          fi
       - name: No duplicate structure roots
         run: |
           bad=""
@@ -43,3 +35,39 @@ jobs:
           done
       - name: startup.py compiles
         run: python3 -m py_compile startup.py scripts/development/*.py
+      - name: Single test root (no stray tests outside tests/)
+        run: |
+          bad=$(git ls-files '*test*' '*spec*' \
+            | grep -Ev '^tests/' \
+            | grep -Ev '^scripts/tests/' \
+            | grep -Ev '^\.github/workflows/' \
+            | grep -Ev '(^|/)(vitest|playwright)\.config\.(ts|js)$' \
+            | grep -Ev '^config/|^infrastructure/|^tsconfig\.test\.json$' \
+            | grep -Ev '(^|/)test[_-]harness\.(py|cjs|cts|mjs)$' \
+            || true)
+          if [ -n "$bad" ]; then
+            echo "::error::test files outside tests/ are forbidden (PLAN-012 §3):"
+            echo "$bad"
+            exit 1
+          fi
+      - name: Logs policy (root logs/ convention only)
+        run: |
+          tracked_logs=$(git ls-files '*.log' '*.log.*' || true)
+          if [ -n "$tracked_logs" ]; then
+            echo "::error::runtime log files must never be tracked:"
+            echo "$tracked_logs"
+            exit 1
+          fi
+          for d in log site/logs module/logs; do
+            [ -d "$d" ] && { echo "::error::forbidden log root: $d/"; exit 1; }
+          done
+          [ -d logs ] || { echo "::error::missing foundation directory: logs/"; exit 1; }
+      - name: Markdown policy — GitHub-technical exceptions recorded
+        run: |
+          # The single allowed .md outside documents/ is the GitHub PR template.
+          bad=$(git ls-files '*.md' | grep -v '^documents/' | grep -v '^\.github/pull_request_template\.md$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::.md files outside documents/ (except the recorded .github/pull_request_template.md exception):"
+            echo "$bad"
+            exit 1
+          fi

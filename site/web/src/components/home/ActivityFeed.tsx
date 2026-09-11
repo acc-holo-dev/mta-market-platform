@@ -93,18 +93,19 @@ export function ActivityItemRow({ item }: { item: ActivityItem }) {
   return (
     <Link
       href={item.href}
-      className="group flex items-start gap-3 rounded-card border border-line bg-surface p-3 transition-colors hover:border-accent/40 hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="group flex items-start gap-3 rounded-card border border-line bg-surface p-4 transition-colors duration-fast hover:border-line-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {Icon ? (
-        <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-line bg-background">
-          <Icon className="h-4 w-4 text-accent" />
+        <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft">
+          <Icon className="h-4 w-4 text-accent-strong" aria-hidden />
         </span>
       ) : null}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium group-hover:text-accent-strong">
+        <span className="block truncate text-sm font-medium text-content group-hover:text-accent-strong transition-colors duration-fast">
           {title}
         </span>
-        <span className="mt-0.5 block text-xs text-content-secondary">{timeAgo(item.at)}</span>
+        {/* Время — caption (DESIGN-SYSTEM §3). */}
+        <span className="mt-0.5 block text-xs text-content-muted">{timeAgo(item.at)}</span>
       </span>
     </Link>
   );
@@ -120,9 +121,9 @@ export function ActivityFeed({ snapshot }: { snapshot?: ActivitySnapshot }) {
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-[62px] rounded-card border border-line bg-surface/60 animate-pulse" />
+      <div className="grid gap-3 md:grid-cols-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-16 rounded-card border border-line bg-surface/60 animate-pulse" />
         ))}
       </div>
     );
@@ -149,7 +150,7 @@ export function ActivityFeed({ snapshot }: { snapshot?: ActivitySnapshot }) {
     );
   }
   return (
-    <div className="grid gap-2 md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2">
       {snap.items.map((item, idx) => (
         <ActivityItemRow key={`${item.type}-${item.href}-${item.at}-${idx}`} item={item} />
       ))}

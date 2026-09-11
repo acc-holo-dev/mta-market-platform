@@ -60,7 +60,7 @@ integration** (subsystem). Артефакт сборки — `base.dll`/`base.so
 | `ed25519.{hpp,cpp}` | генерация пары, импорт/экспорт raw-ключей, sign/verify, SPKI DER (формат публичного ключа сервера) |
 | `aead.{hpp,cpp}` | AES-256-GCM (расшифровка payload, работа с DEK) |
 | `http_client.{hpp,cpp}` | минимальный authenticated HTTPS-клиент (TLS 1.2+, валидация сертификата) для вызовов `/drm/v2/*` и `/integration/*` |
-| `key_store.{hpp,cpp}` | secure key store установки: файл AES-256-GCM, 0600, машинно-производный ключ (Linux) / DPAPI (Windows); **INV-010: приватный ключ никогда не передаётся** |
+| `key_store.{hpp,cpp}` | secure key store установки: файл AES-256-GCM, 0600, машинно-производный ключ (Linux); на Windows фактически деградирует (см. §9 support matrix — Windows NOT SUPPORTED; заявленный ранее DPAPI-вариант в коде отсутствует); **INV-010: приватный ключ никогда не передаётся** |
 | `license_client.{hpp,cpp}` | жизненный цикл лицензии: register installation → challenge verify → activate (lease) → renew → heartbeat; верификация подписи lease по `serverKeyId` |
 | `market_client.{hpp,cpp}` | интеграция с маркетом: `POST /integration/heartbeat` (онлайн-агрегаты) и `POST /integration/review-tokens` (выдача игроку одноразового токена) |
 | `Makefile` | standalone-тесты DRM без MTA-сервера: `make -f module/src/drm/Makefile test` |
@@ -95,6 +95,32 @@ integration** (subsystem). Артефакт сборки — `base.dll`/`base.so
   harness), `sdk_docgen` (генератор справки), fixture `sdk_spike_luac_fixture`.
 - CLI разработчика: `module/tools/mta/` (Python 3.11+; `mta doctor|build|test`),
   `docgen.cpp`, `mock-server/` (интеграционный мок MTA-сервера).
+
+## Toolchain policy (PLAN-012 §21B)
+
+**GCC (Linux x64) — официальный release toolchain.** Все блокирующие CI-гейты
+(сборка, ctest, DRM-тесты, CLI) исполняются GCC; сборка релиза модуля —
+GCC + OpenSSL.
+
+**Clang — report-only leg** (`continue-on-error` в module.yml). Точная
+причина отказа clang18 + libstdc++-14: самореференциальные члены
+`mta::drm::Json` в `module/src/drm/json.hpp` (строки 39/45/46:
+`using Members = std::vector<std::pair<std::string, Json>>;`
+`std::vector<Json> array;` `Members object;`) требуют complete-type
+инстанцирования при объявлении члена вclang; GCC/libstdc++ допускает
+инстанцирование с незавершённым типом (C++17 incomplete-type allowance).
+Конструктив не nlohmann, exceptions включены, unity для DRM исключён —
+риск локализован в одном заголовке. FIX (indirection через unique_ptr)
+возможен точечно, но меняет API потребителей; до выделенного hardening-этапа
+принята формальная политика «GCC release, clang report-only».
+
+## Support matrix (PLAN-012 §21C)
+
+| Платформа | Статус | Обоснование |
+|---|---|---|
+| Linux x64 (GCC, OpenSSL) | **SUPPORTED — release path**, CI-блокирующий гейт (build + ctest + DRM make test + CLI + harness) | верифицированный путь релиза |
+| Linux x64 (Clang) | report-only (build probe, не блокирует) | см. §8 выше |
+| Windows (MinGW/MSVC) | **NOT SUPPORTED** | POSIX-слой: `netdb.h`/`sys/socket.h`/`getaddrinfo`/`close` в `http_client.cpp` (без `_WIN32`-гвардов), `key_store.cpp` деградирует (home-каталог не создаётся, machine-id из `/etc/machine-id`), `timegm` в `license_client.cpp:332`; платформенной абстракции (winsock2/mkgmtime/fs) нет. CI win-* — build-probe (continue-on-error), не тестирует. |
 
 ## Тесты (`tests/module/*`, централизованно)
 

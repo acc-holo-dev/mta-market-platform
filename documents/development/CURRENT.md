@@ -1,131 +1,40 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (после выполнения PLAN-011).
+Обновлено: 2026-09-11 (PLAN-012 выполнен; PLAN-013 в работе).
 
 ## Активный план
 
-Нет. PLAN-011 (Unified Platform Monorepo) выполнен и зафиксирован
-(см. [COMPLETED/PLAN-011.md](completed/PLAN-011.md)). Предыдущие:
-PLAN-010 (Creator Analytics, [completed/PLAN-010.md](completed/PLAN-010.md)) со статусом
-**IMPLEMENTATION COMPLETE — browser E2E прогнан, production-проверка остаётся
-отдельным шагом** (см. Blockers внизу).
+**PLAN-012 — Transactional Correctness & Platform Consistency — IMPLEMENTATION COMPLETE**
+(запись: completed/PLAN-012.md). Следом идёт
+**PLAN-013 — Visual System & UX Redesign** (см. active/PLAN-013.md).
 
-Предыдущие планы: PLAN-005…010 — [completed/](completed/).
+### Что появилось в PLAN-012 (2026-09-11)
 
-### Что появилось в PLAN-011 (2026-09-11)
-
-- **PLAN-011 — Unified Platform Monorepo**: три репозитория
-  (mta-market-site, mta-market-module, mta-market-document) объединены в
-  `mta-market-platform`. Сохранена вся рабочая функциональность; структура —
-  documents/contracts/site/module/tests/logs/scripts/config/infrastructure/.
-  Централизация: tests/ (378 backend + 5 concurrency + 59 E2E), scripts/,
-  config/, infrastructure/, startup.py, CI-гейты (E2E — блокирующий).
-  Запись о выполнении: [completed/PLAN-011.md](completed/PLAN-011.md);
-  карта переноса: [../history/MIGRATION.md](../history/MIGRATION.md).
-
-## Состояние продукта
-
-MTA Market — marketplace + community + server platform (см. [PROJECT.md](../PROJECT.md)).
-После PLAN-006 платформа отвечает на главный вопрос daily experience:
-Home — живой вход в экосистему («Что происходит в MTA прямо сейчас?»).
-
-### Что появилось в PLAN-007
-
-- **CONTENT pillar**: статьи как сущность (DRAFT → PENDING_REVIEW →
-  PUBLISHED/ARCHIVED, модерация с причиной, audit, уведомления автору),
-  хаб /content с категориями, страницы /content/articles/[slug] с явными
-  связями (ресурсы — любые PUBLISHED; серверы — только staff, G-004
-  прецедент), треды обсуждения, «Мои статьи», вкладка «Статьи» в админке,
-  репорты ARTICLE.
-- **Daily experience**: NEW_ARTICLE в активности Home (инвалидация кэша на
-  одобрении/скрытии), статья в профиле автора, группа Articles в /search,
-  «Статьи» в глобальной навигации.
-- **Ремонт пробела PLAN-006**: построена страница /search (hero вёл на
-  404-страницу).
-
-### Что появилось в PLAN-008
-
-- **Follow Expansion (§16: Server → Creator → Resource)**: подписка на
-  создателя (продавец с APPROVED профилем) и на конкретный ресурс;
-  уведомления CREATOR_RESOURCE / CREATOR_ARTICLE / RESOURCE_UPDATE с deep
-  links; агрегаты «N подписчиков» на storefront и странице ресурса без
-  раскрытия списков (§42); ряды в сводке «Сейчас / За ночь».
-- **Market Loop починен на шаге Update**: загрузка новой версии
-  опубликованного ресурса возвращает его в PENDING_REVIEW (system-initiated
-  re-moderation с audit) → одобрение выпускает версию → покупатели (§26 —
-  relationship уже существует) и подписчики получают уведомления с dedup.
-
-### Что появилось в PLAN-009
-
-- **Thread Follow (шаг Follow в Community Loop, §10)**: подписка на любое
-  обсуждение (Follow на странице темы, агрегат «N следят» без списков),
-  FORUM_REPLY доставляется подписчикам вместе с автором и участниками
-  (dedup), ряд «Отслеживаемые обсуждения» в сводке «Сейчас / За ночь».
-
-### Что появилось в PLAN-010
-
-- **Creator Analytics (IDEAS §4 — foundation)**: честный счётчик просмотров
-  страниц ресурсов (ResourceViewDaily — агрегат ресурс×день, без
-  идентичностей зрителей), POST /resources/:slug/view; блок «Аналитика» в
-  кабинете продавца: просмотры/покупки за 30 дней, конверсия по каждому
-  ресурсу. Просмотры — приватные данные продавца.
-
-### Приёмка PLAN-010 (2026-09-11)
-
-- Backend-тесты: **378/378** (372 + 6 analytics).
-- Playwright browser E2E: **59/59** (56 + 3 analytics).
-- Миграция: 4 ops (20260911T0343_plan010_creator_analytics) в git.
-
-### Приёмка PLAN-009 (2026-09-11)
-
-- Backend-тесты: **372/372** (365 + 7 thread-follow).
-- Playwright browser E2E: **56/56** (52 + 4 thread-follow).
-- Миграция: 6 ops (20260911T0309_plan009_thread_follow) в git.
-
-### Приёмка PLAN-008 (2026-09-11)
-
-- Backend-тесты: **365/365** (358 + 7 follows).
-- Playwright browser E2E: **52/52** (47 + 5 follow).
-- Миграция: 14 ops (20260911T0202_plan008_follow_expansion) в git.
-- Activity layer без изменений; Home-путь не затронут.
-
-### Приёмка PLAN-007 (2026-09-11)
-
-- Backend-тесты: **358/358** (349 + 9 content).
-- Playwright browser E2E: **47/47** (42 + 5 plan007).
-- Production build web: exit 0; миграция 22 additive ops
-  (20260911T0112_plan007_content_foundation) в git.
-- Performance: activity cold 86.8мс / warm 23.2мс (статьи в том же
-  bounded-наборе).
-
-### Что появилось в PLAN-006
-
-- **LIVE-слой**: глобальные агрегаты «N игроков / M серверов онлайн» из
-  реальных heartbeat-сэмплов (только VERIFIED/ACTIVE + ONLINE + showStats=true),
-  кэш Redis TTL 45с; `GET /activity/live`.
-- **Activity read-layer**: `GET /activity` — смешанная лента высокоценных
-  событий (9 типов DAILY-EXPERIENCE §18) из существующих доменов, окно 7 дней,
-  bounded queries, dedup, chronological + детерминированные приоритеты без ML.
-  Никакой новой доменной сущности (§45).
-- **Home rebuild**: «Сейчас в MTA» (live line + поиск) → «Активность» (лента с
-  deep links) → «Популярное» (топ серверов по реальному онлайну + горячие
-  обсуждения) → маркетплейс-секции PLAN-003 сохранены. Всё доступно Guest.
-- **Инвалидация кэша** на высокоценных мутациях (publish news/update, release
-  ресурса, тема/ответ, отзыв) — свежие события на Home мгновенно.
-- **Dashboard «Сейчас / За ночь»**: сводка с момента последнего визита
-  (`User.dashboardSeenAt`): обновления подписок, новые ответы в моих темах,
-  обновления купленных ресурсов, unread-уведомления; deep links; baseline
-  продвигается при каждом визите.
-
-### Приёмка PLAN-006 (2026-09-11)
-
-- Backend-тесты: **349/349** (337 до плана + 12 activity/dashboard).
-- Playwright browser E2E: **42/42** (plan001 12 + plan003 13 + plan005 12 +
-  plan006 5) на живых dev-серверах.
-- Production build web: exit 0; First Load JS shared 102 kB (без роста).
-- Миграция формальным путём: 10 additive ops (user.dashboardSeenAt + 9
-  индексов), пакет `20260911T0004_plan006_daily_experience` в git.
-- Performance: cold compute 93мс / warm 23мс; горячий путь — из кэша.
+- **Transactional correctness core**: DB-инварианты через формальную
+  миграцию 20260911T1014_plan012_idempotency_invariants (12 ops):
+  checkout exactly-once (partial unique на живую покупку buyer+resource),
+  ledger entry unique (transactionId, accountId, direction) —
+  детерминированный settlement id стал hard-инвариантом,
+  financial_txn_settlement_once_uq, payment captured-partial uniques
+  (re-attempts разрешены, второй capture невозможен), dispute open uniques,
+  IdempotencyRecord.
+- **Idempotency-Key** на POST /purchases, /payments/create,
+  /payments/refunds, /payments/:id/simulate: same key → replay stored
+  response, conflicting payload → 409 idempotency_key_conflict.
+- **Atomic ledger**: balance delta одним UPDATE ... + delta ... RETURNING;
+  settlement (cache + legacy row + double-entry) в одной транзакции;
+  INV-013 возвратов под per-payment advisory lock; dispute transitions —
+  CAS; one-open-dispute — DB-инвариант.
+- **Repository consistency**: site/server/tests/ (33 stale-копии) удалены;
+  тест-рут только tests/; .md-политика соблюдена (1 GitHub-exception
+  зафиксирован); naming/logs чисты; CI-инварианты усилены.
+- **Tech debt PLAN-011 закрыт**: node dist/ рантайм чинен и проверен
+  (health/ready 200, production fail-fast, CI smoke); Clang policy + Windows
+  support matrix формализованы (MODULE.md §8/§9); /sellers канон;
+  PRODUCT-MODEL §3.1 OFFLINE согласован; OpenAPI schemas для
+  auth/commerce/payments/refunds/disputes — первый инкремент.
+- Приёмка: **392/392** unit+integration+concurrency тестов (было 383);
+  миграция 12 ops применена на dev/test; dist-smoke зелёный.
 
 ## Состояние продукта
 

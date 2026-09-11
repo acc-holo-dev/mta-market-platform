@@ -94,9 +94,20 @@ VERIFIED/PUBLISHED/DEPRECATED/YANKED), `ResourceDependency`,
 
 ### Платежи, ledger, refunds
 
-`Payment`, `PaymentProviderEvent` (идемпотентный webhook-лог),
-`FinancialTransaction` (legacy-строки для кэша баланса), `SellerBalance`,
-`Refund`, `LedgerAccount`, `LedgerEntry` (append-only double-entry).
+`Payment`, `PaymentProviderEvent` (идемпотентный webhook-лог, DB-уникальность
+[provider, providerEventId, eventType]), `FinancialTransaction` (legacy-строки
+для кэша баланса; DB-инвариант: один SELLER_REVENUE на строку расчёта),
+`SellerBalance`, `Refund`, `LedgerAccount`, `LedgerEntry` (append-only
+double-entry; DB-инвариант: unique [transactionId, accountId, direction]),
+`IdempotencyRecord` (PLAN-012 §5: durable idempotency финансово значимых
+mutations, unique [operation, key]).
+
+### Споры
+
+`Dispute` (state machine OPEN→…→CLOSED; DB-инвариант: не более одного
+открытого спора на заказ — partial unique по purchaseId / servicePurchaseId
+WHERE status <> 'CLOSED'), `DisputeMessage`, `DisputeAttachment`,
+`DisputeEvent` (append-only audit).
 
 ### DRM / артефакты
 

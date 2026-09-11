@@ -249,7 +249,7 @@ export default function ResourceDetailPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-12">
       {/* Breadcrumbs (N-001): Главная / Маркетплейс / Ресурс */}
       <nav aria-label="Хлебные крошки" className="mb-6 text-sm text-content-muted">
         <Link href="/" className="hover:text-accent-strong">
@@ -275,35 +275,35 @@ export default function ResourceDetailPage() {
             />
           ) : null}
 
-          {/* Hero area (D-001) */}
-          <div className="rounded-card border border-line bg-gradient-to-br from-accent-soft via-surface-raised to-surface p-8 flex flex-col items-start gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-strong">
+          {/* Hero area (D-001): градиентная surface с chips */}
+          <div className="rounded-lg border border-line bg-gradient-to-br from-accent-soft via-surface-raised to-surface p-6 md:p-8 flex flex-col items-start gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-pill bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-strong">
                 {typeLabel(resource.type)}
               </span>
               {latestVersion ? (
-                <span className="rounded bg-surface px-2.5 py-1 text-xs font-medium text-content-secondary border border-line">
+                <span className="rounded-pill border border-line bg-surface-inset px-3 py-1 text-xs font-medium text-content-secondary tabular-nums">
                   v{latestVersion.version}
                 </span>
               ) : null}
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{resource.title}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{resource.title}</h1>
             <p className="text-content-secondary leading-relaxed max-w-2xl line-clamp-3">
               {resource.description}
             </p>
-            <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               {/* D-005: seller identity ведёт в витрину продавца */}
               {sellerUsername ? (
                 <Link
                   href={`/sellers/${sellerUsername}`}
-                  className="inline-flex items-center gap-1.5 text-content-secondary hover:text-accent-strong transition-colors"
+                  className="inline-flex items-center gap-1.5 text-content-secondary hover:text-accent-strong transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
                 >
                   <Avatar
                     src={resource.seller?.avatar ?? null}
                     name={sellerName ?? resource.seller?.username ?? "?"}
                     size="sm"
                   />
-                  <span className="underline-offset-2 group-hover:underline">{sellerName}</span>
+                  <span className="underline-offset-2 hover:underline">{sellerName}</span>
                 </Link>
               ) : sellerName ? (
                 <span className="inline-flex items-center gap-1.5 text-content-secondary">
@@ -315,13 +315,14 @@ export default function ResourceDetailPage() {
                 count={resource.reviewCount ?? reviewsData?.stats.total ?? null}
                 size="md"
               />
-              <span className="text-content-muted">Опубликовано {formatDate(resource.createdAt)}</span>
+              {/* Дата публикации — caption (§3). */}
+              <span className="text-xs text-content-muted">Опубликовано {formatDate(resource.createdAt)}</span>
             </div>
           </div>
 
           {/* DRM info */}
-          <div className="flex items-start gap-3 p-4 rounded-card border border-line bg-surface">
-            <ShieldCheck className="h-6 w-6 text-ok flex-shrink-0" />
+          <div className="flex items-start gap-3 p-4 rounded-card border border-ok/30 bg-ok/10">
+            <ShieldCheck className="h-6 w-6 text-ok flex-shrink-0" aria-hidden />
             <div>
               <h2 className="font-semibold">Лицензия с DRM-защитой</h2>
               <p className="text-sm text-content-secondary">
@@ -343,7 +344,7 @@ export default function ResourceDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Versions (F-006) */}
+          {/* Versions (F-006) — timeline (§5 surface-inset semantic) */}
           <Card>
             <CardHeader>
               <CardTitle>История версий</CardTitle>
@@ -360,10 +361,10 @@ export default function ResourceDetailPage() {
                           i === 0 ? "bg-accent border-accent" : "bg-surface border-line-strong"
                         }`}
                       />
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold">v{v.version}</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold tabular-nums">v{v.version}</span>
                         {i === 0 ? (
-                          <span className="rounded bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent-strong">
+                          <span className="rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-strong">
                             Актуальная
                           </span>
                         ) : null}
@@ -391,7 +392,7 @@ export default function ResourceDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {accessToken && owned ? (
-                <div className="p-4 rounded-card border border-line bg-surface-raised space-y-3">
+                <div className="p-4 rounded-card border border-line bg-surface-inset space-y-3">
                   <p className="text-sm font-medium">Оставить отзыв</p>
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((n) => (
@@ -470,14 +471,14 @@ export default function ResourceDetailPage() {
           </Card>
         </div>
 
-        {/* Sidebar: purchase area (F-004) + PLAN-008 follow */}
-        <div className="space-y-6 lg:sticky lg:top-24 self-start">
+        {/* Sidebar: purchase area (F-004) + PLAN-008 follow — sticky, raised */}
+        <div className="space-y-4 lg:sticky lg:top-24 self-start">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-content-secondary">
                   Следят:{" "}
-                  <span className="font-semibold text-content">
+                  <span className="font-semibold text-content tabular-nums">
                     {(followState ? followState.count : (resource?.resourceFollowers ?? 0)).toLocaleString("ru-RU")}
                   </span>
                 </p>
@@ -503,7 +504,8 @@ export default function ResourceDetailPage() {
               </p>
             </CardContent>
           </Card>
-          <Card>
+          {/* Purchase card: главная конверсия страницы — raised + dominant price */}
+          <Card className="shadow-raised">
             <CardHeader>
               <CardTitle>
                 {owned
@@ -592,17 +594,17 @@ export default function ResourceDetailPage() {
               {checkoutResult?.kind === "pending" ? (
                 <div className="p-4 rounded-card border border-warn/30 bg-warn/10 space-y-2">
                   {checkoutResult.discount ? (
-                    <p className="text-sm">
+                    <p className="text-sm tabular-nums">
                       <span className="line-through text-content-muted mr-2">
                         {formatRub(checkoutResult.originalAmount)}
                       </span>
                       <span className="font-bold text-ok">{formatRub(checkoutResult.amount)}</span>
-                      <span className="ml-2 text-xs bg-ok/20 text-ok px-2 py-0.5 rounded">
+                      <span className="ml-2 text-xs bg-ok-soft text-ok px-2 py-0.5 rounded-pill">
                         −{checkoutResult.discount.percentage}%
                       </span>
                     </p>
                   ) : (
-                    <p className="text-sm">
+                    <p className="text-sm tabular-nums">
                       К оплате: <span className="font-bold">{formatRub(checkoutResult.amount)}</span>
                     </p>
                   )}

@@ -140,15 +140,18 @@ CREATED
 
 Возможны:
 
-OFFLINE
 SUSPENDED
 ARCHIVED
 
 Важно:
 
-OFFLINE не означает удаление.
+OFFLINE — НЕ lifecycle-стадия.
 
-Это operational state.
+Состояние «онлайн/офлайн/неизвестно» — отдельная operational-ось
+(SERVER MONITORING): ONLINE/OFFLINE/UNKNOWN. Она не входит в lifecycle и
+никогда не «врёт»: OFFLINE фиксируется только graceful shutdown сервера,
+тишина деградирует в UNKNOWN. Согласовано с PRODUCT-ARCHITECTURE §4.1 и
+реализацией (Server.lifecycle × Server.monitoring, PLAN-012 §21F).
 
 ==================================================
 3.2 Server ownership

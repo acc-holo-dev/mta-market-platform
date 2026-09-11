@@ -52,10 +52,14 @@ export function DisputeDialog({ targetType, purchaseId, servicePurchaseId }: Pro
   }
 
   return (
-    <div className="border border-slate-300 dark:border-slate-700 rounded-lg p-4 space-y-3">
-      <p className="text-sm font-medium">Причина спора</p>
+    <div className="rounded-lg border border-line-strong bg-surface-raised p-4 space-y-3">
+      <p className="text-sm font-semibold">Причина спора</p>
       <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Опишите проблему" />
-      {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <p className="text-sm text-bad" role="alert">
+          {error}
+        </p>
+      ) : null}
       <div className="flex gap-2">
         <Button
           size="sm"

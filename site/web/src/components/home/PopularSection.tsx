@@ -33,8 +33,8 @@ export function PopularSection() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {hasServers ? (
-        <div className="rounded-card border border-line bg-surface p-4">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-content-secondary">
+        <div className="rounded-card border border-line bg-surface p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-content-muted">
             Топ серверов сейчас
           </h3>
           <div className="space-y-2">
@@ -42,20 +42,21 @@ export function PopularSection() {
               <Link
                 key={s.slug}
                 href={`/servers/${s.slug}`}
-                className="flex items-center justify-between gap-3 rounded-card border border-line bg-background p-3 hover:border-accent/40"
+                className="flex items-center justify-between gap-3 rounded-card bg-surface-inset p-3 transition-colors duration-fast hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   {s.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={s.logoUrl} alt="" className="h-8 w-8 rounded-full object-cover" loading="lazy" />
                   ) : (
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-surface text-content-secondary">
-                      <Users className="h-4 w-4" />
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-soft text-accent-strong">
+                      <Users className="h-4 w-4" aria-hidden />
                     </span>
                   )}
-                  <span className="truncate text-sm font-medium">{s.name}</span>
+                  <span className="truncate text-sm font-medium text-content">{s.name}</span>
                 </span>
-                <span className="flex-shrink-0 text-sm font-semibold text-emerald-600">
+                {/* Реальный онлайн: ok-цвет + tabular-nums (§3 Numeric). */}
+                <span className="flex-shrink-0 text-sm font-semibold text-ok tabular-nums">
                   {s.playerCount ?? 0}
                   <span className="text-content-muted">/{s.maxPlayers ?? "?"}</span>
                 </span>
@@ -64,7 +65,7 @@ export function PopularSection() {
           </div>
           <Link
             href="/servers?sort=players"
-            className="mt-3 inline-block text-sm font-medium text-accent-strong hover:underline"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
           >
             Все серверы
           </Link>
@@ -72,8 +73,8 @@ export function PopularSection() {
       ) : null}
 
       {hasDiscussions ? (
-        <div className="rounded-card border border-line bg-surface p-4">
-          <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-content-secondary">
+        <div className="rounded-card border border-line bg-surface p-5">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-content-muted">
             Активные обсуждения
           </h3>
           <div className="space-y-2">
@@ -81,15 +82,15 @@ export function PopularSection() {
               <Link
                 key={d.id}
                 href={`/community/forum/thread/${d.id}`}
-                className="flex items-center justify-between gap-3 rounded-card border border-line bg-background p-3 hover:border-accent/40"
+                className="flex items-center justify-between gap-3 rounded-card bg-surface-inset p-3 transition-colors duration-fast hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <span className="min-w-0 flex items-center gap-3">
-                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-line bg-surface text-content-secondary">
-                    <MessageSquare className="h-4 w-4" />
+                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent-strong">
+                    <MessageSquare className="h-4 w-4" aria-hidden />
                   </span>
-                  <span className="truncate text-sm font-medium">{d.title}</span>
+                  <span className="truncate text-sm font-medium text-content">{d.title}</span>
                 </span>
-                <span className="flex-shrink-0 text-xs text-content-secondary">
+                <span className="flex-shrink-0 text-xs text-content-secondary tabular-nums">
                   {d.replyCount} ответов
                 </span>
               </Link>
@@ -97,7 +98,7 @@ export function PopularSection() {
           </div>
           <Link
             href="/community"
-            className="mt-3 inline-block text-sm font-medium text-accent-strong hover:underline"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
           >
             В сообщество
           </Link>

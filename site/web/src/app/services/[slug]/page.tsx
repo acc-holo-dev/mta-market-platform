@@ -50,10 +50,10 @@ export default function ServiceDetailPage() {
       <div className="container mx-auto px-4 py-12">
         <Card className="animate-pulse">
           <CardHeader>
-            <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+            <div className="h-8 rounded bg-surface-hover w-1/2"></div>
           </CardHeader>
           <CardContent>
-            <div className="h-40 bg-slate-200 dark:bg-slate-700 rounded"></div>
+            <div className="h-40 rounded bg-surface-hover"></div>
           </CardContent>
         </Card>
       </div>
@@ -63,9 +63,9 @@ export default function ServiceDetailPage() {
   if (error || !service) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+        <Card className="border-bad/40 bg-bad-soft">
           <CardHeader>
-            <CardTitle className="text-red-600 dark:text-red-400">Услуга не найдена</CardTitle>
+            <CardTitle className="text-bad">Услуга не найдена</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -79,25 +79,25 @@ export default function ServiceDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-3xl flex items-center gap-3">
-                <Wrench className="h-8 w-8 text-blue-600" /> {service.title}
+                <Wrench className="h-8 w-8 text-accent" /> {service.title}
               </CardTitle>
               <CardDescription className="text-base">{service.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-6 text-sm text-content-secondary">
                 <span className="flex items-center gap-2">
                   <Clock className="h-4 w-4" /> Срок: {service.deliveryDays} дн.
                 </span>
-                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400 rounded">
+                <span className="rounded-pill bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-strong">
                   {service.type}
                 </span>
               </div>
               {service.requirements ? (
-                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="rounded-card border border-line bg-surface-inset p-4">
                   <h4 className="font-semibold text-sm flex items-center gap-2 mb-1">
                     <ListChecks className="h-4 w-4" /> Что требуется от вас
                   </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                  <p className="text-sm text-content-secondary whitespace-pre-wrap">
                     {service.requirements}
                   </p>
                 </div>
@@ -108,26 +108,29 @@ export default function ServiceDetailPage() {
 
         {/* Sidebar: order */}
         <div className="space-y-6">
-          <Card>
+          <Card className="shadow-raised">
             <CardHeader>
               <CardTitle>Заказать услугу</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center py-4">
-                <div className="text-4xl font-bold">{formatRub(service.price)}</div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <div className="text-4xl font-bold tabular-nums">{formatRub(service.price)}</div>
+                <p className="text-sm text-content-secondary mt-1">
                   Выполнение до {service.deliveryDays} дн.
                 </p>
               </div>
-              <div>
-                <label className="text-sm text-slate-600 dark:text-slate-400">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="buyer-notes"
+                  className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                >
                   Заметки для продавца (необязательно)
                 </label>
                 <Input
+                  id="buyer-notes"
                   value={buyerNotes}
                   onChange={(e) => setBuyerNotes(e.target.value)}
                   placeholder="Детали заказа"
-                  className="mt-1"
                 />
               </div>
               <Button
@@ -145,23 +148,23 @@ export default function ServiceDetailPage() {
                 {orderMutation.isPending ? "Оформление..." : "Заказать"}
               </Button>
               {orderResult ? (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-1">
+                <div className="rounded-card border border-ok/30 bg-ok-soft p-3 space-y-1">
                   <StatusBadge status="PENDING">Заказ создан</StatusBadge>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{orderResult}</p>
+                  <p className="text-sm text-content-secondary">{orderResult}</p>
                   <Link
                     href="/services/orders"
-                    className="text-sm text-blue-600 dark:text-blue-400 underline"
+                    className="text-sm text-accent-strong underline transition-colors duration-fast hover:text-content"
                   >
                     Мои заказы услуг
                   </Link>
                 </div>
               ) : null}
               {orderError ? (
-                <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+                <p className="text-sm text-bad" role="alert">
                   {orderError}
                 </p>
               ) : null}
-              <p className="text-xs text-slate-500 dark:text-slate-400 text-center">
+              <p className="text-xs text-content-muted text-center">
                 Информация о продавце появится в личном кабинете после заказа.
               </p>
             </CardContent>

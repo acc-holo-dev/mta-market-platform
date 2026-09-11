@@ -15,7 +15,7 @@ export function ResourceCard({ resource }: { resource: Resource }) {
   return (
     <Link
       href={`/resources/${resource.slug}`}
-      className="group block rounded-card border border-line bg-surface overflow-hidden transition-colors hover:border-line-strong hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="group block rounded-card border border-line bg-surface overflow-hidden transition-all duration-fast hover:border-line-strong hover:bg-surface-raised hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       aria-label={`${resource.title} — ${typeLabel(resource.type)}`}
     >
       <ResourceCover
@@ -27,10 +27,10 @@ export function ResourceCard({ resource }: { resource: Resource }) {
 
       <div className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold leading-snug group-hover:text-accent-strong transition-colors">
+          <h3 className="font-semibold leading-snug text-content group-hover:text-accent-strong transition-colors duration-fast">
             {resource.title}
           </h3>
-          <span className="flex-shrink-0 rounded bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent-strong">
+          <span className="flex-shrink-0 rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-strong">
             {typeLabel(resource.type)}
           </span>
         </div>

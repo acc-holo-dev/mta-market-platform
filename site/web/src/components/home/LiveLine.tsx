@@ -9,10 +9,11 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 function OnlineChip({ label, value }: { label: string; value: number }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-medium">
+    <span className="inline-flex items-center gap-2 rounded-pill border border-line bg-surface px-3 py-1.5 text-sm font-medium tabular-nums">
       <span className="relative flex h-2.5 w-2.5">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+        {/* Живой индикатор — ping-точка через mta-anim-ping (DESIGN-SYSTEM §9). */}
+        <span className="mta-anim-ping absolute inline-flex h-full w-full rounded-full bg-ok opacity-60" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-ok" />
       </span>
       <span>
         {value.toLocaleString("ru-RU")} {label}
@@ -30,12 +31,12 @@ export function LiveLine() {
   });
 
   if (isLoading) {
-    return <Skeleton className="h-9 w-72 rounded-full" />;
+    return <Skeleton className="h-9 w-72 rounded-pill" />;
   }
   if (isError || !data) {
     // J-001: honest empty state — no fabricated numbers.
     return (
-      <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-content-secondary">
+      <span className="inline-flex items-center gap-2 rounded-pill border border-line bg-surface px-3 py-1.5 text-sm text-content-secondary">
         Данные онлайн недоступны
       </span>
     );

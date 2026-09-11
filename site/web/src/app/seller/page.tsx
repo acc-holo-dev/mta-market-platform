@@ -132,7 +132,7 @@ function ApplyForm({ rejected }: { rejected?: boolean }) {
 
   return (
     <div className="mx-auto max-w-xl px-4 py-12">
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Store className="h-6 w-6 text-accent" /> Стать продавцом
@@ -144,8 +144,11 @@ function ApplyForm({ rejected }: { rejected?: boolean }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <label htmlFor="seller-name" className="text-sm text-content-secondary">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="seller-name"
+              className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+            >
               Название магазина
             </label>
             <Input
@@ -153,11 +156,13 @@ function ApplyForm({ rejected }: { rejected?: boolean }) {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Например: CoolScripts"
-              className="mt-1"
             />
           </div>
-          <div>
-            <label htmlFor="seller-support" className="text-sm text-content-secondary">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="seller-support"
+              className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+            >
               Контакт / поддержка (Discord, сайт...)
             </label>
             <Input
@@ -165,7 +170,6 @@ function ApplyForm({ rejected }: { rejected?: boolean }) {
               value={supportInfo}
               onChange={(e) => setSupportInfo(e.target.value)}
               placeholder="discord.gg/..."
-              className="mt-1"
             />
           </div>
           {error ? <p className="text-sm text-bad">{error}</p> : null}
@@ -281,11 +285,15 @@ function Stat({
   value: number;
 }) {
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardContent className="pt-6">
-        <Icon className="h-4 w-4 text-content-muted mb-2" />
-        <p className="text-2xl font-bold">{value}</p>
-        <p className="text-xs text-content-secondary">{label}</p>
+        <span className="mb-2 flex h-8 w-8 items-center justify-center rounded-md bg-accent-soft">
+          <Icon className="h-4 w-4 text-accent-strong" />
+        </span>
+        <p className="text-2xl font-bold tabular-nums">{value}</p>
+        <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-content-muted">
+          {label}
+        </p>
       </CardContent>
     </Card>
   );
@@ -613,10 +621,10 @@ function SellerOrdersSection() {
                   return (
                     <span
                       key={step}
-                      className={`px-2 py-1 rounded ${
+                      className={`rounded-pill px-2.5 py-1 text-xs font-medium ${
                         reached
                           ? "bg-accent-soft text-accent-strong"
-                          : "bg-surface text-content-muted"
+                          : "bg-surface-inset text-content-muted"
                       }`}
                     >
                       {statusLabel(step)}
@@ -687,21 +695,27 @@ function SellerAnalyticsCard() {
         ) : (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-3">
-              <div className="rounded-card border border-line bg-surface-raised p-4">
-                <p className="text-xs text-content-secondary">Просмотры (30 дней)</p>
-                <p className="mt-1 text-2xl font-bold">
+              <div className="rounded-card border border-line bg-surface-raised p-4 shadow-card">
+                <p className="text-xs font-semibold uppercase tracking-wide text-content-muted">
+                  Просмотры (30 дней)
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">
                   {data.totalViews.toLocaleString("ru-RU")}
                 </p>
               </div>
-              <div className="rounded-card border border-line bg-surface-raised p-4">
-                <p className="text-xs text-content-secondary">Покупки (30 дней)</p>
-                <p className="mt-1 text-2xl font-bold">
+              <div className="rounded-card border border-line bg-surface-raised p-4 shadow-card">
+                <p className="text-xs font-semibold uppercase tracking-wide text-content-muted">
+                  Покупки (30 дней)
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">
                   {data.totalPurchases.toLocaleString("ru-RU")}
                 </p>
               </div>
-              <div className="rounded-card border border-line bg-surface-raised p-4">
-                <p className="text-xs text-content-secondary">Средняя конверсия</p>
-                <p className="mt-1 text-2xl font-bold">
+              <div className="rounded-card border border-line bg-surface-raised p-4 shadow-card">
+                <p className="text-xs font-semibold uppercase tracking-wide text-content-muted">
+                  Средняя конверсия
+                </p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">
                   {data.totalViews > 0
                     ? `${Math.round((data.totalPurchases / data.totalViews) * 100)}%`
                     : "—"}
@@ -711,24 +725,27 @@ function SellerAnalyticsCard() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-content-secondary">
-                    <th className="py-2 pr-3">Ресурс</th>
-                    <th className="py-2 pr-3 text-right">Просмотры</th>
-                    <th className="py-2 pr-3 text-right">Покупки</th>
-                    <th className="py-2 text-right">Конверсия</th>
+                  <tr className="text-left text-xs font-semibold uppercase tracking-wide text-content-muted">
+                    <th className="py-2 pr-3 font-semibold">Ресурс</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Просмотры</th>
+                    <th className="py-2 pr-3 text-right font-semibold">Покупки</th>
+                    <th className="py-2 text-right font-semibold">Конверсия</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.byResource.map((r) => (
                     <tr key={r.resourceId} className="border-t border-line">
                       <td className="py-2 pr-3">
-                        <Link href={`/resources/${r.slug}`} className="hover:text-accent-strong">
+                        <Link
+                          href={`/resources/${r.slug}`}
+                          className="transition-colors duration-fast hover:text-accent-strong"
+                        >
                           {r.title}
                         </Link>
                       </td>
-                      <td className="py-2 pr-3 text-right">{r.views30d}</td>
-                      <td className="py-2 pr-3 text-right">{r.purchases30d}</td>
-                      <td className="py-2 text-right">
+                      <td className="py-2 pr-3 text-right tabular-nums">{r.views30d}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{r.purchases30d}</td>
+                      <td className="py-2 text-right tabular-nums">
                         {r.conversionPct == null ? "—" : `${r.conversionPct}%`}
                       </td>
                     </tr>

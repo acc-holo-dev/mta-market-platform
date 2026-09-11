@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
-  // B-002: тёмная тема включена всегда (html.dark в layout.tsx).
+  // B-002: тёмная тема включена всегда (html.dark в layout.tsx) — тема одна.
   darkMode: "class",
   theme: {
     extend: {
@@ -11,10 +11,12 @@ module.exports = {
           DEFAULT: "hsl(var(--surface))",
           hover: "hsl(var(--surface-hover))",
           raised: "hsl(var(--surface-raised))",
+          inset: "hsl(var(--surface-inset))",
         },
         line: {
           DEFAULT: "hsl(var(--line))",
           strong: "hsl(var(--line-strong))",
+          accent: "hsl(var(--line-accent))",
         },
         content: {
           DEFAULT: "hsl(var(--text-primary))",
@@ -26,12 +28,40 @@ module.exports = {
           strong: "hsl(var(--primary-strong))",
           soft: "hsl(var(--primary-soft))",
         },
-        ok: "hsl(var(--success))",
-        warn: "hsl(var(--warning))",
-        bad: "hsl(var(--danger))",
+        ok: {
+          DEFAULT: "hsl(var(--success))",
+          soft: "hsl(var(--success-soft))",
+        },
+        warn: {
+          DEFAULT: "hsl(var(--warning))",
+          soft: "hsl(var(--warning-soft))",
+        },
+        bad: {
+          DEFAULT: "hsl(var(--danger))",
+          soft: "hsl(var(--danger-soft))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          soft: "hsl(var(--info-soft))",
+        },
+        verified: {
+          DEFAULT: "hsl(var(--verified))",
+          soft: "hsl(var(--verified-soft))",
+        },
       },
       borderRadius: {
         card: "var(--radius-card)",
+        lg: "var(--radius-lg)",
+        pill: "var(--radius-pill)",
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        raised: "var(--shadow-raised)",
+        accent: "var(--shadow-accent)",
+      },
+      transitionDuration: {
+        fast: "150ms",
+        base: "200ms",
       },
     },
   },

@@ -185,13 +185,13 @@ export default function NewResourcePage() {
   if (submitForReview.isSuccess) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-xl">
-        <Card>
+        <Card className="shadow-raised">
           <CardContent className="py-10 text-center space-y-4">
-            <div className="mx-auto h-14 w-14 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-              <Check className="h-7 w-7 text-green-600 dark:text-green-300" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ok-soft ring-1 ring-ok/40">
+              <Check className="h-7 w-7 text-ok" />
             </div>
             <h1 className="text-2xl font-bold">Ресурс отправлен на модерацию</h1>
-            <p className="text-slate-600 dark:text-slate-400">
+            <p className="text-content-secondary">
               «{title}» теперь имеет статус{" "}
               <StatusBadge status="PENDING_REVIEW" />. После проверки модератором
               ресурс будет опубликован на Маркетплейсе.
@@ -212,8 +212,8 @@ export default function NewResourcePage() {
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-1">Новый ресурс</h1>
-      <p className="text-slate-600 dark:text-slate-400 mb-6">
+      <h1 className="text-3xl font-bold tracking-tight mb-1">Новый ресурс</h1>
+      <p className="text-sm text-content-secondary mb-6">
         Черновик создаётся на втором шаге, версия с файлом — на третьем, отправка на модерацию — в конце.
       </p>
 
@@ -224,18 +224,22 @@ export default function NewResourcePage() {
             <span
               className={`inline-flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold ${
                 i < step
-                  ? "bg-green-600 text-white"
+                  ? "bg-ok text-background"
                   : i === step
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+                    ? "bg-accent text-background"
+                    : "bg-surface-hover text-content-muted"
               }`}
             >
               {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
             </span>
-            <span className={i === step ? "font-medium" : "text-slate-500 dark:text-slate-400"}>
+            <span
+              className={
+                i === step ? "font-medium text-content" : "text-content-muted"
+              }
+            >
               {label}
             </span>
-            {i < STEPS.length - 1 ? <span className="text-slate-300 dark:text-slate-600">→</span> : null}
+            {i < STEPS.length - 1 ? <span className="text-content-muted">→</span> : null}
           </li>
         ))}
       </ol>
@@ -249,7 +253,10 @@ export default function NewResourcePage() {
                 <CardDescription>Название и описание увидят покупатели</CardDescription>
               </CardHeader>
               <div>
-                <label htmlFor="res-title" className="text-sm text-slate-600 dark:text-slate-400">
+                <label
+                  htmlFor="res-title"
+                  className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                >
                   Название (минимум 3 символа)
                 </label>
                 <Input
@@ -261,7 +268,10 @@ export default function NewResourcePage() {
                 />
               </div>
               <div>
-                <label htmlFor="res-desc" className="text-sm text-slate-600 dark:text-slate-400">
+                <label
+                  htmlFor="res-desc"
+                  className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                >
                   Описание (минимум 10 символов)
                 </label>
                 <textarea
@@ -270,14 +280,17 @@ export default function NewResourcePage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Что делает ресурс, что входит в комплект..."
                   rows={5}
-                  className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+                  className="mt-1 w-full rounded-md border border-line-strong bg-surface-raised px-3 py-2 text-sm text-content placeholder:text-content-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                 />
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-content-muted mt-1">
                   {description.trim().length}/10 символов минимум
                 </p>
               </div>
               <div>
-                <label htmlFor="res-slug" className="text-sm text-slate-600 dark:text-slate-400">
+                <label
+                  htmlFor="res-slug"
+                  className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                >
                   Slug (адрес ресурса, только a-z, 0-9 и дефисы)
                 </label>
                 <Input
@@ -288,10 +301,10 @@ export default function NewResourcePage() {
                     setSlugEdited(true);
                   }}
                   placeholder="race-system"
-                  className={`mt-1 ${effectiveSlug && !/^[a-z0-9-]+$/.test(effectiveSlug) ? "border-red-400" : ""}`}
+                  className={`mt-1 ${effectiveSlug && !/^[a-z0-9-]+$/.test(effectiveSlug) ? "border-bad" : ""}`}
                 />
                 {!slugEdited && title ? (
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-content-muted mt-1">
                     Предложен автоматически из названия — можно изменить.
                   </p>
                 ) : null}
@@ -319,14 +332,17 @@ export default function NewResourcePage() {
                 </CardDescription>
               </CardHeader>
               <div>
-                <label htmlFor="res-type" className="text-sm text-slate-600 dark:text-slate-400">
+                <label
+                  htmlFor="res-type"
+                  className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                >
                   Тип ресурса
                 </label>
                 <select
                   id="res-type"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
-                  className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-2 text-sm dark:border-slate-700 dark:bg-slate-950"
+                  className="mt-1 h-10 w-full rounded-md border border-line-strong bg-surface-raised px-2 text-sm text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {RESOURCE_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -336,7 +352,10 @@ export default function NewResourcePage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="res-price" className="text-sm text-slate-600 dark:text-slate-400">
+                <label
+                  htmlFor="res-price"
+                  className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                >
                   Цена в рублях (0 — бесплатный ресурс)
                 </label>
                 <Input
@@ -348,14 +367,14 @@ export default function NewResourcePage() {
                   onChange={(e) => setPriceRub(e.target.value)}
                   className="mt-1"
                 />
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-sm text-content-secondary mt-1 tabular-nums">
                   Итоговая цена: {formatRub(priceKopecks)}
                   {priceKopecks === 0 ? " (бесплатно)" : ""}
                 </p>
               </div>
               {error ? <ErrorText message={error} /> : null}
               {draft ? (
-                <p className="text-xs text-green-600 dark:text-green-400">
+                <p className="text-xs text-ok">
                   Черновик создан: /{draft.slug} (можно вернуться к нему из кабинета продавца).
                 </p>
               ) : null}
@@ -388,24 +407,30 @@ export default function NewResourcePage() {
                 </CardDescription>
               </CardHeader>
               <div>
-                <label htmlFor="res-file" className="text-sm text-slate-600 dark:text-slate-400">
+                <label
+                  htmlFor="res-file"
+                  className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                >
                   Файл ресурса (архив)
                 </label>
                 <input
                   id="res-file"
                   type="file"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="mt-1 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-white hover:file:bg-blue-700"
+                  className="mt-1 block w-full text-sm text-content-secondary file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-white transition-colors duration-fast hover:file:bg-accent-strong"
                 />
                 {upload ? (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  <p className="text-xs text-ok mt-1">
                     Загружен: {upload.fileName} ({(upload.fileSize / 1024).toFixed(1)} КБ)
                   </p>
                 ) : null}
               </div>
               <div className="grid md:grid-cols-2 gap-3">
                 <div>
-                  <label htmlFor="res-version" className="text-sm text-slate-600 dark:text-slate-400">
+                  <label
+                    htmlFor="res-version"
+                    className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                  >
                     Версия (формат 1.0.0)
                   </label>
                   <Input
@@ -416,11 +441,14 @@ export default function NewResourcePage() {
                     className="mt-1"
                   />
                   {version && !VERSION_RE.test(version.trim()) ? (
-                    <p className="text-xs text-red-500 mt-1">Формат: x.y.z, например 1.0.0</p>
+                    <p className="text-xs text-bad mt-1">Формат: x.y.z, например 1.0.0</p>
                   ) : null}
                 </div>
                 <div>
-                  <label htmlFor="res-changelog" className="text-sm text-slate-600 dark:text-slate-400">
+                  <label
+                    htmlFor="res-changelog"
+                    className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+                  >
                     Список изменений (необязательно)
                   </label>
                   <Input
@@ -434,11 +462,11 @@ export default function NewResourcePage() {
               </div>
 
               {validationIssues ? (
-                <div className="p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                  <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">
+                <div className="p-3 rounded-md border border-bad/40 bg-bad-soft">
+                  <p className="text-sm font-medium text-bad mb-1">
                     Результат проверки артефакта:
                   </p>
-                  <ul className="list-disc list-inside text-xs text-red-600 dark:text-red-400 space-y-0.5">
+                  <ul className="list-disc list-inside text-xs text-bad space-y-0.5">
                     {validationIssues.map((issue, i) => (
                       <li key={i}>{issue}</li>
                     ))}
@@ -514,7 +542,7 @@ export default function NewResourcePage() {
             <>
               <CardHeader className="p-0">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Rocket className="h-5 w-5 text-blue-600" /> Шаг 5. Проверка и отправка
+                  <Rocket className="h-5 w-5 text-accent" /> Шаг 5. Проверка и отправка
                 </CardTitle>
                 <CardDescription>
                   Так покупатель увидит ваш ресурс на Маркетплейсе.
@@ -571,7 +599,7 @@ export default function NewResourcePage() {
                 <SummaryRow label="Скриншоты" value={String(screenshots.length)} />
               </dl>
 
-              <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-300">
+              <div className="rounded-card border border-info/30 bg-info-soft p-3 text-sm text-info">
                 После отправки статус ресурса изменится на «На модерации». Публиковать ресурс
                 будет модератор после проверки.
               </div>
@@ -595,9 +623,9 @@ export default function NewResourcePage() {
         </CardContent>
       </Card>
 
-      <p className="text-sm text-slate-500 dark:text-slate-400 mt-4">
+      <p className="text-sm text-content-secondary mt-4">
         Черновики можно продолжить позже из{" "}
-        <Link href="/seller" className="text-blue-600 hover:underline dark:text-blue-400">
+        <Link href="/seller" className="text-accent-strong transition-colors duration-fast hover:underline">
           кабинета продавца
         </Link>
         .
@@ -609,7 +637,7 @@ export default function NewResourcePage() {
 function SummaryRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-slate-500 dark:text-slate-400 flex-shrink-0">{label}</dt>
+      <dt className="text-content-muted flex-shrink-0">{label}</dt>
       <dd className={`text-right font-medium break-all ${mono ? "font-mono text-sm" : ""}`}>{value}</dd>
     </div>
   );

@@ -1,78 +1,86 @@
-// Footer (PLAN-002 D-005): профессиональный footer без битых ссылок.
+// PLAN-013 §11: единый footer как часть продукта — бренд, разделы,
+// сообщество и аккаунт, аккуратная сетка и правовой блок.
 import Link from "next/link";
+import { Gauge } from "lucide-react";
+
+const COLUMNS: Array<{
+  title: string;
+  links: Array<{ href: string; label: string }>;
+}> = [
+  {
+    title: "Разделы",
+    links: [
+      { href: "/resources", label: "Маркетплейс" },
+      { href: "/servers", label: "Серверы" },
+      { href: "/news", label: "Новости серверов" },
+      { href: "/search", label: "Поиск" },
+    ],
+  },
+  {
+    title: "Сообщество",
+    links: [
+      { href: "/community", label: "Форум" },
+      { href: "/content", label: "Статьи" },
+      { href: "/news", label: "Новости и обновления" },
+    ],
+  },
+  {
+    title: "Аккаунт",
+    links: [
+      { href: "/dashboard", label: "Мои покупки" },
+      { href: "/seller", label: "Стать продавцом" },
+      { href: "/notifications", label: "Уведомления" },
+      { href: "/auth/login", label: "Вход" },
+      { href: "/auth/register", label: "Регистрация" },
+    ],
+  },
+];
 
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="border-t border-line bg-surface/50">
-      <div className="mx-auto max-w-7xl px-4 py-10">
-        <div className="grid gap-8 md:grid-cols-3">
+    <footer className="border-t border-line bg-surface/60">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-4">
+          {/* Brand column */}
           <div>
-            <p className="font-bold text-content">MTA Market</p>
-            <p className="mt-2 text-sm text-content-secondary max-w-xs">
-              Маркетплейс серверных ресурсов для MTA:SA — скрипты, карты, модели и гейммоды с
-              лицензированием и DRM-защитой.
+            <p className="flex items-center gap-2 font-bold text-content">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft ring-1 ring-line-accent/40">
+                <Gauge className="h-4 w-4 text-accent-strong" />
+              </span>
+              MTA Market
+            </p>
+            <p className="mt-3 text-sm leading-relaxed text-content-secondary max-w-xs">
+              Маркетплейс серверных ресурсов для MTA:SA — скрипты, карты,
+              модели и гейммоды с лицензированием и DRM-защитой.
             </p>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-content mb-3">Разделы</p>
-            <ul className="space-y-2 text-sm text-content-secondary">
-              <li>
-                <Link href="/resources" className="hover:text-accent-strong">
-                  Маркетплейс
-                </Link>
-              </li>
-              <li>
-                <Link href="/servers" className="hover:text-accent-strong">
-                  Серверы
-                </Link>
-              </li>
-              <li>
-                <Link href="/community" className="hover:text-accent-strong">
-                  Сообщество
-                </Link>
-              </li>
-              <li>
-                <Link href="/news" className="hover:text-accent-strong">
-                  Новости
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard" className="hover:text-accent-strong">
-                  Мои покупки
-                </Link>
-              </li>
-              <li>
-                <Link href="/seller" className="hover:text-accent-strong">
-                  Стать продавцом
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-content mb-3">Аккаунт</p>
-            <ul className="space-y-2 text-sm text-content-secondary">
-              <li>
-                <Link href="/auth/login" className="hover:text-accent-strong">
-                  Вход
-                </Link>
-              </li>
-              <li>
-                <Link href="/auth/register" className="hover:text-accent-strong">
-                  Регистрация
-                </Link>
-              </li>
-              <li>
-                <Link href="/account" className="hover:text-accent-strong">
-                  Профиль
-                </Link>
-              </li>
-            </ul>
-          </div>
+
+          {COLUMNS.map((column) => (
+            <div key={column.title}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-content-muted mb-3">
+                {column.title}
+              </p>
+              <ul className="space-y-2 text-sm text-content-secondary">
+                {column.links.map((link) => (
+                  <li key={`${column.title}-${link.label}`}>
+                    <Link href={link.href} className="transition-colors duration-fast hover:text-accent-strong">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        <div className="mt-8 border-t border-line pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-content-muted">
-          <p>&copy; {year} MTA Market. Все права защищены.</p>
-          <p>Ресурсы защищены DRM и лицензируются на одного владельца сервера.</p>
+
+        <div className="mt-10 flex flex-col gap-2 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-content-muted">
+            © {year} MTA Market — платформа сообщества Multi Theft Auto.
+          </p>
+          <p className="text-xs text-content-muted">
+            Безопасная оплата · DRM-лицензии · Покупки защищены политикой возвратов
+          </p>
         </div>
       </div>
     </footer>

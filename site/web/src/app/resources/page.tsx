@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { ResourceCard } from "@/components/ui/ResourceCard";
 import { ResourceCardSkeleton } from "@/components/ui/Skeleton";
-import { ErrorState } from "@/components/ui/States";
+import { ErrorState, EmptyState } from "@/components/ui/States";
 import { Store, SearchX, Search, SlidersHorizontal, X } from "lucide-react";
 
 const PAGE_SIZE = 12;
@@ -51,8 +51,8 @@ export default function ResourcesPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-7xl px-4 py-10">
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mx-auto max-w-7xl px-4 py-12">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <ResourceCardSkeleton key={i} />
             ))}
@@ -174,10 +174,10 @@ function ResourcesPageContent() {
               key={value || "all"}
               onClick={() => pushParams({ type: value || null })}
               aria-pressed={type === value}
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+              className={`rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 type === value
                   ? "border-accent bg-accent text-white"
-                  : "border-line text-content-secondary hover:bg-surface-hover hover:text-content"
+                  : "border-line text-content-secondary hover:border-line-strong hover:bg-surface-hover hover:text-content"
               }`}
             >
               {label}
@@ -201,7 +201,7 @@ function ResourcesPageContent() {
               key={value || "all"}
               onClick={() => pushParams({ price: value || null })}
               aria-pressed={price === value}
-              className={`px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
+              className={`px-4 py-2 text-sm font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 price === value
                   ? "bg-accent text-white"
                   : "text-content-secondary hover:bg-surface-hover hover:text-content"
@@ -242,7 +242,7 @@ function ResourcesPageContent() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-12">
       {/* Breadcrumbs (N-001) */}
       <nav aria-label="Хлебные крошки" className="mb-4 text-sm text-content-muted">
         <Link href="/" className="hover:text-accent-strong">
@@ -253,8 +253,9 @@ function ResourcesPageContent() {
       </nav>
 
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">Маркетплейс</h1>
-        <p className="mt-1 text-content-secondary">
+        {/* H1 typography (§3): text-3xl font-bold tracking-tight */}
+        <h1 className="text-3xl font-bold tracking-tight">Маркетплейс</h1>
+        <p className="mt-1 text-sm text-content-secondary tabular-nums">
           {pagination
             ? `${pagination.total} ресурсов · страница ${pagination.page} из ${pagination.pages || 1}`
             : "Ресурсы для MTA:SA, прошедшие модерацию"}
@@ -275,7 +276,7 @@ function ResourcesPageContent() {
             placeholder="Найти ресурс..."
             value={searchInput}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-11 w-full rounded-card border border-line bg-surface pl-10 pr-10 text-sm outline-none transition-colors placeholder:text-content-muted focus:border-accent focus-visible:ring-2 focus-visible:ring-accent"
+            className="h-11 w-full rounded-card border border-line bg-surface-inset pl-10 pr-10 text-sm text-content outline-none transition-colors duration-fast placeholder:text-content-muted focus:border-line-strong focus-visible:ring-2 focus-visible:ring-accent"
           />
           {searchInput ? (
             <button
@@ -292,7 +293,7 @@ function ResourcesPageContent() {
           ) : null}
         </div>
 
-        {/* Mobile: filters behind a drawer toggle (O-001) */}
+        {/* Mobile: filters behind a bottom-sheet dialog (O-001) */}
         <Button
           variant="outline"
           className="lg:hidden"
@@ -307,22 +308,22 @@ function ResourcesPageContent() {
       </div>
 
       <div className="lg:grid lg:grid-cols-[240px_1fr] lg:gap-8">
-        {/* Desktop sidebar filters */}
+        {/* Desktop sidebar filters — sticky (DESIGN-SYSTEM §8) */}
         <aside className="hidden lg:block" aria-label="Фильтры">
           <div className="sticky top-24">{filtersPanel}</div>
         </aside>
 
-        {/* Mobile drawer */}
+        {/* Mobile bottom-sheet */}
         {filtersOpen ? (
           <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Фильтры">
             <div
-              className="absolute inset-0 bg-black/60"
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
               onClick={() => setFiltersOpen(false)}
               aria-hidden
             />
-            <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-line bg-surface p-5 pb-8">
+            <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-lg border-t border-line bg-surface p-5 pb-8 shadow-raised">
               <div className="mb-4 flex items-center justify-between">
-                <p className="font-semibold">Фильтры</p>
+                <p className="text-lg font-semibold">Фильтры</p>
                 <button
                   onClick={() => setFiltersOpen(false)}
                   aria-label="Закрыть фильтры"
@@ -341,7 +342,7 @@ function ResourcesPageContent() {
 
         <div>
           {isLoading ? (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 8 }).map((_, i) => (
                 <ResourceCardSkeleton key={i} />
               ))}
@@ -356,7 +357,7 @@ function ResourcesPageContent() {
             )
           ) : (
             <div
-              className={`grid gap-6 sm:grid-cols-2 xl:grid-cols-3 transition-opacity ${
+              className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 transition-opacity duration-base ${
                 isFetching ? "opacity-60" : ""
               }`}
             >
@@ -375,7 +376,7 @@ function ResourcesPageContent() {
               <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => changePage(page - 1)}>
                 Назад
               </Button>
-              <span className="text-sm text-content-secondary">
+              <span className="text-sm text-content-secondary tabular-nums">
                 Страница {pagination.page} из {pagination.pages}
               </span>
               <Button
@@ -394,49 +395,48 @@ function ResourcesPageContent() {
   );
 }
 
-// F-005: пусто по конкретному запросу — предлагаем сброс.
+// F-005: пусто по конкретному запросу — предлагаем сброс (единый EmptyState).
 function EmptyFiltered({ onReset, hasQuery }: { onReset: () => void; hasQuery?: boolean }) {
   return (
-    <div className="text-center py-20">
-      <SearchX className="h-12 w-12 text-content-muted mx-auto mb-4" />
-      <p className="text-lg font-semibold">
-        {hasQuery ? "По запросу ничего не найдено" : "Под фильтры ничего не подошло"}
-      </p>
-      <p className="mt-1 text-sm text-content-secondary">
-        {hasQuery
+    <EmptyState
+      icon={<SearchX className="h-12 w-12 text-content-muted mx-auto mb-4" aria-hidden />}
+      title={hasQuery ? "По запросу ничего не найдено" : "Под фильтры ничего не подошло"}
+      description={
+        hasQuery
           ? "Попробуйте изменить формулировку или сбросить фильтры."
-          : "На этой странице нет ресурсов с выбранными параметрами."}
-      </p>
-      <Button variant="outline" size="sm" className="mt-5" onClick={onReset}>
-        Сбросить фильтры
-      </Button>
-    </div>
+          : "На этой странице нет ресурсов с выбранными параметрами."
+      }
+      action={
+        <Button variant="outline" size="sm" onClick={onReset}>
+          Сбросить фильтры
+        </Button>
+      }
+    />
   );
 }
 
 // F-005: маркетплейс действительно пуст.
 function EmptyMarketplace() {
   return (
-    <div className="text-center py-20">
-      <Store className="h-12 w-12 text-content-muted mx-auto mb-4" />
-      <p className="text-lg font-semibold">Пока нет опубликованных ресурсов</p>
-      <p className="mt-1 text-sm text-content-secondary max-w-md mx-auto">
-        Ресурсы появляются в каталоге после проверки модератором. Загляните позже или откройте свой
-        магазин.
-      </p>
-      <div className="mt-6 flex items-center justify-center gap-3">
-        <Link href="/seller">
-          <Button variant="outline" size="sm">
-            <Store className="mr-2 h-4 w-4" />
-            Стать продавцом
-          </Button>
-        </Link>
-        <Link href="/">
-          <Button variant="ghost" size="sm">
-            На главную
-          </Button>
-        </Link>
-      </div>
-    </div>
+    <EmptyState
+      icon={<Store className="h-12 w-12 text-content-muted mx-auto mb-4" aria-hidden />}
+      title="Пока нет опубликованных ресурсов"
+      description="Ресурсы появляются в каталоге после проверки модератором. Загляните позже или откройте свой магазин."
+      action={
+        <div className="flex items-center justify-center gap-3">
+          <Link href="/seller">
+            <Button variant="outline" size="sm">
+              <Store className="mr-2 h-4 w-4" />
+              Стать продавцом
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button variant="ghost" size="sm">
+              На главную
+            </Button>
+          </Link>
+        </div>
+      }
+    />
   );
 }

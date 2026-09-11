@@ -52,10 +52,10 @@ function AuthCallbackContent() {
   }, [searchParams, router, setAuth]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="mta-hero-surface flex min-h-screen items-center justify-center">
       <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="text-lg text-slate-600 dark:text-slate-400">Авторизация...</p>
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-line-strong border-t-accent mx-auto"></div>
+        <p className="text-lg text-content-secondary">Авторизация...</p>
       </div>
     </div>
   );
@@ -68,10 +68,10 @@ export default function AuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="mta-hero-surface flex min-h-screen items-center justify-center">
           <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-lg text-slate-600 dark:text-slate-400">Загрузка...</p>
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-line-strong border-t-accent mx-auto"></div>
+            <p className="text-lg text-content-secondary">Загрузка...</p>
           </div>
         </div>
       }

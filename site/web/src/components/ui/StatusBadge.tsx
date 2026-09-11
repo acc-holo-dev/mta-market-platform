@@ -2,31 +2,38 @@
 
 import { cn } from "@/lib/utils";
 
+// PLAN-013: только семантические токены (DESIGN-SYSTEM §2) — сырая палитра
+// Tailwind запрещена. Сoft-фон + цветной текст читается на тёмной теме.
 const COLORS: Record<string, string> = {
-  // purchases / resources
-  COMPLETED: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  PUBLISHED: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  ACTIVE: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  ACCEPTED: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  APPROVED: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  PENDING: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  PENDING_REVIEW: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  PENDING_PAYMENT: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
-  IN_PROGRESS: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  UNDER_REVIEW: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  DELIVERED: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  DRAFT: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
-  CLOSED: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
-  CANCELLED: "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-  REJECTED: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  SUSPENDED: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  BANNED: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  DISPUTED: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  REVOKED: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-  RESOLVED_BUYER: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-  RESOLVED_SELLER: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  PARTIAL_REFUND: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  FREE: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+  // purchases / resources — success-семейство
+  COMPLETED: "bg-ok-soft text-ok",
+  PUBLISHED: "bg-ok-soft text-ok",
+  ACTIVE: "bg-ok-soft text-ok",
+  ACCEPTED: "bg-ok-soft text-ok",
+  APPROVED: "bg-ok-soft text-ok",
+  RESOLVED_BUYER: "bg-ok-soft text-ok",
+  FREE: "bg-ok-soft text-ok",
+  // ожидание / модерация — warning-семейство
+  PENDING: "bg-warn-soft text-warn",
+  PENDING_REVIEW: "bg-warn-soft text-warn",
+  PENDING_PAYMENT: "bg-warn-soft text-warn",
+  PARTIAL_REFUND: "bg-warn-soft text-warn",
+  // в работе — info-семейство
+  IN_PROGRESS: "bg-info-soft text-info",
+  UNDER_REVIEW: "bg-info-soft text-info",
+  DELIVERED: "bg-info-soft text-info",
+  // нейтральные
+  DRAFT: "bg-surface-hover text-content-secondary",
+  CLOSED: "bg-surface-hover text-content-secondary",
+  CANCELLED: "bg-surface-hover text-content-muted",
+  // ошибки / опасные состояния — danger-семейство
+  REJECTED: "bg-bad-soft text-bad",
+  SUSPENDED: "bg-bad-soft text-bad",
+  BANNED: "bg-bad-soft text-bad",
+  REVOKED: "bg-bad-soft text-bad",
+  DISPUTED: "bg-bad-soft text-bad",
+  // trust-система — verified-семейство
+  RESOLVED_SELLER: "bg-verified-soft text-verified",
 };
 
 // PLAN-001 K-001: unified Russian terminology for every visible status.
@@ -79,8 +86,8 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-block text-xs px-2 py-1 rounded font-medium",
-        COLORS[status] ?? "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300",
+        "inline-block text-xs px-2 py-1 rounded-pill border border-line font-medium",
+        COLORS[status] ?? "bg-surface-hover text-content-secondary",
         className
       )}
     >
@@ -92,7 +99,7 @@ export function StatusBadge({
 export function ErrorText({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+    <p className="text-sm text-bad" role="alert">
       {message}
     </p>
   );
@@ -101,6 +108,6 @@ export function ErrorText({ message }: { message?: string | null }) {
 export function SuccessText({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
-    <p className="text-sm text-green-600 dark:text-green-400">{message}</p>
+    <p className="text-sm text-ok">{message}</p>
   );
 }

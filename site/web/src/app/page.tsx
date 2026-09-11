@@ -70,16 +70,18 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero — «Сейчас в MTA» (F-002): live line prominent, discovery-first */}
-      <section className="border-b border-line bg-gradient-to-b from-surface-raised to-background">
-        <div className="mx-auto max-w-7xl px-4 py-14 md:py-20">
-          <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs font-medium text-content-secondary">
-            <Sparkles className="h-3.5 w-3.5 text-accent" />
+      {/* Hero — «Сейчас в MTA» (F-002): live line prominent, discovery-first.
+          mta-hero-surface — бренд-градиент из tokens (DESIGN-SYSTEM §globals). */}
+      <section className="mta-hero-surface border-b border-line">
+        <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
+          <p className="mb-4 inline-flex items-center gap-2 rounded-pill bg-accent-soft ring-1 ring-inset ring-line-accent px-3 py-1 text-xs font-semibold text-accent-strong">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
             Сейчас в MTA
           </p>
-          <h1 className="max-w-3xl text-4xl md:text-5xl font-bold leading-tight tracking-tight">
+          {/* Display typography (§3): text-4xl md:text-5xl font-extrabold tracking-tight */}
+          <h1 className="max-w-3xl text-4xl md:text-5xl font-extrabold leading-tight tracking-tight">
             Что происходит в MTA{" "}
-            <span className="text-accent-strong">прямо сейчас?</span>
+            <span className="mta-brand-text-gradient">прямо сейчас?</span>
           </h1>
           <div className="mt-6">
             <LiveLine />
@@ -91,7 +93,7 @@ export default function HomePage() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Найти сервер, ресурс или обсуждение…"
               aria-label="Поиск по MTA Market"
-              className="w-full rounded-card border border-line bg-surface px-4 py-3 text-sm outline-none placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-accent"
+              className="w-full rounded-card border border-line-strong bg-surface-inset px-4 py-3 text-sm text-content outline-none shadow-card transition-colors duration-fast placeholder:text-content-muted focus-visible:ring-2 focus-visible:ring-accent"
             />
             <Button type="submit" size="lg" aria-label="Искать">
               <Search className="h-5 w-5" />
@@ -112,6 +114,7 @@ export default function HomePage() {
             </Link>
           </div>
 
+          {/* Trust strip: три компактные карточки-доверия под hero */}
           <div className="mt-12 grid gap-4 sm:grid-cols-3 max-w-3xl">
             {[
               {
@@ -130,10 +133,14 @@ export default function HomePage() {
                 text: "Покупайте напрямую у разработчиков и оставляйте отзывы",
               },
             ].map(({ icon: Icon, title, text }) => (
-              <div key={title} className="rounded-card border border-line bg-surface p-4">
-                <Icon className="h-5 w-5 text-accent mb-2" />
-                <p className="text-sm font-semibold">{title}</p>
-                <p className="mt-1 text-xs text-content-secondary">{text}</p>
+              <div key={title} className="flex items-start gap-3 rounded-card border border-line bg-surface/70 p-4 shadow-card">
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent-soft">
+                  <Icon className="h-4 w-4 text-accent-strong" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{title}</span>
+                  <span className="mt-1 block text-xs text-content-secondary">{text}</span>
+                </span>
               </div>
             ))}
           </div>
@@ -161,7 +168,7 @@ export default function HomePage() {
       {/* Маркетплейс (F-001.4): существующие секции PLAN-003 сохранены */}
       <section className="mx-auto max-w-7xl px-4 py-12 space-y-12">
         {isLoading ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <ResourceCardSkeleton key={i} />
             ))}
@@ -188,15 +195,16 @@ export default function HomePage() {
             .map((section) => (
               <div key={section.title}>
                 <SectionHeader title={section.title} description={section.description} />
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {section.items.slice(0, 4).map((r) => (
                     <ResourceCard key={r.id} resource={r} />
                   ))}
                 </div>
                 <div className="mt-5">
+                  {/* «Смотреть всё» — ghost-ссылка на состояние каталога (J-005). */}
                   <Link
                     href={section.href}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded"
+                    className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-accent-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Смотреть всё
                     <ArrowRight className="h-4 w-4" />
@@ -209,9 +217,9 @@ export default function HomePage() {
 
       {/* Seller CTA (D-004): заметный, но не доминирующий */}
       <section className="border-t border-line bg-surface/40">
-        <div className="mx-auto max-w-7xl px-4 py-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="mx-auto max-w-7xl px-4 py-12 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Вы разработчик ресурсов для MTA:SA?</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Вы разработчик ресурсов для MTA:SA?</h2>
             <p className="mt-1 text-sm text-content-secondary">
               Откройте магазин, публикуйте ресурсы и получайте продажи с защитой лицензий.
             </p>

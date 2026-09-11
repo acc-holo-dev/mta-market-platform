@@ -158,10 +158,15 @@ function StatsCards() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {cards.map((c) => (
-        <Card key={c.label} className={c.accent ? "border-accent/40" : undefined}>
+        <Card
+          key={c.label}
+          className={c.accent ? "border-accent/40 shadow-accent" : "shadow-card"}
+        >
           <CardContent className="pt-6">
-            <p className="text-xs font-medium text-content-secondary">{c.label}</p>
-            <div className="text-2xl font-bold mt-1">{c.value}</div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-content-muted">
+              {c.label}
+            </p>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{c.value}</div>
           </CardContent>
         </Card>
       ))}
@@ -217,7 +222,7 @@ function ModerationSection() {
           list.map((r) => (
             <div
               key={r.id}
-              className="p-4 rounded-card border border-line bg-surface-raised space-y-3"
+              className="p-4 rounded-card border border-line bg-surface-raised space-y-3 transition-colors duration-fast hover:border-line-strong"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
@@ -1119,7 +1124,7 @@ function ReportsSection() {
           list.map((r) => (
             <div
               key={r.id}
-              className="p-4 rounded-card border border-line bg-surface-raised space-y-3"
+              className="p-4 rounded-card border border-line bg-surface-raised space-y-3 transition-colors duration-fast hover:border-line-strong"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -1416,7 +1421,7 @@ function ArticlesModerationSection() {
             <option value="ALL">Все</option>
           </Select>
         </div>
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {error ? <p className="text-sm text-bad">{error}</p> : null}
         {isLoading ? (
           <LoadingSpinner label="Загрузка…" />
         ) : list.length === 0 ? (
@@ -1466,7 +1471,7 @@ function ArticlesModerationSection() {
                     value={reasons[a.id] ?? ""}
                     onChange={(e) => setReasons((r) => ({ ...r, [a.id]: e.target.value }))}
                     placeholder={a.status === "PENDING_REVIEW" ? "Причина возврата (для «Вернуть»)" : "Причина скрытия"}
-                    className="mt-3 w-full rounded-card border border-line bg-background px-3 py-2 text-sm"
+                    className="mt-3 w-full rounded-card border border-line bg-surface-inset px-3 py-2 text-sm text-content placeholder:text-content-muted"
                     aria-label="Причина"
                   />
                 ) : null}

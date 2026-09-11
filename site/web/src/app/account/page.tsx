@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
 import { Tabs } from "@/components/ui/Tabs";
-import { StatusBadge, ErrorText } from "@/components/ui/StatusBadge";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/States";
 import { DisputeDialog } from "@/components/disputes/DisputeDialog";
 import { typeLabel, formatDate } from "@/lib/domain";
@@ -136,7 +136,7 @@ export default function AccountPage() {
               ) : me ? (
                 <div className="flex items-center gap-3">
                   <Wallet className="h-5 w-5 text-ok" />
-                  <span className="text-2xl font-bold">{formatRub(me.balance.available)}</span>
+                  <span className="text-2xl font-bold tabular-nums">{formatRub(me.balance.available)}</span>
                   <Link href="/account" onClick={() => setTab("balance")} className="text-sm text-accent-strong hover:underline">
                     Подробнее
                   </Link>
@@ -234,7 +234,7 @@ export default function AccountPage() {
               <LoadingSpinner />
             ) : me ? (
               <>
-                <div className="text-3xl font-bold">{formatRub(me.balance.available)}</div>
+                <div className="text-3xl font-bold tabular-nums">{formatRub(me.balance.available)}</div>
                 <p className="text-sm text-content-secondary">
                   Пополнение баланса пока недоступно. Баланс увеличивается автоматически при
                   возвратах и бонусных начислениях.
@@ -266,10 +266,10 @@ export default function AccountPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardContent className="pt-6">
-        <p className="text-sm text-content-secondary">{label}</p>
-        <p className="text-2xl font-bold mt-1">{value}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-content-muted">{label}</p>
+        <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
       </CardContent>
     </Card>
   );
@@ -279,7 +279,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-line pb-2 last:border-0">
       <dt className="text-content-secondary">{label}</dt>
-      <dd className="font-medium text-right break-all">{value}</dd>
+      <dd className="font-medium text-right break-all tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -328,13 +328,13 @@ function PurchasesList({
       {list.map((p) => (
         <div
           key={p.id}
-          className="p-4 rounded-lg border border-line bg-surface-raised space-y-3"
+          className="rounded-lg border border-line bg-surface p-4 space-y-3 transition-colors duration-fast hover:border-line-strong"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <Link
                 href={`/resources/${p.resource.slug}`}
-                className="font-semibold hover:text-accent-strong"
+                className="font-semibold transition-colors duration-fast hover:text-accent-strong"
               >
                 {p.resource.title}
               </Link>
@@ -344,7 +344,7 @@ function PurchasesList({
               </p>
             </div>
             <div className="text-right space-y-1">
-              <div className="font-semibold">{formatRub(p.priceSnapshot)}</div>
+              <div className="font-semibold tabular-nums">{formatRub(p.priceSnapshot)}</div>
               <StatusBadge status={p.status} />
             </div>
           </div>
@@ -404,10 +404,13 @@ function ProfileEditForm({ displayName, avatar }: { displayName: string; avatar:
   }
 
   return (
-    <div className="p-4 rounded-lg border border-line bg-surface-raised space-y-3">
-      <p className="text-sm font-medium">Редактирование профиля</p>
-      <div>
-        <label htmlFor="displayName" className="text-sm text-content-secondary">
+    <div className="rounded-lg border border-line bg-surface-raised p-4 space-y-3">
+      <p className="text-sm font-semibold">Редактирование профиля</p>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="displayName"
+          className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+        >
           Отображаемое имя
         </label>
         <Input
@@ -415,12 +418,14 @@ function ProfileEditForm({ displayName, avatar }: { displayName: string; avatar:
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Как вас видят другие"
-          className="mt-1"
           disabled={mutation.isPending}
         />
       </div>
-      <div>
-        <label htmlFor="avatarUrl" className="text-sm text-content-secondary">
+      <div className="space-y-1.5">
+        <label
+          htmlFor="avatarUrl"
+          className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+        >
           Ссылка на аватар
         </label>
         <Input
@@ -428,11 +433,14 @@ function ProfileEditForm({ displayName, avatar }: { displayName: string; avatar:
           value={avatarUrl}
           onChange={(e) => setAvatarUrl(e.target.value)}
           placeholder="https://cdn.example.com/avatar.png"
-          className="mt-1"
           disabled={mutation.isPending}
         />
       </div>
-      {error ? <ErrorText message={error} /> : null}
+      {error ? (
+        <p className="text-sm text-bad" role="alert">
+          {error}
+        </p>
+      ) : null}
       <div className="flex gap-2">
         <Button
           size="sm"

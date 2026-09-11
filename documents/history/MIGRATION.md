@@ -114,33 +114,50 @@ CREATE (создан с нуля), DELETE (удалён), KEEP-LEGACY (исто�
 - Ничего больше: неизвестное не удалялось (§28); все legacy-файлы перенесены
   или задокументированы в `LEGACY.md`.
 
-## 5. Свест оставшихся технических долгов
+## 5. Свест оставшихся технических долгов (обновлено PLAN-012, 2026-09-11)
 
-1. **Cross-instance exactly-once**: key-lock (keyLock.ts) сериализует checkout/settlement
-   внутри одного процесса backend; для multi-replica нужен unique partial index
-   (formal migration path).
-2. **Windows-сборка модуля** не проверялась (CI-джобы best-effort) — исторический
-   blocker из CURRENT.md.
-3. **Real-server integration** (module) — best-effort CI-джоба: зависит от pinned
-   загрузок nightly.mtasa.com.
-4. **OpenAPI request/response schemas** — инвентарь доменных эндпоинтов полный,
-   но тела запросов/ответов формализованы пока только для DRM v2 и module wire.
-5. **Дублирование ZIP/PNG builders** (tests/tools/helpers/zip.ts vs
-   tests/tools/playwright/helpers.ts) — не объединено (разные рантаймы vitest/playwright).
-6. **packages/{tsconfig,eslint-config}**: phantom `main: "index.js"` остался (безвредно).
-7. **`/creators/[username]` vs `/sellers/[username]`** — расхождение SURFACE-MAP (target)
-   и PROJECT.md (фактический URL) зафиксировано; сверка поверхности — отдельный план.
-8. **PRODUCT-MODEL §3.1** (OFFLINE как lifecycle-стадия) противоречит
-   PRODUCT-ARCHITECTURE §4.1 (monitoring — отдельная ось); реализация соответствует
-   ARCHITECTURE. Правка MODEL — отдельное решение (foundational doc).
-9. **`node dist/` не запускается напрямую** (ESM-импорты без расширений при
-   `module: preserve` и без `"type": "module"`): production-образы API
-   исторически не проверялись рантаймом (Blockers в CURRENT.md). CI-E2E
-   запускает API документированным dev-путём (tsx); самодостаточная упаковка
-   dist — отдельная задача перед production-проверкой.
-10. **Clang-leg**: clang18 + libstdc++-14 требует complete-type инстанцирования
-    самореферентного `Json::Members` (GCC допускает) — джоба report-only;
-    основной тулчейн релиза — GCC (Linux x64 verified).
-11. **CI-E2E окружение**: сиды (plan003/plan005), heartbeat-симулятор,
-    CORS_ORIGINS и ослабленный rate-limit профиль задаются в `e2e.yml` —
-    в CI нет локального `.env`; это часть сборки среды прогона.
+Статусы после PLAN-012: FIXED / PARTIAL / DEFERRED / NOT APPLICABLE.
+
+1. **Cross-instance exactly-once — FIXED** (миграция
+   20260911T1014_plan012_idempotency_invariants): partial unique index
+   purchase_buyer_resource_live_uq (одна живая покупка на buyer+resource),
+   ledger_entry_tx_account_direction_uq (детерминированный settlement id
+   enforced БД), financial_txn_settlement_once_uq, payment captured-partial
+   uniques, dispute_*_open_uq, IdempotencyRecord [operation, key].
+   Key-lock остаётся быстрой in-process защитой; авторитет теперь у БД.
+2. **Windows-сборка модуля — NOT APPLICABLE (formal policy)**: Windows не
+   поддерживается (support matrix в documents/architecture/MODULE.md §9);
+   POSIX-слой http_client.cpp/key_store.cpp/timegm не портирован — решение
+   зафиксировано вместо fake compatibility. CI-джобы win-* помечены
+   build-probe (continue-on-error).
+3. **Real-server integration** (module) — DEFERRED (best-effort CI, зависит
+   от pinned загрузок nightly.mtasa.com).
+4. **OpenAPI request/response schemas — PARTIAL**: формальные схемы для
+   auth/commerce/payments/refunds/disputes добавлены в contracts/api/*.yaml
+   (PLAN-012 §21D, первый инкремент); полный перевод публичного API —
+   дальнейшие инкременты.
+5. **Дублирование ZIP/PNG builders** — NOT APPLICABLE (разные рантаймы).
+6. **packages/{tsconfig,eslint-config} phantom main** — NOT APPLICABLE
+   (безвредно).
+7. **/creators vs /sellers — FIXED**: канонический публичный URL —
+   /sellers/[username] (код, E2E, PROJECT.md); PRODUCT-SURFACE-MAP §20
+   обновлён. /creators/:username/follow остаётся API-namespace follow-домена.
+8. **PRODUCT-MODEL §3.1 OFFLINE — FIXED**: OFFLINE выведен из lifecycle,
+   указана operational-ось мониторинга (согласовано с ARCHITECTURE §4.1).
+9. **node dist/ — FIXED**: sources имеют явные .js расширения (codemod
+   scripts/development/fix-esm-extensions.cjs, encoding-safe), package.json
+   +"type": "module"; node dist/index.js проверен локально: health/ready 200,
+   production fail-fast при отсутствии секретов; CI smoke-гейт в site.yml
+   (PLAN-012 §21A).
+10. **Clang-leg — FORMAL TOOLCHAIN POLICY**: GCC (Linux x64) — официальный
+    release-тулчейн; clang — report-only leg с точной причиной
+    (самореференциальные члены Json в module/src/drm/json.hpp:39/45/46
+    требуют complete-type инстанцирования в clang; GCC допускает). Политика
+    в documents/architecture/MODULE.md §8.
+11. **CI-E2E окружение** — NOT APPLICABLE (среда прогона собирается в
+    e2e.yml задокументированно).
+12. **Stray tests — FIXED** (PLAN-012 §3): site/server/tests/ (33 дубля +
+    helpers), site/server/vitest.config.ts и dead-скрипт test удалены;
+    единственный test root — tests/. Единственный tracked-.md вне documents/
+    — .github/pull_request_template.md (GitHub-technical exception,
+    зафиксировано в validate.yml grep -v '^\.github/').

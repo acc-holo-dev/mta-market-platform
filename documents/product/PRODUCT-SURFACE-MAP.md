@@ -892,7 +892,7 @@ Unavailable state.
 
 URL:
 
-/creators/[username]
+/sellers/[username]
 
 Показывает:
 

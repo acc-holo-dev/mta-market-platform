@@ -3,39 +3,82 @@
 @tailwind utilities;
 
 /*
- * MTA Market design tokens (PLAN-002 B-002).
- * Единый тёмный marketplace-язык: глубокий navy background, контрастные
- * surfaces, один blue accent. Значения читаются через tailwind-маппинг
- * в tailwind.config.ts (bg-surface, text-secondary, border-line, ...).
+ * MTA Market design tokens — PLAN-013 Visual System (source of truth:
+ * documents/architecture/DESIGN-SYSTEM.md).
+ *
+ * Единый тёмный premium-язык платформы: глубокий navy background,
+ * многоуровневые surfaces, один холодный electric-blue brand accent,
+ * семантические статусы. Все значения читаются ТОЛЬКО через токены;
+ * сырые палитры Tailwind в компонентах запрещены.
  */
 :root {
   color-scheme: dark;
 
-  /* backgrounds */
-  --background: 223 45% 5%;
-  --surface: 222 42% 8%;
-  --surface-hover: 221 36% 12%;
-  --surface-raised: 221 40% 10%;
+  /* --- backgrounds (layers) ----------------------------------------- */
+  --background: 224 48% 4%;
+  --surface: 223 44% 7%;
+  --surface-hover: 222 38% 11%;
+  --surface-raised: 222 42% 9%;
+  --surface-inset: 222 45% 5%;
 
-  /* lines */
-  --line: 220 28% 15%;
-  --line-strong: 220 26% 22%;
+  /* lines (borders) --------------------------------------------------- */
+  --line: 221 30% 14%;
+  --line-strong: 220 28% 22%;
+  --line-accent: 217 91% 57%;
 
-  /* text */
-  --text-primary: 213 38% 96%;
-  --text-secondary: 217 18% 72%;
-  --muted: 217 14% 52%;
+  /* text ---------------------------------------------------------------*/
+  --text-primary: 213 40% 96%;
+  --text-secondary: 217 20% 73%;
+  --muted: 218 14% 54%;
 
-  /* accents */
+  /* brand accent -------------------------------------------------------*/
   --primary: 217 91% 57%;
-  --primary-strong: 217 91% 63%;
-  --primary-soft: 217 60% 16%;
-  --success: 152 55% 45%;
-  --warning: 38 92% 55%;
-  --danger: 0 70% 57%;
+  --primary-strong: 216 94% 64%;
+  --primary-soft: 217 65% 16%;
+  --primary-glow: 217 91% 57% / 0.28;
 
-  /* shape */
+  /* semantic statuses ---------------------------------------------------*/
+  --success: 152 58% 46%;
+  --success-soft: 152 55% 14%;
+  --warning: 38 92% 56%;
+  --warning-soft: 38 88% 14%;
+  --danger: 0 72% 58%;
+  --danger-soft: 0 66% 15%;
+  --info: 199 89% 56%;
+  --info-soft: 199 85% 14%;
+  --verified: 262 83% 66%;
+  --verified-soft: 262 70% 16%;
+
+  /* shape ---------------------------------------------------------------*/
   --radius-card: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-pill: 999px;
+
+  /* elevation -----------------------------------------------------------*/
+  --shadow-card: 0 1px 2px hsl(223 45% 2% / 0.6), 0 4px 16px hsl(223 45% 2% / 0.35);
+  --shadow-raised: 0 4px 12px hsl(223 45% 2% / 0.7), 0 8px 32px hsl(223 45% 2% / 0.55);
+  --shadow-accent: 0 0 0 1px hsl(var(--primary) / 0.25), 0 4px 24px hsl(var(--primary-glow));
+
+  /* motion ---------------------------------------------------------------*/
+  --motion-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
+ * Hero-фон главной: глубокий синий градиент с тонким brand-glow сверху.
+ * Чистый CSS — без внешних ассетов, без анимаций (PERF-правило).
+ */
+.mta-hero-surface {
+  background:
+    radial-gradient(1200px 480px at 50% -160px, hsl(var(--primary) / 0.14), transparent 70%),
+    linear-gradient(180deg, hsl(222 48% 8%) 0%, hsl(var(--background)) 78%);
+}
+
+.mta-brand-text-gradient {
+  background: linear-gradient(92deg, hsl(var(--text-primary)) 10%, hsl(var(--primary-strong)) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 body {
@@ -60,4 +103,32 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--line-strong)) transparent;
+}
+
+/* Уважение к reduced-motion: отключаем декоративные анимации. */
+@media (prefers-reduced-motion: reduce) {
+  .mta-anim-ping,
+  .mta-anim-pulse {
+    animation: none !important;
+  }
+}
+
+/* Декоративные анимации только через эти хелперы (см. DESIGN-SYSTEM §9). */
+.mta-anim-ping {
+  animation: mta-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.mta-anim-pulse {
+  animation: mta-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes mta-ping {
+  75%,
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+@keyframes mta-pulse {
+  50% {
+    opacity: 0.5;
+  }
 }

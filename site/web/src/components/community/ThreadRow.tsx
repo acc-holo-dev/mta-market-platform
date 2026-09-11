@@ -1,9 +1,11 @@
 // ThreadRow (PLAN-005 F-001/F-003): компактная строка темы, переиспользуется
 // на хабе сообщества и в листингах категорий/серверов.
+// PLAN-013: token-бейджи с lucide-иконками вместо эмодзи; счётчики —
+// tabular-nums; hover — token-переходы (duration-fast).
 "use client";
 
 import Link from "next/link";
-import { Eye, MessageSquare } from "lucide-react";
+import { Archive, Eye, Lock, MessageSquare, Pin } from "lucide-react";
 import type { ThreadCard } from "@/lib/api-ext";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
@@ -30,18 +32,20 @@ export function authorName(author: { username: string | null; displayName: strin
   return author.displayName || author.username || null;
 }
 
-/** Чип состояния темы: OPEN — без метки, LOCKED/ARCHIVED — серые. */
+/** Чип состояния темы: OPEN — без метки, LOCKED/ARCHIVED — нейтральные бейджи. */
 export function ThreadStateChip({ state }: { state: string }) {
   if (state === "LOCKED") {
     return (
-      <span className="inline-flex items-center rounded-full border border-line bg-surface-hover px-2 py-0.5 text-xs text-content-secondary">
-        🔒 Закрыта
+      <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-pill border border-line bg-surface-inset px-2 py-0.5 text-xs text-content-secondary">
+        <Lock className="h-3 w-3" aria-hidden />
+        Закрыта
       </span>
     );
   }
   if (state === "ARCHIVED") {
     return (
-      <span className="inline-flex items-center rounded-full border border-line bg-surface-hover px-2 py-0.5 text-xs text-content-secondary">
+      <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-pill border border-line bg-surface-inset px-2 py-0.5 text-xs text-content-muted">
+        <Archive className="h-3 w-3" aria-hidden />
         В архиве
       </span>
     );
@@ -51,8 +55,9 @@ export function ThreadStateChip({ state }: { state: string }) {
 
 export function PinnedChip() {
   return (
-    <span className="inline-flex items-center rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs text-accent-strong">
-      📌 Закреплена
+    <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-pill border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-strong">
+      <Pin className="h-3 w-3" aria-hidden />
+      Закреплена
     </span>
   );
 }
@@ -73,7 +78,7 @@ export function ThreadRow({
   return (
     <div
       className={cn(
-        "p-4 rounded-card border border-line bg-surface-raised",
+        "rounded-card border border-line bg-surface p-4 shadow-card transition-colors duration-fast hover:border-line-strong hover:bg-surface-hover",
         className
       )}
     >
@@ -82,19 +87,19 @@ export function ThreadRow({
           <div className="flex flex-wrap items-center gap-2">
             <Link
               href={`/community/forum/thread/${thread.id}`}
-              className="truncate font-semibold hover:text-accent-strong"
+              className="truncate text-lg font-semibold tracking-tight transition-colors duration-fast hover:text-accent-strong"
             >
               {thread.title}
             </Link>
             {thread.pinned ? <PinnedChip /> : null}
             <ThreadStateChip state={thread.state} />
           </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-content-secondary">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-content-secondary">
             {name ? (
               <span className="inline-flex items-center gap-1.5">
                 <Avatar src={thread.author?.avatar} name={name} size="sm" className="h-5 w-5 text-[10px]" />
                 {thread.author?.username ? (
-                  <Link href={`/profile/${thread.author.username}`} className="hover:text-accent-strong">
+                  <Link href={`/profile/${thread.author.username}`} className="transition-colors duration-fast hover:text-accent-strong">
                     {name}
                   </Link>
                 ) : (
@@ -102,13 +107,13 @@ export function ThreadRow({
                 )}
               </span>
             ) : null}
-            <span className="inline-flex items-center gap-1">
-              <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <MessageSquare className="h-3.5 w-3.5 text-content-muted" aria-hidden />
               {thread.replyCount}
             </span>
             {typeof thread.views === "number" ? (
-              <span className="inline-flex items-center gap-1">
-                <Eye className="h-3.5 w-3.5" aria-hidden />
+              <span className="inline-flex items-center gap-1 tabular-nums">
+                <Eye className="h-3.5 w-3.5 text-content-muted" aria-hidden />
                 {thread.views}
               </span>
             ) : null}
@@ -116,11 +121,11 @@ export function ThreadRow({
         </div>
 
         <div className="flex flex-shrink-0 flex-col items-end gap-1.5 text-xs text-content-muted">
-          {lastActivity ? <span>{lastActivity}</span> : null}
+          {lastActivity ? <span className="tabular-nums">{lastActivity}</span> : null}
           {server ? (
             <Link
               href={`/servers/${server.slug}`}
-              className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-content-secondary hover:text-accent-strong"
+              className="inline-flex items-center gap-1 rounded-pill border border-line bg-surface-inset px-2 py-0.5 text-content-secondary transition-colors duration-fast hover:text-accent-strong"
             >
               {server.name}
             </Link>
