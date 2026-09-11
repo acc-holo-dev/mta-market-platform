@@ -474,7 +474,7 @@ def cmd_test(args) -> int:
 
     out("Building the module ...")
     build = subprocess.run(
-        [sys.executable, str(SERVER_DIR.parent / "mta" / "cli.py"), "build"],,
+        [sys.executable, str(SERVER_DIR.parent / "mta" / "cli.py"), "build"],
         cwd=str(PROJECT_ROOT),
     )
     if build.returncode != 0:
