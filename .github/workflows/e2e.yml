@@ -1,12 +1,8 @@
 name: E2E
 
-# BLOCKING GATE (PLAN-010 §21): browser E2E must pass. Boots the real stack
-# (Postgres + Redis + API + web) and runs the Playwright suite against it.
+# Reusable browser E2E gate. Platform CI is the public entry point.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
   workflow_call:
 
 permissions:
@@ -60,11 +56,9 @@ jobs:
           node-version: '22'
       - uses: pnpm/action-setup@v4
       - run: pnpm install --frozen-lockfile
-
       - name: Apply contract schema (dev quick path)
         working-directory: site/server
         run: npx prisma contract emit && npx prisma db update --confirm mtamarket
-
       - name: Generate ephemeral DRM/artifact dev keys
         working-directory: site/server
         run: |
@@ -72,10 +66,8 @@ jobs:
           echo "ARTIFACT_SIGNING_PRIVATE_KEY=$(openssl genpkey -algorithm ed25519 | openssl pkey -outform DER | base64 -w0)" >> "$GITHUB_ENV"
           echo "DRM_MASTER_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
           echo "JWT_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
-
       - name: Build web (production build)
         run: pnpm --filter @mta-market/web build
-
       - name: Start API and web
         run: |
           ( cd site/server && pnpm exec tsx src/index.ts ) &> /tmp/backend.log &
@@ -87,27 +79,21 @@ jobs:
           done
           curl -sf http://localhost:3001/health || { echo "::error::API did not come up"; tail -50 /tmp/backend.log; exit 1; }
           curl -sf http://localhost:3000 >/dev/null || { echo "::error::web did not come up"; tail -50 /tmp/web.log; exit 1; }
-
       - name: Seed E2E admin
         run: pnpm test:e2e:admin
-
-      - name: Seed dev datasets (marketplace + community/servers)
+      - name: Seed dev datasets
         working-directory: site/server
         run: |
           pnpm exec tsx scripts/seed-plan003.ts
           pnpm exec tsx scripts/seed-plan005.ts
-
       - name: Keep server heartbeats fresh
         working-directory: site/server
         run: |
           ( pnpm exec tsx scripts/dev-heartbeat.ts ) &> /tmp/heartbeat.log &
-
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
-
       - name: Run browser E2E
         run: pnpm test:e2e
-
       - name: Upload Playwright artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
