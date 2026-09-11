@@ -114,10 +114,10 @@ export function ServerCard({
             src={logo}
             alt={server.name}
             loading="lazy"
-            className="absolute -top-6 left-4 h-14 w-14 rounded-xl border-2 border-line bg-surface object-cover shadow-card"
+            className="absolute -top-6 left-4 h-14 w-14 rounded-card border-2 border-line bg-surface object-cover shadow-card"
           />
         ) : (
-          <div className="absolute -top-6 left-4 flex h-14 w-14 items-center justify-center rounded-xl border-2 border-line bg-surface text-sm font-bold text-content-secondary shadow-card">
+          <div className="absolute -top-6 left-4 flex h-14 w-14 items-center justify-center rounded-card border-2 border-line bg-surface text-sm font-bold text-content-secondary shadow-card">
             {server.name.slice(0, 2).toUpperCase()}
           </div>
         )}

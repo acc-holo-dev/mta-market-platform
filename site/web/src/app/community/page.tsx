@@ -1,6 +1,8 @@
 // Сообщество (PLAN-005 F-001): публичный хаб — категории, закреплённые,
 // последние обсуждения, активные темы и недавняя активность.
 // Гостям доступно чтение; создание тем — после входа.
+// PLAN-013: hero-бенд на .mta-hero-surface, секции — карточки, категории —
+// pill-cards; h1/копия/ARIA не изменены (E2E).
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,12 +14,14 @@ import {
   Pin,
   Flame,
   Activity,
+  ArrowRight,
 } from "lucide-react";
 import { bootstrapSession } from "@/lib/api";
 import { fetchCommunityHub, type ThreadCard } from "@/lib/api-ext";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/Button";
-import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
+import { EmptyState, ErrorState } from "@/components/ui/States";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ThreadRow, formatRelative, authorName } from "@/components/community/ThreadRow";
 import { Avatar } from "@/components/ui/Avatar";
 
@@ -29,8 +33,10 @@ function SectionHeader({
   icon: React.ReactNode;
 }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold tracking-tight">
-      {icon}
+    <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold tracking-tight">
+      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong">
+        {icon}
+      </span>
       {title}
     </h2>
   );
@@ -86,42 +92,56 @@ export default function CommunityPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Сообщество</h1>
-          <p className="mt-1 text-content-secondary">
-            Форум MTA:SA — обсуждения, помощь и новости серверов
-          </p>
-        </div>
-        {authed ? (
-          firstCategory ? (
-            <Link href={`/community/forum/${firstCategory.slug}`}>
+      {/* Hero-бенд заголовка: мягкий brand-glow; h1 и копия не изменяются */}
+      <div className="mta-hero-surface mb-8 rounded-lg border border-line p-6 shadow-card md:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="mta-brand-text-gradient text-3xl font-bold tracking-tight">Сообщество</h1>
+            <p className="mt-2 max-w-xl text-sm text-content-secondary">
+              Форум MTA:SA — обсуждения, помощь и новости серверов
+            </p>
+          </div>
+          {authed ? (
+            firstCategory ? (
+              <Link href={`/community/forum/${firstCategory.slug}`}>
+                <Button>
+                  <MessageSquarePlus className="mr-2 h-4 w-4" aria-hidden />
+                  Создать тему
+                </Button>
+              </Link>
+            ) : null
+          ) : (
+            <Link href="/auth/login">
               <Button>
                 <MessageSquarePlus className="mr-2 h-4 w-4" aria-hidden />
                 Создать тему
               </Button>
             </Link>
-          ) : null
-        ) : (
-          <Link href="/auth/login">
-            <Button>
-              <MessageSquarePlus className="mr-2 h-4 w-4" aria-hidden />
-              Создать тему
-            </Button>
-          </Link>
-        )}
+          )}
+        </div>
       </div>
 
       {isLoading ? (
-        <LoadingSpinner label="Загрузка сообщества..." />
+        <div className="space-y-8" aria-busy="true">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-28 rounded-card" />
+            ))}
+          </div>
+          <div className="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-20 rounded-card" />
+            ))}
+          </div>
+        </div>
       ) : error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-8">
           {/* Категории (F-002) */}
-          <section aria-label="Категории форума">
+          <section aria-label="Категории форума" className="rounded-lg border border-line bg-surface-inset p-4 shadow-card sm:p-5">
             <SectionHeader
-              icon={<MessagesSquare className="h-5 w-5 text-accent" aria-hidden />}
+              icon={<MessagesSquare className="h-4 w-4" aria-hidden />}
               title="Категории"
             />
             {categories.length === 0 ? (
@@ -136,13 +156,18 @@ export default function CommunityPage() {
                   <Link
                     key={c.id}
                     href={`/community/forum/${c.slug}`}
-                    className="group p-4 rounded-card border border-line bg-surface-raised transition-colors hover:bg-surface-hover"
+                    className="group rounded-card border border-line bg-surface p-4 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
-                    <p className="font-semibold group-hover:text-accent-strong">{c.name}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong transition-colors duration-fast group-hover:bg-accent group-hover:text-white">
+                        <MessagesSquare className="h-4 w-4" aria-hidden />
+                      </span>
+                      <p className="font-semibold tracking-tight group-hover:text-accent-strong">{c.name}</p>
+                    </div>
                     {c.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-content-secondary">{c.description}</p>
+                      <p className="mt-2 line-clamp-2 text-sm text-content-secondary">{c.description}</p>
                     ) : null}
-                    <p className="mt-2 text-xs text-content-muted">
+                    <p className="mt-3 text-xs tabular-nums text-content-muted">
                       {typeof c.threadCount === "number" ? `${c.threadCount} тем` : "Темы"}
                     </p>
                   </Link>
@@ -153,9 +178,9 @@ export default function CommunityPage() {
 
           {/* Закреплённые */}
           {(data?.pinned?.length ?? 0) > 0 ? (
-            <section aria-label="Закреплённые темы">
+            <section aria-label="Закреплённые темы" className="rounded-lg border border-line bg-surface-inset p-4 shadow-card sm:p-5">
               <SectionHeader
-                icon={<Pin className="h-5 w-5 text-accent" aria-hidden />}
+                icon={<Pin className="h-4 w-4" aria-hidden />}
                 title="Закреплённые"
               />
               <div className="space-y-2">
@@ -167,27 +192,27 @@ export default function CommunityPage() {
           ) : null}
 
           {/* Последние обсуждения */}
-          <section aria-label="Последние обсуждения">
+          <section aria-label="Последние обсуждения" className="rounded-lg border border-line bg-surface-inset p-4 shadow-card sm:p-5">
             <SectionHeader
-              icon={<Activity className="h-5 w-5 text-accent" aria-hidden />}
+              icon={<Activity className="h-4 w-4" aria-hidden />}
               title="Последние обсуждения"
             />
             <ThreadList threads={data?.latest ?? []} emptyTitle="Обсуждений пока нет" />
           </section>
 
           {/* Активные */}
-          <section aria-label="Активные темы">
+          <section aria-label="Активные темы" className="rounded-lg border border-line bg-surface-inset p-4 shadow-card sm:p-5">
             <SectionHeader
-              icon={<Flame className="h-5 w-5 text-accent" aria-hidden />}
+              icon={<Flame className="h-4 w-4" aria-hidden />}
               title="Активные"
             />
             <ThreadList threads={data?.active ?? []} emptyTitle="Активных тем пока нет" />
           </section>
 
           {/* Недавняя активность */}
-          <section aria-label="Недавняя активность">
+          <section aria-label="Недавняя активность" className="rounded-lg border border-line bg-surface-inset p-4 shadow-card sm:p-5">
             <SectionHeader
-              icon={<MessagesSquare className="h-5 w-5 text-accent" aria-hidden />}
+              icon={<Activity className="h-4 w-4" aria-hidden />}
               title="Недавняя активность"
             />
             {(data?.recentActivity?.length ?? 0) === 0 ? (
@@ -204,7 +229,7 @@ export default function CommunityPage() {
                   return (
                     <div
                       key={a.postId}
-                      className="flex flex-wrap items-center gap-2 p-4 rounded-card border border-line bg-surface-raised text-sm"
+                      className="flex flex-wrap items-center gap-2 rounded-card border border-line bg-surface p-4 text-sm transition-colors duration-fast hover:bg-surface-hover"
                     >
                       {name ? (
                         <Avatar
@@ -218,7 +243,7 @@ export default function CommunityPage() {
                         {a.author?.username ? (
                           <Link
                             href={`/profile/${a.author.username}`}
-                            className="font-medium text-content hover:text-accent-strong"
+                            className="font-medium text-content transition-colors duration-fast hover:text-accent-strong"
                           >
                             {name}
                           </Link>
@@ -226,18 +251,18 @@ export default function CommunityPage() {
                           <span className="font-medium text-content">{name ?? "Гость"}</span>
                         )}
                       </span>
-                      <span className="text-content-muted">→</span>
+                      <ArrowRight className="h-3.5 w-3.5 flex-shrink-0 text-content-muted" aria-hidden />
                       {a.threadId ? (
                         <Link
                           href={`/community/forum/thread/${a.threadId}`}
-                          className="truncate font-medium hover:text-accent-strong"
+                          className="truncate font-medium transition-colors duration-fast hover:text-accent-strong"
                         >
                           {a.threadTitle ?? "Тема"}
                         </Link>
                       ) : (
                         <span className="truncate text-content-secondary">{a.threadTitle ?? "Тема"}</span>
                       )}
-                      <span className="ml-auto flex-shrink-0 text-xs text-content-muted">
+                      <span className="ml-auto flex-shrink-0 text-xs tabular-nums text-content-muted">
                         {formatRelative(a.createdAt)}
                       </span>
                     </div>

@@ -1,6 +1,8 @@
 // Тема форума (PLAN-005 F-003/F-004/F-005): посты, реакции, ответы,
 // правка/удаление своих сообщений, жалобы, модерация состояния темы.
 // Гостям доступно чтение (?page= в URL).
+// PLAN-013: пост-карточки с акцентным левым бордером у OP, pill-реакции,
+// composer с shadow-raised; логика и копия не изменены (E2E).
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
@@ -41,6 +43,8 @@ import { Textarea } from "@/components/ui/Input";
 import { Avatar } from "@/components/ui/Avatar";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { cn } from "@/lib/utils";
 import { ThreadStateChip, PinnedChip, authorName } from "@/components/community/ThreadRow";
 import { ReportDialog } from "@/components/community/ReportDialog";
 
@@ -89,9 +93,15 @@ function PostItem({
 
   const reacted = post.reactedByMe.includes("LIKE");
   const name = authorName(post.author) ?? "Автор";
+  const isOp = post.position === 0;
 
   return (
-    <div className="p-4 rounded-card border border-line bg-surface-raised">
+    <div
+      className={cn(
+        "rounded-card border border-line bg-surface p-4 shadow-card sm:p-5",
+        isOp && "border-l-2 border-l-accent"
+      )}
+    >
       <div className="flex items-start gap-3">
         <Avatar src={post.author?.avatar} name={name} size="sm" />
         <div className="min-w-0 flex-1">
@@ -99,15 +109,20 @@ function PostItem({
             {post.author?.username ? (
               <Link
                 href={`/profile/${post.author.username}`}
-                className="font-semibold hover:text-accent-strong"
+                className="font-semibold transition-colors duration-fast hover:text-accent-strong"
               >
                 {name}
               </Link>
             ) : (
               <span className="font-semibold">{name}</span>
             )}
-            <span className="text-xs text-content-muted">#{post.position + 1}</span>
-            <span className="text-xs text-content-muted">{formatDateTime(post.createdAt)}</span>
+            {isOp ? (
+              <span className="rounded-pill border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-strong">
+                Автор
+              </span>
+            ) : null}
+            <span className="text-xs tabular-nums text-content-muted">#{post.position + 1}</span>
+            <span className="text-xs tabular-nums text-content-muted">{formatDateTime(post.createdAt)}</span>
             {post.edited && !post.deleted ? (
               <span className="text-xs text-content-muted">· изменено</span>
             ) : null}
@@ -148,12 +163,12 @@ function PostItem({
                 </div>
               </div>
             ) : (
-              <p className="whitespace-pre-wrap text-content">{post.content}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-content">{post.content}</p>
             )}
           </div>
 
           {!editing ? (
-            <div className="mt-3 flex flex-wrap items-center gap-1">
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {actionError ? <p className="mr-2 text-sm text-bad">{actionError}</p> : null}
               <button
                 type="button"
@@ -166,11 +181,12 @@ function PostItem({
                 }}
                 aria-pressed={reacted}
                 aria-label="Реакция «нравится»"
-                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm transition-colors ${
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-pill border px-3 py-1 text-sm tabular-nums transition-colors duration-fast",
                   reacted
-                    ? "bg-accent-soft text-accent-strong"
-                    : "text-content-secondary hover:bg-surface-hover hover:text-content"
-                }`}
+                    ? "border-accent/40 bg-accent-soft text-accent-strong"
+                    : "border-line text-content-secondary hover:border-line-strong hover:bg-surface-hover hover:text-content"
+                )}
               >
                 <ThumbsUp className="h-4 w-4" aria-hidden />
                 {post.reactionCount}
@@ -288,8 +304,7 @@ function ThreadPageContent() {
 
   // Автор темы: API отдаёт в thread сырую строку без author — берём автора
   // первого сообщения (position 0), он доступен на первой странице.
-  const firstPost = posts.find((p) => p.position === 0);
-  const threadAuthor = firstPost?.author ?? thread?.author ?? null;
+  const threadAuthor = posts.find((p) => p.position === 0)?.author ?? thread?.author ?? null;
   const threadAuthorName = authorName(threadAuthor);
 
   const changePage = (next: number) => {
@@ -301,37 +316,45 @@ function ThreadPageContent() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       {isLoading ? (
-        <LoadingSpinner label="Загрузка темы..." />
+        <div className="space-y-4" aria-busy="true">
+          <Skeleton className="h-10 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+          <div className="space-y-3 pt-4">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-28 rounded-card" />
+            ))}
+          </div>
+        </div>
       ) : error || !thread ? (
         <ErrorState error={error ?? new Error("Тема не найдена")} onRetry={() => refetch()} />
       ) : (
         <>
-          <nav aria-label="Хлебные крошки" className="mb-4 text-sm text-content-muted">
-            <Link href="/community" className="hover:text-accent-strong">
+          <nav aria-label="Хлебные крошки" className="mb-4 flex items-center gap-2 text-sm text-content-muted">
+            <Link href="/community" className="transition-colors duration-fast hover:text-accent-strong">
               Сообщество
             </Link>
             {category ? (
               <>
-                <span className="mx-2">/</span>
-                <Link href={`/community/forum/${category.slug}`} className="hover:text-accent-strong">
+                <span aria-hidden>/</span>
+                <Link href={`/community/forum/${category.slug}`} className="transition-colors duration-fast hover:text-accent-strong">
                   {category.name}
                 </Link>
               </>
             ) : null}
           </nav>
 
-          {/* Заголовок + метаданные */}
+          {/* Заголовок + identity-блок автора + метаданные */}
           <div className="mb-6">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <h1 className="text-3xl font-bold tracking-tight">{thread.title}</h1>
               {thread.pinned ? <PinnedChip /> : null}
               <ThreadStateChip state={thread.state} />
               <ThreadFollowButton threadId={threadId} followersCount={data.followersCount ?? 0} />
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-content-secondary">
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-line bg-surface-inset px-4 py-3 text-sm text-content-secondary">
               {threadAuthorName ? (
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-2">
                   <Avatar
                     src={threadAuthor?.avatar}
                     name={threadAuthorName}
@@ -339,27 +362,27 @@ function ThreadPageContent() {
                     className="h-6 w-6 text-[11px]"
                   />
                   {threadAuthor?.username ? (
-                    <Link href={`/profile/${threadAuthor.username}`} className="hover:text-accent-strong">
+                    <Link href={`/profile/${threadAuthor.username}`} className="font-medium text-content transition-colors duration-fast hover:text-accent-strong">
                       {threadAuthorName}
                     </Link>
                   ) : (
-                    <span>{threadAuthorName}</span>
+                    <span className="font-medium text-content">{threadAuthorName}</span>
                   )}
                 </span>
               ) : null}
-              <span className="inline-flex items-center gap-1">
-                <Eye className="h-3.5 w-3.5" aria-hidden />
+              <span className="inline-flex items-center gap-1.5 tabular-nums">
+                <Eye className="h-3.5 w-3.5 text-content-muted" aria-hidden />
                 {thread.views ?? 0}
               </span>
-              <span className="inline-flex items-center gap-1">
-                <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+              <span className="inline-flex items-center gap-1.5 tabular-nums">
+                <MessageSquare className="h-3.5 w-3.5 text-content-muted" aria-hidden />
                 {thread.replyCount}
               </span>
-              <span>{formatDateTime(thread.createdAt)}</span>
+              <span className="text-xs tabular-nums text-content-muted">{formatDateTime(thread.createdAt)}</span>
               {server ? (
                 <Link
                   href={`/servers/${server.slug}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-content-secondary hover:text-accent-strong"
+                  className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-2.5 py-1 transition-colors duration-fast hover:text-accent-strong"
                 >
                   <Globe className="h-3.5 w-3.5" aria-hidden />
                   {server.name}
@@ -370,48 +393,70 @@ function ThreadPageContent() {
 
             {/* Модерация темы (ADMIN/MODERATOR) */}
             {isModerator ? (
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => moderate.mutate({ pinned: !thread.pinned })}
-                  disabled={moderate.isPending}
-                >
-                  {thread.pinned ? (
+              <div className="mt-4 rounded-card border border-line bg-surface-inset p-4">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-muted">Модерация</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => moderate.mutate({ pinned: !thread.pinned })}
+                    disabled={moderate.isPending}
+                  >
+                    {thread.pinned ? (
+                      <>
+                        <PinOff className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        Открепить
+                      </>
+                    ) : (
+                      <>
+                        <Pin className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        Закрепить
+                      </>
+                    )}
+                  </Button>
+                  {thread.state === "OPEN" ? (
                     <>
-                      <PinOff className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                      Открепить
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => moderate.mutate({ state: "LOCKED" })}
+                        disabled={moderate.isPending}
+                      >
+                        <Lock className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        Закрыть
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => moderate.mutate({ state: "ARCHIVED" })}
+                        disabled={moderate.isPending}
+                      >
+                        <Archive className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        В архив
+                      </Button>
+                    </>
+                  ) : thread.state === "LOCKED" ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => moderate.mutate({ state: "OPEN" })}
+                        disabled={moderate.isPending}
+                      >
+                        <LockOpen className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        Открыть
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => moderate.mutate({ state: "ARCHIVED" })}
+                        disabled={moderate.isPending}
+                      >
+                        <Archive className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                        В архив
+                      </Button>
                     </>
                   ) : (
-                    <>
-                      <Pin className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                      Закрепить
-                    </>
-                  )}
-                </Button>
-                {thread.state === "OPEN" ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => moderate.mutate({ state: "LOCKED" })}
-                      disabled={moderate.isPending}
-                    >
-                      <Lock className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                      Закрыть
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => moderate.mutate({ state: "ARCHIVED" })}
-                      disabled={moderate.isPending}
-                    >
-                      <Archive className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                      В архив
-                    </Button>
-                  </>
-                ) : thread.state === "LOCKED" ? (
-                  <>
                     <Button
                       variant="outline"
                       size="sm"
@@ -421,28 +466,9 @@ function ThreadPageContent() {
                       <LockOpen className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                       Открыть
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => moderate.mutate({ state: "ARCHIVED" })}
-                      disabled={moderate.isPending}
-                    >
-                      <Archive className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                      В архив
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => moderate.mutate({ state: "OPEN" })}
-                    disabled={moderate.isPending}
-                  >
-                    <LockOpen className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                    Открыть
-                  </Button>
-                )}
-                {modError ? <p className="text-sm text-bad">{modError}</p> : null}
+                  )}
+                  {modError ? <p className="text-sm text-bad">{modError}</p> : null}
+                </div>
               </div>
             ) : null}
           </div>
@@ -465,7 +491,7 @@ function ThreadPageContent() {
 
           {/* Пагинация (?page=) */}
           {data && data.pagination.pages > 1 ? (
-            <nav className="flex items-center justify-center gap-4 mt-8" aria-label="Постраничная навигация">
+            <nav className="mt-8 flex items-center justify-center gap-4" aria-label="Постраничная навигация">
               <Button
                 variant="outline"
                 size="sm"
@@ -474,7 +500,7 @@ function ThreadPageContent() {
               >
                 Назад
               </Button>
-              <span className="text-sm text-content-secondary">
+              <span className="text-sm tabular-nums text-content-secondary">
                 Страница {data.pagination.page} из {data.pagination.pages}
               </span>
               <Button
@@ -491,7 +517,7 @@ function ThreadPageContent() {
           {/* Форма ответа */}
           <div className="mt-8">
             {!openThread ? (
-              <div className="p-4 rounded-card border border-line bg-surface-raised">
+              <div className="rounded-card border border-line bg-surface-inset p-5">
                 <p className="flex items-center gap-2 font-medium">
                   <Lock className="h-4 w-4 text-content-muted" aria-hidden />
                   {thread.state === "ARCHIVED" ? "Тема в архиве" : "Тема закрыта"}
@@ -501,15 +527,20 @@ function ThreadPageContent() {
                 </p>
               </div>
             ) : !isAuthenticated() ? (
-              <div className="p-4 rounded-card border border-line bg-surface-raised text-center">
+              <div className="rounded-card border border-line bg-surface-inset p-5 text-center">
                 <p className="font-medium">Войдите, чтобы ответить</p>
                 <Button size="sm" className="mt-3" onClick={() => router.push("/auth/login")}>
                   Войти
                 </Button>
               </div>
             ) : (
-              <div className="p-4 rounded-card border border-line bg-surface-raised space-y-3">
-                <h2 className="font-semibold">Ваш ответ</h2>
+              <div className="space-y-3 rounded-lg border border-line-strong bg-surface-raised p-5 shadow-raised">
+                <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong">
+                    <MessageSquarePlus className="h-4 w-4" aria-hidden />
+                  </span>
+                  Ваш ответ
+                </h2>
                 <Textarea
                   aria-label="Текст ответа"
                   placeholder="Напишите ответ..."
@@ -614,11 +645,11 @@ function ThreadFollowButton({ threadId, followersCount }: { threadId: string; fo
       >
         {isFollowing ? "Не следить" : "Следить"}
       </Button>
-      <span className="inline-flex items-center gap-1 text-sm text-content-secondary">
+      <span className="inline-flex items-center gap-1 text-sm tabular-nums text-content-secondary">
         <Eye className="h-3.5 w-3.5" aria-hidden />
         {count.toLocaleString("ru-RU")} следят
       </span>
-      {error ? <span className="text-xs text-red-400">{error}</span> : null}
+      {error ? <span className="text-xs text-bad">{error}</span> : null}
     </span>
   );
 }

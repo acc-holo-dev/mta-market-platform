@@ -235,17 +235,18 @@ function ServerWizard() {
                 type="button"
                 onClick={() => goToStep(num)}
                 disabled={!reachable}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                aria-current={active ? "step" : undefined}
+                className={`inline-flex items-center gap-2 rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors duration-fast ${
                   active
-                    ? "border-accent bg-accent-soft text-accent-strong"
+                    ? "border-accent bg-accent-soft text-accent-strong shadow-card"
                     : done
                       ? "border-ok/30 bg-ok/10 text-ok"
                       : "border-line text-content-muted"
-                } ${reachable ? "cursor-pointer" : "cursor-not-allowed"}`}
+                } ${reachable ? "cursor-pointer hover:border-line-strong" : "cursor-not-allowed"}`}
               >
                 <span
-                  className={`flex h-5 w-5 items-center justify-center rounded-full text-xs ${
-                    done ? "bg-ok/20" : active ? "bg-accent text-white" : "bg-surface-hover"
+                  className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+                    done ? "bg-ok/20 text-ok" : active ? "bg-accent text-content" : "bg-surface-hover text-content-muted"
                   }`}
                 >
                   {done ? <Check className="h-3 w-3" /> : num}
@@ -280,7 +281,7 @@ function ServerWizard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label htmlFor="srv-name" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="srv-name" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 Название <span className="text-bad">*</span>
               </label>
               <Input
@@ -293,7 +294,7 @@ function ServerWizard() {
               <p className="mt-1 text-xs text-content-muted">{name.trim().length}/60 символов</p>
             </div>
             <div>
-              <label htmlFor="srv-desc" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="srv-desc" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 Описание
               </label>
               <Textarea
@@ -307,7 +308,7 @@ function ServerWizard() {
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label htmlFor="srv-region" className="mb-1.5 block text-sm font-medium">
+                <label htmlFor="srv-region" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                   Регион
                 </label>
                 <Input
@@ -319,7 +320,7 @@ function ServerWizard() {
                 />
               </div>
               <div>
-                <label htmlFor="srv-site" className="mb-1.5 block text-sm font-medium">
+                <label htmlFor="srv-site" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                   Сайт
                 </label>
                 <Input
@@ -332,7 +333,7 @@ function ServerWizard() {
               </div>
             </div>
             <div>
-              <label htmlFor="srv-discord" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="srv-discord" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 Discord
               </label>
               <Input
@@ -370,7 +371,7 @@ function ServerWizard() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-[1fr_140px]">
               <div>
-                <label htmlFor="srv-host" className="mb-1.5 block text-sm font-medium">
+                <label htmlFor="srv-host" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                   Host (приватно по умолчанию)
                 </label>
                 <Input
@@ -381,7 +382,7 @@ function ServerWizard() {
                 />
               </div>
               <div>
-                <label htmlFor="srv-port" className="mb-1.5 block text-sm font-medium">
+                <label htmlFor="srv-port" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                   Port (приватно по умолчанию)
                 </label>
                 <Input
@@ -617,7 +618,7 @@ function VerificationStep({
         {token ? (
           <div className="space-y-3">
             <p className="text-sm font-medium">Ваш токен интеграции (показывается один раз):</p>
-            <div className="flex items-start gap-2 rounded-card border border-accent bg-accent-soft p-4">
+            <div className="flex items-start gap-2 rounded-card border border-accent bg-accent-soft p-4 shadow-accent">
               <code className="min-w-0 flex-1 break-all font-mono text-sm text-accent-strong select-all">
                 {token}
               </code>
@@ -811,7 +812,7 @@ function PrivacyToggle({
         }`}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          className={`inline-block h-4 w-4 transform rounded-full bg-content transition-transform duration-fast ${
             checked ? "translate-x-6" : "translate-x-1"
           }`}
         />

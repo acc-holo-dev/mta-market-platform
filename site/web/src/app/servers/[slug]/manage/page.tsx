@@ -195,7 +195,7 @@ export default function ServerManagePage({ params }: { params: Promise<{ slug: s
   const server = manage.server as ManageServerRow;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <nav aria-label="Хлебные крошки" className="mb-4 text-sm text-content-muted">
         <Link href="/" className="hover:text-accent-strong">
           Главная
@@ -218,8 +218,8 @@ export default function ServerManagePage({ params }: { params: Promise<{ slug: s
             Управление сервером
             <MonitoringPill state={server.monitoring} />
           </h1>
-          <p className="mt-1 text-content-secondary">
-            {server.name} · ваша роль: {staffRoleLabel(manage.staffRole)}
+          <p className="mt-1 text-sm text-content-secondary">
+            {server.name} · ваша роль: <span className="font-medium text-content">{staffRoleLabel(manage.staffRole)}</span>
           </p>
         </div>
         <Link href={`/servers/${slug}`}>
@@ -295,12 +295,12 @@ function OverviewTab({ manage, server }: { manage: ServerManage; server: ManageS
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
         {cards.map((c) => (
-          <Card key={c.label} className="p-4">
-            <div className="flex items-center gap-2 text-xs text-content-muted">
+          <Card key={c.label} className="p-4 shadow-card">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
               {c.icon}
               {c.label}
             </div>
-            <p className="mt-2 text-2xl font-bold tracking-tight">{c.value}</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">{c.value}</p>
           </Card>
         ))}
       </div>
@@ -329,7 +329,7 @@ function OverviewTab({ manage, server }: { manage: ServerManage; server: ManageS
               </span>
             </p>
           )}
-          <p className="text-xs text-content-secondary">
+          <p className="text-xs text-content-secondary tabular-nums">
             Игроки: {server.playerCount != null ? `${server.playerCount}/${server.maxPlayers ?? "—"}` : "—/—"} ·
             верификация: {server.verification}
           </p>
@@ -352,8 +352,8 @@ function OverviewTab({ manage, server }: { manage: ServerManage; server: ManageS
                     <span
                       className={
                         n.status === "PUBLISHED"
-                          ? "flex-shrink-0 text-xs text-ok"
-                          : "flex-shrink-0 text-xs text-content-muted"
+                          ? "flex-shrink-0 rounded-pill border border-ok/30 bg-ok/10 px-2 py-0.5 text-xs font-medium text-ok"
+                          : "flex-shrink-0 rounded-pill border border-line bg-surface-hover px-2 py-0.5 text-xs font-medium text-content-muted"
                       }
                     >
                       {n.status === "PUBLISHED" ? "Опубликовано" : "Черновик"}
@@ -377,7 +377,7 @@ function OverviewTab({ manage, server }: { manage: ServerManage; server: ManageS
                 {manage.recentUpdates.slice(0, 5).map((u) => (
                   <li key={u.id} className="flex items-center justify-between gap-3">
                     <span className="min-w-0 truncate">
-                      <span className="mr-2 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent-strong">
+                      <span className="mr-2 rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-semibold tabular-nums text-accent-strong">
                         v{u.version}
                       </span>
                       {u.title}
@@ -461,13 +461,13 @@ function SettingsTab({ slug, server }: { slug: string; server: ManageServerRow }
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <label htmlFor="m-name" className="mb-1.5 block text-sm font-medium">
+          <label htmlFor="m-name" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
             Название
           </label>
           <Input id="m-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
         </div>
         <div>
-          <label htmlFor="m-desc" className="mb-1.5 block text-sm font-medium">
+          <label htmlFor="m-desc" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
             Описание
           </label>
           <Textarea
@@ -480,13 +480,13 @@ function SettingsTab({ slug, server }: { slug: string; server: ManageServerRow }
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="m-region" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="m-region" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Регион
             </label>
             <Input id="m-region" value={region} onChange={(e) => setRegion(e.target.value)} maxLength={64} />
           </div>
           <div>
-            <label htmlFor="m-site" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="m-site" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Сайт
             </label>
             <Input
@@ -499,7 +499,7 @@ function SettingsTab({ slug, server }: { slug: string; server: ManageServerRow }
           </div>
         </div>
         <div>
-          <label htmlFor="m-discord" className="mb-1.5 block text-sm font-medium">
+          <label htmlFor="m-discord" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
             Discord
           </label>
           <Input
@@ -512,13 +512,13 @@ function SettingsTab({ slug, server }: { slug: string; server: ManageServerRow }
         </div>
         <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
           <div>
-            <label htmlFor="m-host" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="m-host" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Host <span className="text-xs text-content-muted">(приватно по умолчанию)</span>
             </label>
             <Input id="m-host" value={host} onChange={(e) => setHost(e.target.value)} />
           </div>
           <div>
-            <label htmlFor="m-port" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="m-port" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Port <span className="text-xs text-content-muted">(приватно по умолчанию)</span>
             </label>
             <Input
@@ -623,7 +623,7 @@ function BrandingTab({ slug, server }: { slug: string; server: ManageServerRow }
         />
 
         <div>
-          <label htmlFor="m-accent" className="mb-1.5 block text-sm font-medium">
+          <label htmlFor="m-accent" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
             Акцентный цвет (#RRGGBB)
           </label>
           <div className="flex items-center gap-3">
@@ -836,7 +836,7 @@ function PrivacyToggle({
         }`}
       >
         <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+          className={`inline-block h-4 w-4 transform rounded-full bg-content transition-transform duration-fast ${
             checked ? "translate-x-6" : "translate-x-1"
           }`}
         />
@@ -903,7 +903,7 @@ function NewsTab({ slug }: { slug: string }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label htmlFor="n-title" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="n-title" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Заголовок
             </label>
             <Input
@@ -915,7 +915,7 @@ function NewsTab({ slug }: { slug: string }) {
             />
           </div>
           <div>
-            <label htmlFor="m-news-content" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="m-news-content" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Текст новости
             </label>
             <Textarea
@@ -1139,7 +1139,7 @@ function UpdatesTab({ slug }: { slug: string }) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
             <div>
-              <label htmlFor="m-upd-version" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="m-upd-version" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 Версия
               </label>
               <Input
@@ -1150,7 +1150,7 @@ function UpdatesTab({ slug }: { slug: string }) {
               />
             </div>
             <div>
-              <label htmlFor="m-upd-title" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="m-upd-title" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 Заголовок
               </label>
               <Input
@@ -1162,7 +1162,7 @@ function UpdatesTab({ slug }: { slug: string }) {
             </div>
           </div>
           <div>
-            <label htmlFor="m-upd-changelog" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="m-upd-changelog" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Changelog
             </label>
             <Textarea
@@ -1246,7 +1246,7 @@ function UpdateRow({ slug, item }: { slug: string; item: ServerUpdateItem }) {
     <li className="flex flex-wrap items-start justify-between gap-3 rounded-card border border-line bg-surface-raised p-4">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent-strong">
+          <span className="rounded-pill bg-accent-soft px-2.5 py-0.5 text-xs font-semibold tabular-nums text-accent-strong">
             v{item.version}
           </span>
           <p className="text-sm font-medium">{item.title}</p>
@@ -1335,7 +1335,7 @@ function StaffTab({ slug }: { slug: string }) {
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
             <div>
-              <label htmlFor="m-staff-user" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="m-staff-user" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 userId
               </label>
               <Input
@@ -1346,7 +1346,7 @@ function StaffTab({ slug }: { slug: string }) {
               />
             </div>
             <div>
-              <label htmlFor="m-staff-role" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="m-staff-role" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 Роль
               </label>
               <Select
@@ -1535,7 +1535,7 @@ function ResourcesTab({ slug, showResources }: { slug: string; showResources: bo
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="m-res-id" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="m-res-id" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 resourceId (необязательно)
               </label>
               <Input
@@ -1546,7 +1546,7 @@ function ResourcesTab({ slug, showResources }: { slug: string; showResources: bo
               />
             </div>
             <div>
-              <label htmlFor="m-res-name" className="mb-1.5 block text-sm font-medium">
+              <label htmlFor="m-res-name" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
                 Название
               </label>
               <Input
@@ -1559,7 +1559,7 @@ function ResourcesTab({ slug, showResources }: { slug: string; showResources: bo
             </div>
           </div>
           <div>
-            <label htmlFor="m-res-note" className="mb-1.5 block text-sm font-medium">
+            <label htmlFor="m-res-note" className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary">
               Заметка
             </label>
             <Input

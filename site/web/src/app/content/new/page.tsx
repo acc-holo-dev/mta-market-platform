@@ -2,6 +2,7 @@
 // Links → Preview → Submit (→ PENDING_REVIEW). Plain text only (no raw
 // HTML); cover via the validated media pipeline; links are explicit and
 // validated server-side (resources: PUBLISHED; servers: staff-only).
+// PLAN-013: token-полиранье форм — label-role, inset-фоны, семантика bad.
 "use client";
 
 import { useEffect, useState } from "react";
@@ -35,6 +36,10 @@ interface ServerOption {
   verification: string;
   isStaff?: boolean;
 }
+
+// PLAN-013: единый токен-класс полей формы.
+const fieldClass =
+  "w-full rounded-card border border-line bg-surface-inset px-3 py-2 text-sm text-content outline-none transition-colors duration-fast placeholder:text-content-muted focus-visible:border-accent";
 
 export default function NewArticlePage() {
   const router = useRouter();
@@ -147,18 +152,18 @@ export default function NewArticlePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
-      <h1 className="text-2xl font-bold tracking-tight">Новая статья</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Новая статья</h1>
       <p className="mt-1 text-sm text-content-secondary">
         Статья проходит модерацию перед публикацией. Текст — обычный текст с абзацами.
       </p>
 
-      <Card className="mt-6">
+      <Card className="mt-6 shadow-card">
         <CardHeader>
           <CardTitle>Основное</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="article-title">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary" htmlFor="article-title">
               Заголовок
             </label>
             <input
@@ -166,19 +171,19 @@ export default function NewArticlePage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Оптимизация MTA-сервера: таймеры и колбэки"
-              className="w-full rounded-card border border-line bg-surface px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className={`${fieldClass} focus-visible:ring-2 focus-visible:ring-accent`}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="article-category">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary" htmlFor="article-category">
                 Категория
               </label>
               <select
                 id="article-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-card border border-line bg-surface px-3 py-2 text-sm"
+                className={fieldClass}
               >
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -188,7 +193,7 @@ export default function NewArticlePage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="article-tags">
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary" htmlFor="article-tags">
                 Теги (через запятую)
               </label>
               <input
@@ -196,12 +201,12 @@ export default function NewArticlePage() {
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="roleplay, экономика"
-                className="w-full rounded-card border border-line bg-surface px-3 py-2 text-sm"
+                className={fieldClass}
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="article-content">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-content-secondary" htmlFor="article-content">
               Текст статьи
             </label>
             <textarea
@@ -210,14 +215,14 @@ export default function NewArticlePage() {
               onChange={(e) => setContent(e.target.value)}
               rows={12}
               placeholder="Пустые строки — разрыв абзаца."
-              className="w-full rounded-card border border-line bg-surface px-3 py-2 text-sm"
+              className={fieldClass}
             />
-            <p className="mt-1 text-xs text-content-muted">{content.length} / 20000</p>
+            <p className="mt-1 text-xs tabular-nums text-content-muted">{content.length} / 20000</p>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="mt-4">
+      <Card className="mt-4 shadow-card">
         <CardHeader>
           <CardTitle>Обложка (необязательно)</CardTitle>
         </CardHeader>
@@ -225,15 +230,15 @@ export default function NewArticlePage() {
           {coverUrl ? (
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={coverUrl} alt="" className="h-24 w-40 rounded-card object-cover" />
+              <img src={coverUrl} alt="" className="h-24 w-40 rounded-card border border-line object-cover" />
               <Button variant="outline" size="sm" onClick={() => setCoverUrl(null)}>
                 <X className="mr-1 h-4 w-4" />
                 Убрать
               </Button>
             </div>
           ) : (
-            <label className="flex cursor-pointer flex-col items-center justify-center rounded-card border border-dashed border-line bg-background p-6 text-sm text-content-secondary hover:border-accent/40">
-              <Upload className="mb-2 h-6 w-6" />
+            <label className="flex cursor-pointer flex-col items-center justify-center rounded-card border border-dashed border-line-strong bg-surface-inset p-6 text-sm text-content-secondary transition-colors duration-fast hover:border-accent/40 hover:text-content">
+              <Upload className="mb-2 h-6 w-6 text-content-muted" aria-hidden />
               {uploading ? "Загрузка…" : "Загрузить изображение (PNG/JPG, до 5 МБ)"}
               <input
                 type="file"
@@ -250,23 +255,24 @@ export default function NewArticlePage() {
       </Card>
 
       {(resourceOptions.length > 0 || serverOptions.length > 0) && (
-        <Card className="mt-4">
+        <Card className="mt-4 shadow-card">
           <CardHeader>
             <CardTitle>Связанное (необязательно)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {resourceOptions.length > 0 ? (
               <div>
-                <p className="mb-2 text-sm font-medium">Ресурсы</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-secondary">Ресурсы</p>
                 <div className="flex flex-wrap gap-2">
                   {resourceOptions.map((r) => (
                     <button
                       key={r.id}
                       onClick={() => toggle(resourceIds, setResourceIds, r.id!)}
-                      className={`rounded-full border px-3 py-1.5 text-xs ${
+                      aria-pressed={resourceIds.includes(r.id!)}
+                      className={`rounded-pill border px-3 py-1.5 text-xs transition-colors duration-fast ${
                         resourceIds.includes(r.id!)
-                          ? "border-accent bg-accent/10 text-accent-strong"
-                          : "border-line bg-surface text-content-secondary hover:border-accent/40"
+                          ? "border-accent bg-accent-soft text-accent-strong"
+                          : "border-line bg-surface text-content-secondary hover:border-accent/40 hover:text-content"
                       }`}
                     >
                       {r.title}
@@ -277,7 +283,7 @@ export default function NewArticlePage() {
             ) : null}
             {serverOptions.length > 0 ? (
               <div>
-                <p className="mb-2 text-sm font-medium">Серверы (только те, где вы в персонале)</p>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-secondary">Серверы (только те, где вы в персонале)</p>
                 <div className="flex flex-wrap gap-2">
                   {serverOptions.map((s) => (
                     <button
@@ -289,10 +295,11 @@ export default function NewArticlePage() {
                         }
                         toggle(serverIds, setServerIds, s.slug);
                       }}
-                      className={`rounded-full border px-3 py-1.5 text-xs ${
+                      aria-pressed={serverIds.includes(s.slug)}
+                      className={`rounded-pill border px-3 py-1.5 text-xs transition-colors duration-fast ${
                         serverIds.includes(s.slug)
-                          ? "border-accent bg-accent/10 text-accent-strong"
-                          : "border-line bg-surface text-content-secondary hover:border-accent/40"
+                          ? "border-accent bg-accent-soft text-accent-strong"
+                          : "border-line bg-surface text-content-secondary hover:border-accent/40 hover:text-content"
                       } ${s.isStaff ? "" : "cursor-not-allowed opacity-50"}`}
                     >
                       {s.name}
@@ -306,17 +313,17 @@ export default function NewArticlePage() {
       )}
 
       {error ? (
-        <div className="mt-4 rounded-card border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
+        <div className="mt-4 rounded-card border border-bad/30 bg-bad-soft p-3 text-sm text-bad" role="alert">
           {error}
         </div>
       ) : null}
 
-      <div className="mt-6 flex items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <Button onClick={onSubmit} disabled={submitting} size="lg">
           <PenLine className="mr-2 h-4 w-4" />
           {submitting ? "Отправка…" : "Отправить на модерацию"}
         </Button>
-        <Link href="/content" className="text-sm text-content-secondary hover:text-accent-strong">
+        <Link href="/content" className="text-sm text-content-secondary transition-colors duration-fast hover:text-accent-strong">
           Отмена
         </Link>
       </div>

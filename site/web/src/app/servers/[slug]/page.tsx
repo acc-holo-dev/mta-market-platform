@@ -56,7 +56,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Select, Textarea } from "@/components/ui/Input";
-import { Tabs } from "@/components/ui/Tabs";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/States";
@@ -152,16 +151,16 @@ export default function ServerPage({ params }: { params: Promise<{ slug: string 
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-10">
-        <Skeleton className="h-48 w-full rounded-card" />
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <Skeleton className="h-56 w-full rounded-card" />
         <div className="mt-6 flex items-center gap-4">
-          <Skeleton className="h-20 w-20 rounded-2xl" />
+          <Skeleton className="h-20 w-20 rounded-lg" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-6 w-1/3" />
             <Skeleton className="h-4 w-1/2" />
           </div>
         </div>
-        <Skeleton className="mt-8 h-10 w-full" />
+        <Skeleton className="mt-8 h-10 w-full rounded-pill" />
         <Skeleton className="mt-6 h-40 w-full rounded-card" />
       </div>
     );
@@ -169,7 +168,7 @@ export default function ServerPage({ params }: { params: Promise<{ slug: string 
 
   if (error || !data) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-10">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="text-center py-20">
           <ServerIcon className="h-12 w-12 text-content-muted mx-auto mb-4" />
           <h1 className="text-xl font-semibold">Сервер не найден</h1>
@@ -193,7 +192,7 @@ export default function ServerPage({ params }: { params: Promise<{ slug: string 
   const isFollowing = following === true;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <nav aria-label="Хлебные крошки" className="mb-4 text-sm text-content-muted">
         <Link href="/" className="hover:text-accent-strong">
           Главная
@@ -206,66 +205,72 @@ export default function ServerPage({ params }: { params: Promise<{ slug: string 
         <span className="text-content-secondary">{server.name}</span>
       </nav>
 
-      {/* ---------- Hero ---------- */}
-      <div className="mb-8">
-        <div className="relative h-48 w-full overflow-hidden rounded-card border border-line bg-surface-hover">
+      {/* ---------- Hero: banner + identity + stat chips + actions ---------- */}
+      <section className="mb-8 overflow-hidden rounded-card border border-line bg-surface shadow-card">
+        <div className="relative h-44 w-full md:h-52">
           {banner ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={banner} alt="" loading="lazy" className="h-full w-full object-cover" />
           ) : (
-            <div className="h-full w-full bg-gradient-to-r from-accent-soft via-surface-raised to-surface" />
+            <div className="mta-hero-surface h-full w-full" />
           )}
           <div
-            className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent"
+            className="absolute inset-0 bg-gradient-to-t from-surface via-surface/40 to-transparent"
             aria-hidden
           />
         </div>
 
-        <div className="mt-4 flex flex-col gap-4 sm:-mt-10 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-4 px-4 pb-5 sm:-mt-9 sm:flex-row sm:items-end sm:px-6">
           {logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logo}
               alt={server.name}
               loading="lazy"
-              className="h-20 w-20 flex-shrink-0 rounded-2xl border-2 object-cover bg-surface"
+              className="h-20 w-20 flex-shrink-0 rounded-lg border-2 border-line bg-surface object-cover shadow-raised"
               style={server.accentColor ? { borderColor: server.accentColor } : undefined}
             />
           ) : (
-            <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-line bg-surface text-xl font-bold text-content-secondary">
+            <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-lg border-2 border-line bg-surface text-xl font-bold text-content-secondary shadow-raised">
               {server.name.slice(0, 2).toUpperCase()}
             </div>
           )}
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{server.name}</h1>
+              <h1 className="text-3xl font-bold tracking-tight">{server.name}</h1>
               <VerificationBadge verification={server.verification} />
               <MonitoringPill state={server.monitoring} />
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-content-secondary">
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
               {/* Статистика онлайна — только когда владелец её открывает (S). */}
               {privacy.showStats ? (
-                <span className="inline-flex items-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {server.playerCount != null
-                    ? `${server.playerCount}/${server.maxPlayers ?? "—"} онлайн`
-                    : "—/— онлайн"}
+                <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1 text-xs text-content-secondary">
+                  <Users className="h-3.5 w-3.5 text-ok" aria-hidden />
+                  <span className="font-semibold tabular-nums text-content">
+                    {server.playerCount != null
+                      ? `${server.playerCount}/${server.maxPlayers ?? "—"}`
+                      : "—/—"}
+                  </span>
+                  онлайн
                 </span>
               ) : null}
               {server.rating != null ? (
-                <span className="inline-flex items-center gap-1">
-                  <Star className="h-4 w-4 fill-accent text-accent" />
-                  {server.rating}
+                <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1 text-xs text-content-secondary">
+                  <Star className="h-3.5 w-3.5 fill-accent text-accent" aria-hidden />
+                  <span className="font-semibold tabular-nums text-content">{server.rating}</span>
                 </span>
               ) : null}
-              <span className="inline-flex items-center gap-1">
-                <Heart className="h-4 w-4" />
-                {server.followerCount.toLocaleString("ru-RU")} подписчиков
+              <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1 text-xs text-content-secondary">
+                <Heart className="h-3.5 w-3.5 text-accent" aria-hidden />
+                <span className="font-semibold tabular-nums text-content">
+                  {server.followerCount.toLocaleString("ru-RU")}
+                </span>
+                подписчиков
               </span>
               {server.region ? (
-                <span className="inline-flex items-center gap-1">
-                  <Globe className="h-4 w-4" />
+                <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1 text-xs text-content-secondary">
+                  <Globe className="h-3.5 w-3.5 text-content-muted" aria-hidden />
                   {server.region}
                 </span>
               ) : null}
@@ -316,10 +321,10 @@ export default function ServerPage({ params }: { params: Promise<{ slug: string 
             ) : null}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* ---------- Tabs (мобильные: горизонтальный скролл) ---------- */}
-      <Tabs tabs={TABS} value={tab} onChange={changeTab} className="mb-6" />
+      <ServerTabs tabs={TABS} value={tab} onChange={changeTab} className="mb-6" />
 
       {tab === "overview" ? <OverviewSection slug={slug} server={server} privacy={privacy} /> : null}
       {tab === "live" ? <LiveSection slug={slug} privacy={privacy} /> : null}
@@ -332,6 +337,57 @@ export default function ServerPage({ params }: { params: Promise<{ slug: string 
 }
 
 /* ============================== Обзор ============================== */
+
+/**
+ * Pill/underline-hybrid табы (PLAN-013): URL-hash остаётся источником истины,
+ * кнопки — role=button с точными названиями (E2E: Обзор/Live/Новости/…).
+ */
+function ServerTabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+  className,
+}: {
+  tabs: [T, string][];
+  value: T;
+  onChange: (v: T) => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex gap-1 overflow-x-auto rounded-pill border border-line bg-surface-inset p-1",
+        className
+      )}
+    >
+      {tabs.map(([key, label]) => {
+        const active = key === value;
+        return (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(key)}
+            className={cn(
+              "relative whitespace-nowrap rounded-pill px-4 py-2 text-sm font-medium transition-colors duration-fast",
+              active
+                ? "bg-surface-raised text-content shadow-card"
+                : "text-content-secondary hover:bg-surface-hover hover:text-content"
+            )}
+          >
+            {label}
+            {active ? (
+              <span
+                className="absolute inset-x-4 bottom-0.5 h-0.5 rounded-full bg-accent"
+                aria-hidden
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function OverviewSection({
   slug,
@@ -366,23 +422,23 @@ function OverviewSection({
           </p>
           <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
             {server.region ? (
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-content-muted">Регион</dt>
-                <dd className="mt-0.5 text-content">{server.region}</dd>
+              <div className="rounded-card border border-line bg-surface-raised p-4">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-content-muted">Регион</dt>
+                <dd className="mt-1 text-sm font-medium text-content">{server.region}</dd>
               </div>
             ) : null}
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-content-muted">В каталоге с</dt>
-              <dd className="mt-0.5 text-content">{formatDateShort(server.createdAt)}</dd>
+            <div className="rounded-card border border-line bg-surface-raised p-4">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-content-muted">В каталоге с</dt>
+              <dd className="mt-1 text-sm font-medium text-content tabular-nums">{formatDateShort(server.createdAt)}</dd>
             </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-content-muted">Подписчики</dt>
-              <dd className="mt-0.5 text-content">{server.followerCount.toLocaleString("ru-RU")}</dd>
+            <div className="rounded-card border border-line bg-surface-raised p-4">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-content-muted">Подписчики</dt>
+              <dd className="mt-1 text-sm font-medium text-content tabular-nums">{server.followerCount.toLocaleString("ru-RU")}</dd>
             </div>
             {server.verifiedAt ? (
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-content-muted">Верификация</dt>
-                <dd className="mt-0.5 flex items-center gap-1 text-ok">
+              <div className="rounded-card border border-verified/30 bg-verified/10 p-4">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-content-muted">Верификация</dt>
+                <dd className="mt-1 flex items-center gap-1 text-sm font-medium text-verified">
                   <BadgeCheck className="h-4 w-4" />
                   Подтверждён {formatDateShort(server.verifiedAt)}
                 </dd>
@@ -511,17 +567,23 @@ function LiveSection({ slug, privacy }: { slug: string; privacy: ServerDetail["p
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <MonitoringPill state={current?.state ?? "UNKNOWN"} />
             {privacy.showStats && current ? (
-              <span className="text-sm text-content">
-                {current.players != null
-                  ? `${current.players}/${current.maxPlayers ?? "—"} игроков`
-                  : "—/— игроков"}
+              <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1 text-xs text-content-secondary">
+                <Users className="h-3.5 w-3.5 text-ok" aria-hidden />
+                <span className="font-semibold tabular-nums text-content">
+                  {current.players != null
+                    ? `${current.players}/${current.maxPlayers ?? "—"}`
+                    : "—/—"}
+                </span>
+                игроков
               </span>
             ) : null}
             {privacy.showStats && lastSeen ? (
-              <span className="text-sm text-content-secondary">Активность: {formatDateTime(lastSeen)}</span>
+              <span className="text-xs text-content-muted tabular-nums">
+                Активность: {formatDateTime(lastSeen)}
+              </span>
             ) : null}
           </div>
 
@@ -556,21 +618,10 @@ function LiveSection({ slug, privacy }: { slug: string; privacy: ServerDetail["p
             ) : (
               <div className="space-y-4">
                 <Sparkline samples={payload.samples} />
-                <div className="grid grid-cols-3 gap-4 text-center text-sm">
-                  <div>
-                    <p className="text-lg font-semibold text-content">{payload.peak ?? "—"}</p>
-                    <p className="text-xs text-content-muted">Пик онлайна</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-content">{payload.average ?? "—"}</p>
-                    <p className="text-xs text-content-muted">Средний онлайн</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-semibold text-content">
-                      {payload.uptimePct != null ? `${payload.uptimePct}%` : "—"}
-                    </p>
-                    <p className="text-xs text-content-muted">Uptime</p>
-                  </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <StatChip label="Пик онлайна" value={payload.peak != null ? String(payload.peak) : "—"} />
+                  <StatChip label="Средний онлайн" value={payload.average != null ? String(payload.average) : "—"} />
+                  <StatChip label="Uptime" value={payload.uptimePct != null ? `${payload.uptimePct}%` : "—"} />
                 </div>
               </div>
             )}
@@ -601,7 +652,17 @@ function FreshnessHint({ minutes }: { minutes: number | null }) {
   );
 }
 
-/** Спарклайн онлайна: inline SVG polyline, без библиотек. */
+/** Компактный стат-чип: значение tabular-nums + caption-подпись. */
+function StatChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-card border border-line bg-surface-raised p-4 text-center">
+      <p className="text-lg font-semibold tabular-nums text-content">{value}</p>
+      <p className="mt-0.5 text-xs text-content-muted">{label}</p>
+    </div>
+  );
+}
+
+/** Спарклайн онлайна: inline SVG polyline с мягкой заливкой, без библиотек. */
 function Sparkline({
   samples,
 }: {
@@ -627,6 +688,17 @@ function Sparkline({
       role="img"
       aria-label="График онлайна за 24 часа"
     >
+      <defs>
+        <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="currentColor" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon
+        points={`0,${H} ${points} ${W},${H}`}
+        fill="url(#spark-fill)"
+        stroke="none"
+      />
       <polyline
         points={points}
         fill="none"
@@ -678,7 +750,7 @@ function NewsSection({ slug }: { slug: string }) {
         const cover = mediaUrl(n.coverUrl);
         return (
           <Link key={n.id} href={`/servers/${slug}/news/${n.id}`} className="block">
-            <article className="flex gap-4 rounded-card border border-line bg-surface p-4 transition-colors hover:bg-surface-hover">
+            <article className="flex gap-4 rounded-card border border-line bg-surface p-4 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover">
               {cover ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={cover} alt="" loading="lazy" className="h-16 w-24 flex-shrink-0 rounded-md object-cover" />
@@ -837,16 +909,20 @@ function ReviewsSection({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-          <span className="inline-flex items-center gap-1.5">
-            <Star className="h-4 w-4 fill-accent text-accent" />
-            <span className="font-semibold">{stats?.averageRating ?? "—"}</span>
-            <span className="text-content-secondary">средняя оценка</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1 text-xs text-content-secondary">
+            <Star className="h-3.5 w-3.5 fill-accent text-accent" aria-hidden />
+            <span className="font-semibold tabular-nums text-content">{stats?.averageRating ?? "—"}</span>
+            средняя оценка
           </span>
-          <span className="text-content-secondary">{stats?.total ?? 0} отзывов</span>
-          <span className="inline-flex items-center gap-1 text-ok">
-            <BadgeCheck className="h-4 w-4" />
-            {stats?.verifiedCount ?? 0} подтверждённых
+          <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1 text-xs text-content-secondary">
+            <span className="font-semibold tabular-nums text-content">{stats?.total ?? 0}</span>
+            отзывов
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-pill border border-verified/30 bg-verified/10 px-3 py-1 text-xs text-verified">
+            <BadgeCheck className="h-3.5 w-3.5" aria-hidden />
+            <span className="font-semibold tabular-nums">{stats?.verifiedCount ?? 0}</span>
+            подтверждённых
           </span>
         </div>
         <Button
@@ -1012,7 +1088,7 @@ function ReviewRow({ review, onReport }: { review: ServerReviewItem; onReport: (
             <Stars value={review.rating} />
             {review.verifiedInteraction ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-ok/30 bg-ok/10 px-2 py-0.5 text-xs font-medium text-ok"
+                className="inline-flex items-center gap-1 rounded-pill border border-verified/30 bg-verified/10 px-2 py-0.5 text-xs font-medium text-verified"
                 title="Взаимодействие с сервером подтверждено токеном из игры"
               >
                 <BadgeCheck className="h-3 w-3" />
@@ -1185,7 +1261,7 @@ function ReportDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="presentation"
     >
@@ -1193,7 +1269,7 @@ function ReportDialog({
         role="dialog"
         aria-modal="true"
         aria-label="Жалоба"
-        className="w-full max-w-md rounded-card border border-line bg-surface p-6 space-y-4 shadow-xl"
+        className="w-full max-w-md space-y-4 rounded-card border border-line bg-surface p-6 shadow-raised"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold">Жалоба</h2>

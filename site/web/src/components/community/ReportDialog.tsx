@@ -1,12 +1,14 @@
 // ReportDialog (PLAN-005 F-00x): компактный управляемый диалог жалобы.
 // Переиспользуется для тем (THREAD), сообщений (POST), новостей (NEWS),
 // серверов (SERVER). Для гостя — редирект на вход (жалобы требуют сессии).
+// PLAN-013: unified overlay на токенах — raised-поверхность, shadow-raised,
+// accent-soft иконка; поведение (open/close/submit) не изменено.
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
-import { Flag } from "lucide-react";
+import { CheckCircle2, Flag } from "lucide-react";
 import { createReport, getErrorMessage } from "@/lib/api-ext";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/Button";
@@ -77,7 +79,7 @@ export function ReportDialog({
 
       {open ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm"
           onClick={() => {
             if (!submit.isPending) setOpen(false);
           }}
@@ -87,16 +89,24 @@ export function ReportDialog({
             role="dialog"
             aria-modal="true"
             aria-label="Жалоба"
-            className="w-full max-w-md rounded-card border border-line bg-surface p-6 space-y-4 shadow-xl"
+            className="w-full max-w-md space-y-4 rounded-lg border border-line bg-surface-raised p-6 shadow-raised"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-lg font-semibold text-content">Пожаловаться</h2>
-            <p className="text-sm text-content-secondary">
-              Опишите проблему — жалобу увидит модерация платформы.
-            </p>
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong">
+                <Flag className="h-5 w-5" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-lg font-semibold text-content">Пожаловаться</h2>
+                <p className="mt-0.5 text-sm text-content-secondary">
+                  Опишите проблему — жалобу увидит модерация платформы.
+                </p>
+              </div>
+            </div>
 
             {sent ? (
-              <p className="rounded-card border border-line bg-surface-raised px-4 py-3 text-sm text-ok">
+              <p className="flex items-center gap-2 rounded-card border border-ok/30 bg-ok-soft px-4 py-3 text-sm text-ok">
+                <CheckCircle2 className="h-4 w-4 flex-shrink-0" aria-hidden />
                 Жалоба отправлена
               </p>
             ) : (

@@ -103,25 +103,25 @@ export default function ServerNewsItemPage({
       <article>
         <h1 className="text-3xl font-bold tracking-tight">{news.title}</h1>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-content-secondary">
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-content-secondary">
           {author ? (
-            <span className="inline-flex items-center gap-2">
-              <Avatar src={author.avatar} name={displayName} size="sm" className="h-8 w-8" />
+            <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3 py-1 text-xs">
+              <Avatar src={author.avatar} name={displayName} size="sm" className="h-6 w-6" />
               {author.username ? (
                 <Link href={`/profile/${author.username}`} className="inline-flex items-center gap-1.5 hover:text-accent">
-                  <User className="h-4 w-4" />
+                  <User className="h-3.5 w-3.5" />
                   {displayName}
                 </Link>
               ) : (
                 <span className="inline-flex items-center gap-1.5">
-                  <User className="h-4 w-4" />
+                  <User className="h-3.5 w-3.5" />
                   {displayName}
                 </span>
               )}
             </span>
           ) : null}
-          <span className="inline-flex items-center gap-1.5">
-            <Newspaper className="h-4 w-4" />
+          <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-3 py-1 text-xs text-content-secondary tabular-nums">
+            <Newspaper className="h-3.5 w-3.5 text-content-muted" aria-hidden />
             {formatDateShort(news.publishedAt ?? news.createdAt)}
           </span>
         </div>
@@ -132,12 +132,12 @@ export default function ServerNewsItemPage({
             src={cover}
             alt={news.title}
             loading="lazy"
-            className="mt-6 w-full rounded-card border border-line object-cover"
+            className="mt-6 w-full overflow-hidden rounded-card border border-line object-cover shadow-card"
           />
         ) : null}
 
         {/* Текст без HTML-рендеринга: pre-wrap защищает от инъекций. */}
-        <div className="mt-6 whitespace-pre-wrap text-sm leading-relaxed text-content">
+        <div className="mt-6 whitespace-pre-wrap text-sm leading-relaxed text-content md:text-base">
           {news.content}
         </div>
 

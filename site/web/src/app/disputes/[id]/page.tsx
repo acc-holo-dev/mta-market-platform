@@ -6,6 +6,7 @@ import { fetchDispute, postDisputeMessage } from "@/lib/api-ext";
 import { useAuthStore } from "@/store/auth";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { LoadingSpinner } from "@/components/ui/States";
 import { MessageThread } from "@/components/MessageThread";
 
 export default function DisputeDetailPage() {
@@ -21,7 +22,7 @@ export default function DisputeDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <p className="text-sm text-slate-500">Загрузка...</p>
+        <LoadingSpinner label="Загрузка спора..." />
       </div>
     );
   }
@@ -29,9 +30,9 @@ export default function DisputeDetailPage() {
   if (error || !data) {
     return (
       <div className="container mx-auto px-4 py-12">
-        <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+        <Card className="border-bad/40 bg-bad-soft">
           <CardHeader>
-            <CardTitle className="text-red-600 dark:text-red-400">Спор не найден</CardTitle>
+            <CardTitle className="text-bad">Спор не найден</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -40,12 +41,14 @@ export default function DisputeDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <Card className="mb-6">
+      <Card className="mb-6 shadow-card">
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <CardTitle>Спор #{data.dispute.id.slice(0, 8)}</CardTitle>
-              <CardDescription>
+              <CardTitle className="tabular-nums">
+                Спор #{data.dispute.id.slice(0, 8)}
+              </CardTitle>
+              <CardDescription className="tabular-nums">
                 {data.dispute.targetType} ·{" "}
                 {new Date(data.dispute.createdAt).toLocaleString("ru-RU")}
               </CardDescription>
@@ -55,11 +58,13 @@ export default function DisputeDetailPage() {
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-sm">
-            <span className="font-medium">Причина:</span> {data.dispute.reason}
+            <span className="font-semibold">Причина:</span>{" "}
+            <span className="text-content-secondary">{data.dispute.reason}</span>
           </p>
           {data.dispute.resolution ? (
             <p className="text-sm">
-              <span className="font-medium">Решение:</span> {data.dispute.resolution}
+              <span className="font-semibold">Решение:</span>{" "}
+              <span className="text-content-secondary">{data.dispute.resolution}</span>
             </p>
           ) : null}
         </CardContent>

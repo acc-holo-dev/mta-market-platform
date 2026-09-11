@@ -1,5 +1,6 @@
 // Категория форума (PLAN-005 F-003 list): список тем + форма создания темы
 // для авторизованных, ?page= в URL. Гостям доступно чтение.
+// PLAN-013: token-редизайн (Card-секции, Skeleton-loading); логика без изменений.
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
@@ -17,6 +18,7 @@ import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { ThreadRow } from "@/components/community/ThreadRow";
 
 function CategoryPageContent() {
@@ -80,20 +82,30 @@ function CategoryPageContent() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <nav aria-label="Хлебные крошки" className="mb-4 text-sm text-content-muted">
-        <Link href="/community" className="hover:text-accent-strong">
+      <nav aria-label="Хлебные крошки" className="mb-4 flex items-center gap-2 text-sm text-content-muted">
+        <Link href="/community" className="transition-colors duration-fast hover:text-accent-strong">
           Сообщество
         </Link>
         {data?.category ? (
           <>
-            <span className="mx-2">/</span>
+            <span aria-hidden>/</span>
             <span className="text-content-secondary">{data.category.name}</span>
           </>
         ) : null}
       </nav>
 
       {isLoading ? (
-        <LoadingSpinner label="Загрузка категории..." />
+        <div className="space-y-6" aria-busy="true">
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-4 w-96 max-w-full" />
+          </div>
+          <div className="space-y-2">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-20 rounded-card" />
+            ))}
+          </div>
+        </div>
       ) : error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : (
@@ -102,9 +114,9 @@ function CategoryPageContent() {
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{data!.category.name}</h1>
               {data!.category.description ? (
-                <p className="mt-1 text-content-secondary">{data!.category.description}</p>
+                <p className="mt-1 text-sm text-content-secondary">{data!.category.description}</p>
               ) : (
-                <p className="mt-1 text-content-secondary">
+                <p className="mt-1 text-sm text-content-secondary">
                   {data!.pagination.total} тем · страница {data!.pagination.page} из{" "}
                   {data!.pagination.pages || 1}
                 </p>
@@ -125,8 +137,13 @@ function CategoryPageContent() {
 
           {/* Встроенная форма создания темы (только для авторизованных) */}
           {isAuthenticated() && formOpen ? (
-            <div className="mb-6 p-4 rounded-card border border-line bg-surface-raised space-y-3">
-              <h2 className="font-semibold">Новая тема</h2>
+            <div className="mb-6 space-y-4 rounded-lg border border-line-strong bg-surface-raised p-5 shadow-raised">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong">
+                  <MessageSquarePlus className="h-4 w-4" aria-hidden />
+                </span>
+                Новая тема
+              </h2>
               <Input
                 aria-label="Заголовок темы"
                 placeholder="Заголовок темы (3–150 символов)"
@@ -185,7 +202,7 @@ function CategoryPageContent() {
 
           {/* Пагинация (?page=) */}
           {data && data.pagination.pages > 1 ? (
-            <nav className="flex items-center justify-center gap-4 mt-10" aria-label="Постраничная навигация">
+            <nav className="mt-10 flex items-center justify-center gap-4" aria-label="Постраничная навигация">
               <Button
                 variant="outline"
                 size="sm"
@@ -194,7 +211,7 @@ function CategoryPageContent() {
               >
                 Назад
               </Button>
-              <span className="text-sm text-content-secondary">
+              <span className="text-sm tabular-nums text-content-secondary">
                 Страница {data.pagination.page} из {data.pagination.pages}
               </span>
               <Button

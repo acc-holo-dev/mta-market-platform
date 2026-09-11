@@ -60,7 +60,7 @@ function SearchPageInner() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
-      <h1 className="text-2xl font-bold tracking-tight">Поиск</h1>
+      <h1 className="text-3xl font-bold tracking-tight">Поиск</h1>
       <form
         className="mt-4 flex gap-2"
         role="search"
@@ -79,11 +79,11 @@ function SearchPageInner() {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Ресурсы, серверы, обсуждения, статьи…"
           aria-label="Поисковый запрос"
-          className="w-full rounded-card border border-line bg-surface px-4 py-2.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="w-full rounded-card border border-line bg-surface px-4 py-2.5 text-sm text-content placeholder:text-content-muted outline-none transition-colors duration-fast focus-visible:ring-2 focus-visible:ring-accent"
         />
         <button
           type="submit"
-          className="rounded-card border border-line bg-surface px-4 hover:border-accent/40"
+          className="rounded-card border border-line bg-surface px-4 text-content-secondary transition-colors duration-fast hover:border-accent/40 hover:text-content"
           aria-label="Искать"
         >
           <Search className="h-4 w-4" />
@@ -101,7 +101,9 @@ function SearchPageInner() {
       ) : loading ? (
         <LoadingSpinner label="Поиск…" className="mt-10" />
       ) : error ? (
-        <p className="mt-10 text-sm text-red-400">{error}</p>
+        <p className="mt-10 text-sm text-bad" role="alert">
+          {error}
+        </p>
       ) : results && total === 0 ? (
         <div className="mt-10">
           <EmptyState
@@ -114,15 +116,18 @@ function SearchPageInner() {
         <div className="mt-8 space-y-8">
           {results.articles && results.articles.data.length > 0 ? (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-content-secondary">
-                Статьи ({results.articles.count})
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
+                Статьи
+                <span className="rounded-pill bg-surface-hover px-2 py-0.5 tabular-nums text-content-secondary">
+                  {results.articles.count}
+                </span>
               </h2>
               <div className="space-y-2">
                 {results.articles.data.map((a) => (
                   <Link
                     key={a.id}
                     href={`/content/articles/${a.slug}`}
-                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 hover:border-accent/40"
+                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
                     <span className="flex min-w-0 items-center gap-3">
                       <FileText className="h-4 w-4 flex-shrink-0 text-accent" />
@@ -140,15 +145,18 @@ function SearchPageInner() {
 
           {results.resources.data.length > 0 ? (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-content-secondary">
-                Ресурсы ({results.resources.count})
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
+                Ресурсы
+                <span className="rounded-pill bg-surface-hover px-2 py-0.5 tabular-nums text-content-secondary">
+                  {results.resources.count}
+                </span>
               </h2>
               <div className="space-y-2">
                 {results.resources.data.map((r) => (
                   <Link
                     key={r.id}
                     href={`/resources/${r.slug}`}
-                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 hover:border-accent/40"
+                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
                     <span className="truncate text-sm font-medium">{r.title}</span>
                     <span className="flex-shrink-0 text-xs text-content-secondary">Ресурс</span>
@@ -160,18 +168,25 @@ function SearchPageInner() {
 
           {results.servers.data.length > 0 ? (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-content-secondary">
-                Серверы ({results.servers.count})
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
+                Серверы
+                <span className="rounded-pill bg-surface-hover px-2 py-0.5 tabular-nums text-content-secondary">
+                  {results.servers.count}
+                </span>
               </h2>
               <div className="space-y-2">
                 {results.servers.data.map((s) => (
                   <Link
                     key={s.id}
                     href={`/servers/${s.slug}`}
-                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 hover:border-accent/40"
+                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
                     <span className="truncate text-sm font-medium">{s.name}</span>
-                    <span className="flex-shrink-0 text-xs text-content-secondary">
+                    <span className="flex flex-shrink-0 items-center gap-1.5 text-xs text-content-secondary">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${(s.playerCount ?? 0) > 0 ? "bg-ok" : "bg-line-strong"}`}
+                        aria-hidden
+                      />
                       {s.playerCount ?? 0} онлайн
                     </span>
                   </Link>
@@ -182,18 +197,23 @@ function SearchPageInner() {
 
           {results.threads.data.length > 0 ? (
             <section>
-              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-content-secondary">
-                Обсуждения ({results.threads.count})
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
+                Обсуждения
+                <span className="rounded-pill bg-surface-hover px-2 py-0.5 tabular-nums text-content-secondary">
+                  {results.threads.count}
+                </span>
               </h2>
               <div className="space-y-2">
                 {results.threads.data.map((t) => (
                   <Link
                     key={t.id}
                     href={`/community/forum/thread/${t.id}`}
-                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 hover:border-accent/40"
+                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
                     <span className="truncate text-sm font-medium">{t.title}</span>
-                    <span className="flex-shrink-0 text-xs text-content-secondary">{t.replyCount} ответов</span>
+                    <span className="flex-shrink-0 text-xs tabular-nums text-content-secondary">
+                      {t.replyCount} ответов
+                    </span>
                   </Link>
                 ))}
               </div>

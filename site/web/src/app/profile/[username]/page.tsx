@@ -16,10 +16,23 @@ import { formatDate, categoryLabel } from "@/lib/domain";
 import { Server, ShieldCheck, Store, User, Users, MessageSquare, Package, FileText } from "lucide-react";
 
 // P: бейджи отражают реальные, проверяемые условия (без инфляции).
-const BADGE_META: Record<string, { label: string; icon: typeof Server }> = {
-  SERVER_OWNER: { label: "Server Owner", icon: Server },
-  VERIFIED_SERVER: { label: "Verified Server", icon: ShieldCheck },
-  VERIFIED_SELLER: { label: "Verified Seller", icon: Store },
+// Цвета — семантические токены: owner=info, verified server=verified, seller=ok.
+const BADGE_META: Record<string, { label: string; icon: typeof Server; cls: string }> = {
+  SERVER_OWNER: {
+    label: "Server Owner",
+    icon: Server,
+    cls: "border-info/30 bg-info/10 text-info",
+  },
+  VERIFIED_SERVER: {
+    label: "Verified Server",
+    icon: ShieldCheck,
+    cls: "border-verified/30 bg-verified/10 text-verified",
+  },
+  VERIFIED_SELLER: {
+    label: "Verified Seller",
+    icon: Store,
+    cls: "border-ok/30 bg-ok/10 text-ok",
+  },
 };
 
 /** Точка мониторинга в стиле MonitoringPill: ONLINE — зелёная, OFFLINE — красная, UNKNOWN — серая. */
@@ -29,12 +42,33 @@ function MonitoringDot({ state }: { state: string }) {
   const label = state === "ONLINE" ? "Онлайн" : state === "OFFLINE" ? "Оффлайн" : "Нет данных";
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2 py-0.5 text-xs font-medium text-content-secondary"
+      className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface px-2 py-0.5 text-xs font-medium text-content-secondary"
       title={label}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${cls}`} aria-hidden />
       {label}
     </span>
+  );
+}
+
+/** Компактный стат-чип активности (tabular-nums). */
+function ActivityChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-card border border-line bg-surface-raised p-4">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-content-muted">
+        {icon}
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums text-content">{value}</p>
+    </div>
   );
 }
 
@@ -49,9 +83,9 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Хлебные крошки */}
-      <nav aria-label="Хлебные крошки" className="mb-8 text-sm text-content-muted">
+      <nav aria-label="Хлебные крошки" className="mb-6 text-sm text-content-muted">
         <Link href="/" className="hover:text-accent-strong">
           Главная
         </Link>
@@ -70,17 +104,18 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
         />
       ) : (
         <>
-          {/* O: профильная карточка-шапка */}
-          <header className="rounded-card border border-line bg-gradient-to-br from-accent-soft via-surface-raised to-surface p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          {/* O: identity-шапка: banner-градиент + avatar + бейджи на токенах */}
+          <header className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
+            <div className="mta-hero-surface h-28 w-full md:h-36" aria-hidden />
+            <div className="flex flex-col gap-4 px-6 pb-6 sm:-mt-10 sm:flex-row sm:items-end md:px-8">
               <Avatar
                 src={data.profile.avatar}
                 name={data.profile.displayName || data.profile.username}
                 size="lg"
-                className="h-20 w-20 text-2xl"
+                className="h-20 w-20 flex-shrink-0 text-2xl ring-2 ring-accent/40 ring-offset-2 ring-offset-surface"
               />
-              <div className="min-w-0">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
                   {data.profile.displayName}
                 </h1>
                 <p className="text-sm text-content-secondary">@{data.profile.username}</p>
@@ -97,7 +132,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                         return (
                           <span
                             key={b}
-                            className="inline-flex items-center gap-1 rounded-full border border-ok/30 bg-ok/10 px-2 py-0.5 text-xs font-medium text-ok"
+                            className={`inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-xs font-medium ${meta.cls}`}
                             title={meta.label}
                           >
                             <Icon className="h-3 w-3" />
@@ -113,7 +148,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
           {/* P: публичные серверы владельца (только VERIFIED/ACTIVE) */}
           <section className="mt-10">
-            <h2 className="text-lg font-semibold mb-5">Серверы</h2>
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">Серверы</h2>
             {data.servers.length === 0 ? (
               <div className="rounded-card border border-dashed border-line p-10 text-center">
                 <Server className="h-10 w-10 text-content-muted mx-auto mb-3" />
@@ -123,7 +158,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                 </p>
               </div>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
                 {data.servers.map((s) => {
                   const banner = mediaUrl(s.bannerUrl);
                   const logo = mediaUrl(s.logoUrl);
@@ -131,46 +166,54 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                     <Link
                       key={s.id}
                       href={`/servers/${s.slug}`}
-                      className="group block overflow-hidden rounded-card border border-line bg-surface-raised transition-colors hover:border-line-strong"
+                      className="group block overflow-hidden rounded-card border border-line bg-surface shadow-card transition-colors duration-fast hover:border-accent/50 hover:bg-surface-raised"
                     >
-                      <div className="relative h-24 w-full overflow-hidden bg-surface-hover">
+                      <div className="relative h-28 w-full overflow-hidden bg-surface-inset">
                         {banner ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={banner} alt="" loading="lazy" className="h-full w-full object-cover" />
                         ) : (
-                          <div className="h-full w-full bg-gradient-to-r from-surface-hover to-surface-raised" />
+                          <div className="h-full w-full bg-gradient-to-br from-surface-hover via-surface-raised to-surface-inset" />
                         )}
+                        <div
+                          className="absolute inset-0 bg-gradient-to-t from-surface-raised via-surface-raised/20 to-transparent"
+                          aria-hidden
+                        />
+                        <div className="absolute right-3 top-3">
+                          <MonitoringDot state={s.monitoring} />
+                        </div>
+                      </div>
+                      <div className="relative p-4 pt-9">
                         {logo ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={logo}
                             alt={s.name}
                             loading="lazy"
-                            className="absolute bottom-2 left-3 h-12 w-12 rounded-xl border border-line object-cover bg-surface"
+                            className="absolute -top-6 left-4 h-14 w-14 rounded-card border-2 border-line bg-surface object-cover shadow-card"
                           />
                         ) : (
-                          <div className="absolute bottom-2 left-3 flex h-12 w-12 items-center justify-center rounded-xl border border-line bg-surface text-sm font-bold text-content-secondary">
+                          <div className="absolute -top-6 left-4 flex h-14 w-14 items-center justify-center rounded-card border-2 border-line bg-surface text-sm font-bold text-content-secondary shadow-card">
                             {s.name.slice(0, 2).toUpperCase()}
                           </div>
                         )}
-                        <div className="absolute right-2 top-2">
-                          <MonitoringDot state={s.monitoring} />
-                        </div>
-                      </div>
-                      <div className="p-4">
                         <div className="flex items-center gap-2">
-                          <h3 className="truncate font-semibold">{s.name}</h3>
+                          <h3 className="truncate font-semibold text-content transition-colors duration-fast group-hover:text-accent-strong">
+                            {s.name}
+                          </h3>
                           <VerificationBadge verification={s.verification} />
                         </div>
-                        <div className="mt-3 flex items-center gap-3 text-xs text-content-muted">
+                        <div className="mt-3 flex items-center gap-3 border-t border-line pt-3 text-xs text-content-muted">
                           {s.playerCount != null ? (
-                            <span className="inline-flex items-center gap-1">
+                            <span className="inline-flex items-center gap-1 font-medium tabular-nums text-ok">
                               <Users className="h-3.5 w-3.5" />
                               {s.playerCount}
                               {s.maxPlayers != null ? `/${s.maxPlayers}` : ""}
                             </span>
                           ) : null}
-                          <span>{s.followerCount.toLocaleString("ru-RU")} подписчиков</span>
+                          <span className="tabular-nums">
+                            {s.followerCount.toLocaleString("ru-RU")} подписчиков
+                          </span>
                         </div>
                       </div>
                     </Link>
@@ -182,7 +225,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
           {/* P: публичные ресурсы маркетплейса */}
           <section className="mt-10">
-            <h2 className="text-lg font-semibold mb-5">Ресурсы</h2>
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">Ресурсы</h2>
             {data.resources.length === 0 ? (
               <div className="rounded-card border border-dashed border-line p-10 text-center">
                 <Package className="h-10 w-10 text-content-muted mx-auto mb-3" />
@@ -192,7 +235,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                 </p>
               </div>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {data.resources.map((r) => (
                   <ResourceCard key={r.id} resource={r} />
                 ))}
@@ -202,7 +245,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
           {/* PLAN-007 E-003: опубликованные статьи автора */}
           <section className="mt-10">
-            <h2 className="text-lg font-semibold mb-5">Статьи</h2>
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">Статьи</h2>
             {(data.articles?.length ?? 0) === 0 ? (
               <div className="rounded-card border border-dashed border-line p-8 text-center">
                 <FileText className="h-8 w-8 text-content-muted mx-auto mb-3" />
@@ -214,7 +257,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                   <Link
                     key={a.slug}
                     href={`/content/articles/${a.slug}`}
-                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 hover:border-accent/40"
+                    className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-4 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium">{a.title}</span>
@@ -229,22 +272,18 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
           {/* P: публичная активность на форуме (только счётчики) */}
           <section className="mt-10">
-            <h2 className="text-lg font-semibold mb-5">Активность</h2>
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">Активность</h2>
             <div className="grid max-w-lg gap-4 sm:grid-cols-2">
-              <div className="p-4 rounded-card border border-line bg-surface-raised">
-                <p className="flex items-center gap-2 text-sm text-content-secondary">
-                  <MessageSquare className="h-4 w-4" />
-                  Темы на форуме
-                </p>
-                <p className="mt-1 text-2xl font-bold">{data.forumActivity.threadCount}</p>
-              </div>
-              <div className="p-4 rounded-card border border-line bg-surface-raised">
-                <p className="flex items-center gap-2 text-sm text-content-secondary">
-                  <MessageSquare className="h-4 w-4" />
-                  Сообщения
-                </p>
-                <p className="mt-1 text-2xl font-bold">{data.forumActivity.postCount}</p>
-              </div>
+              <ActivityChip
+                icon={<MessageSquare className="h-3.5 w-3.5" aria-hidden />}
+                label="Темы на форуме"
+                value={data.forumActivity.threadCount}
+              />
+              <ActivityChip
+                icon={<MessageSquare className="h-3.5 w-3.5" aria-hidden />}
+                label="Сообщения"
+                value={data.forumActivity.postCount}
+              />
             </div>
           </section>
         </>

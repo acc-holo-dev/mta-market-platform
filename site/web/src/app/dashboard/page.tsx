@@ -54,16 +54,16 @@ export default function DashboardPage() {
   const list = (purchases as Purchase[] | undefined) ?? [];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Покупки</h1>
-        <p className="mt-1 text-content-secondary">
+        <p className="mt-1 text-sm text-content-secondary">
           Привет, {user.displayName || user.username}! Здесь ваши приобретённые ресурсы и лицензии.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        <Card className="md:col-span-2">
+      <div className="mb-8 grid gap-4 md:grid-cols-3">
+        <Card className="shadow-card md:col-span-2">
           <CardHeader>
             <CardTitle>Мои покупки</CardTitle>
             <CardDescription>Ресурсы, лицензии и загрузки</CardDescription>
@@ -91,23 +91,23 @@ export default function DashboardPage() {
                 {list.map((p) => (
                   <div
                     key={p.id}
-                    className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-card border border-line bg-surface-raised"
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface-raised p-4 transition-colors duration-fast hover:border-line-strong"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <Link
                         href={p.resource ? `/resources/${p.resource.slug}` : "/resources"}
                         className="font-semibold hover:text-accent-strong"
                       >
                         {p.resource?.title ?? "Ресурс недоступен"}
                       </Link>
-                      <p className="text-sm text-content-secondary">
+                      <p className="mt-0.5 text-xs text-content-muted">
                         {typeLabel(p.resource.type ?? "")} · {formatDate(p.createdAt)}
                         {p.version ? ` · v${p.version.version}` : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <div className="font-semibold">{formatRub(p.priceSnapshot)}</div>
+                        <div className="font-semibold tabular-nums text-content">{formatRub(p.priceSnapshot)}</div>
                         <StatusBadge status={p.status} />
                       </div>
                     </div>
@@ -235,7 +235,7 @@ function MyMtaWidgets() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {s.playerCount != null ? (
-                      <span className="text-sm text-content-secondary">
+                      <span className="text-sm text-content-secondary tabular-nums">
                         {s.playerCount}
                         {s.maxPlayers != null ? `/${s.maxPlayers}` : ""}
                       </span>
@@ -347,7 +347,7 @@ function MyMtaWidgets() {
                   className="block rounded-card border border-line bg-surface-raised p-4 hover:bg-surface-hover"
                 >
                   <p className="font-medium">{t.title}</p>
-                  <p className="mt-1 text-sm text-content-secondary">
+                  <p className="mt-1 text-sm text-content-secondary tabular-nums">
                     {t.replyCount} {t.replyCount === 1 ? "ответ" : "ответов"}
                     {t.lastPostAt ? ` · ${formatDate(t.lastPostAt)}` : ""}
                   </p>
@@ -368,7 +368,7 @@ function MyMtaWidgets() {
           <CardDescription>Непрочитанные события</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-3xl font-bold">{data.unreadNotifications}</p>
+          <p className="text-3xl font-bold tabular-nums">{data.unreadNotifications}</p>
           <p className="text-sm text-content-secondary">
             {data.unreadNotifications === 1
               ? "Новое уведомление"

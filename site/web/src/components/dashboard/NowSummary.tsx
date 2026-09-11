@@ -24,7 +24,7 @@ function Row({
   return (
     <Link
       href={href}
-      className="flex items-center justify-between gap-3 rounded-card border border-line bg-background p-3 hover:border-accent/40"
+      className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface-inset p-3 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
     >
       <span className="flex min-w-0 items-center gap-3">
         <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-line bg-surface">
@@ -48,7 +48,7 @@ export function DashboardNow() {
 
   if (isLoading) {
     return (
-      <Card className="mb-8">
+      <Card className="mb-10 border-l-2 border-l-accent">
         <CardContent className="p-6 text-sm text-content-muted animate-pulse">
           Загрузка сводки…
         </CardContent>
@@ -104,7 +104,7 @@ export function DashboardNow() {
     const first = data.purchasedUpdates.items[0];
     rows.push({
       key: "purchased",
-      href: first?.resource ? `/resources/${first.resource.slug}` : "/purchases",
+      href: first?.resource ? `/resources/${first.resource.slug}` : "/dashboard",
       icon: <ShoppingBag className="h-4 w-4 text-accent" />,
       label: `Покупки: ${data.purchasedUpdates.count} ${
         data.purchasedUpdates.count === 1 ? "новый update" : "новых updates"
@@ -152,7 +152,7 @@ export function DashboardNow() {
   }
 
   return (
-    <Card className="mb-10">
+    <Card className="mb-10 border-l-2 border-l-accent shadow-card">
       <CardHeader>
         <CardTitle>Сейчас</CardTitle>
         <CardDescription>

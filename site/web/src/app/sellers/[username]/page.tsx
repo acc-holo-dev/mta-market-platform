@@ -91,8 +91,8 @@ export default function SellerStorePage({ params }: { params: Promise<{ username
 
       {isLoading ? (
         <div className="space-y-8">
-          <div className="h-28 w-full max-w-2xl animate-pulse rounded-card bg-surface-hover" />
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="h-36 w-full max-w-2xl animate-pulse rounded-card bg-surface-hover" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <ResourceCardSkeleton key={i} />
             ))}
@@ -111,30 +111,35 @@ export default function SellerStorePage({ params }: { params: Promise<{ username
         </div>
       ) : (
         <>
-          {/* E-001: profile header */}
-          <header className="rounded-card border border-line bg-gradient-to-br from-accent-soft via-surface-raised to-surface p-6 md:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+          {/* E-001: identity-шапка: banner-градиент + avatar + stat-чипы */}
+          <header className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
+            <div className="mta-hero-surface h-28 w-full md:h-36" aria-hidden />
+            <div className="flex flex-col gap-4 px-6 pb-6 sm:-mt-10 sm:flex-row sm:items-end md:px-8">
               <Avatar
                 src={data.seller.avatar}
                 name={data.seller.displayName || data.seller.username}
                 size="lg"
-                className="h-20 w-20 text-2xl"
+                className="h-20 w-20 flex-shrink-0 text-2xl ring-2 ring-accent/40 ring-offset-2 ring-offset-surface"
               />
-              <div className="min-w-0">
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
                   {data.seller.displayName}
                 </h1>
                 <p className="text-sm text-content-secondary">@{data.seller.username}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-content-muted">
-                  <span className="inline-flex items-center gap-1">
-                    <PackageCheck className="h-3.5 w-3.5" />
-                    {data.seller.resourceCount}{" "}
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-content-secondary">
+                  <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1">
+                    <PackageCheck className="h-3.5 w-3.5 text-accent" aria-hidden />
+                    <span className="font-semibold tabular-nums text-content">{data.seller.resourceCount}</span>
                     {data.seller.resourceCount === 1 ? "ресурс" : "ресурсов"}
                   </span>
-                  <span>На Маркетплейсе с {formatDate(data.seller.memberSince)}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <UserPlus className="h-3.5 w-3.5" />
-                    {(followState ? followState.count : data.seller.creatorFollowers ?? 0).toLocaleString("ru-RU")}{" "}
+                  <span className="inline-flex items-center rounded-pill border border-line bg-surface-raised px-3 py-1 text-content-muted">
+                    На Маркетплейсе с {formatDate(data.seller.memberSince)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-pill border border-line bg-surface-raised px-3 py-1">
+                    <UserPlus className="h-3.5 w-3.5 text-accent" aria-hidden />
+                    <span className="font-semibold tabular-nums text-content">
+                      {(followState ? followState.count : data.seller.creatorFollowers ?? 0).toLocaleString("ru-RU")}
+                    </span>
                     подписчиков
                   </span>
                 </div>
@@ -144,7 +149,7 @@ export default function SellerStorePage({ params }: { params: Promise<{ username
                   </p>
                 ) : null}
               </div>
-              <div className="sm:ml-auto flex flex-col items-start gap-2">
+              <div className="flex flex-col items-start gap-2 sm:ml-auto">
                 <Button
                   variant={isFollowing ? "outline" : "primary"}
                   size="sm"
@@ -153,14 +158,14 @@ export default function SellerStorePage({ params }: { params: Promise<{ username
                 >
                   {isFollowing ? "Отписаться" : "Подписаться"}
                 </Button>
-                {followError ? <p className="text-xs text-red-400">{followError}</p> : null}
+                {followError ? <p className="text-xs text-bad">{followError}</p> : null}
               </div>
             </div>
           </header>
 
           {/* E-002: только опубликованные ресурсы (сервер фильтрует) */}
           <section className="mt-10">
-            <h2 className="text-lg font-semibold mb-5">Ресурсы продавца</h2>
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">Ресурсы продавца</h2>
             {data.resources.length === 0 ? (
               <div className="rounded-card border border-dashed border-line p-10 text-center">
                 <PackageCheck className="h-10 w-10 text-content-muted mx-auto mb-3" />
@@ -170,7 +175,7 @@ export default function SellerStorePage({ params }: { params: Promise<{ username
                 </p>
               </div>
             ) : (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {data.resources.map((r) => (
                   <ResourceCard key={r.id} resource={r} />
                 ))}
@@ -179,6 +184,6 @@ export default function SellerStorePage({ params }: { params: Promise<{ username
           </section>
         </>
       )}
-      </div>
-    );
+    </div>
+  );
 }

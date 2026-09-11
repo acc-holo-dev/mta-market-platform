@@ -31,16 +31,51 @@ import {
 import { bootstrapSession } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 
-const TYPE_META: Record<string, { label: string; icon: typeof Bell }> = {
-  SERVER_NEWS: { label: "Новость сервера", icon: Newspaper },
-  SERVER_UPDATE: { label: "Обновление сервера", icon: RefreshCcw },
-  FORUM_REPLY: { label: "Ответ на форуме", icon: MessageSquareReply },
-  REVIEW_EVENT: { label: "Отзыв", icon: Star },
-  MODERATION: { label: "Модерация", icon: ShieldCheck },
+const TYPE_META: Record<
+  string,
+  { label: string; icon: typeof Bell; tone: string }
+> = {
+  SERVER_NEWS: {
+    label: "Новость сервера",
+    icon: Newspaper,
+    tone: "bg-ok-soft text-ok",
+  },
+  SERVER_UPDATE: {
+    label: "Обновление сервера",
+    icon: RefreshCcw,
+    tone: "bg-info-soft text-info",
+  },
+  FORUM_REPLY: {
+    label: "Ответ на форуме",
+    icon: MessageSquareReply,
+    tone: "bg-accent-soft text-accent-strong",
+  },
+  REVIEW_EVENT: {
+    label: "Отзыв",
+    icon: Star,
+    tone: "bg-warn-soft text-warn",
+  },
+  MODERATION: {
+    label: "Модерация",
+    icon: ShieldCheck,
+    tone: "bg-info-soft text-info",
+  },
   // PLAN-008: Follow Expansion.
-  CREATOR_RESOURCE: { label: "Новинка от создателя", icon: Package },
-  CREATOR_ARTICLE: { label: "Статья создателя", icon: FileText },
-  RESOURCE_UPDATE: { label: "Обновление ресурса", icon: PackageOpen },
+  CREATOR_RESOURCE: {
+    label: "Новинка от создателя",
+    icon: Package,
+    tone: "bg-verified-soft text-verified",
+  },
+  CREATOR_ARTICLE: {
+    label: "Статья создателя",
+    icon: FileText,
+    tone: "bg-verified-soft text-verified",
+  },
+  RESOURCE_UPDATE: {
+    label: "Обновление ресурса",
+    icon: PackageOpen,
+    tone: "bg-info-soft text-info",
+  },
 };
 
 function formatDateTime(value: string): string {
@@ -171,7 +206,11 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {query.data!.data.map((n) => {
             const href = targetHref(n);
-            const meta = TYPE_META[n.type] ?? { label: n.type, icon: Bell };
+            const meta = TYPE_META[n.type] ?? {
+              label: n.type,
+              icon: Bell,
+              tone: "bg-surface-hover text-content-secondary",
+            };
             const Icon = meta.icon;
             return (
               <button
@@ -181,15 +220,17 @@ export default function NotificationsPage() {
                   if (!n.readAt) markRead.mutate(n.id);
                   if (href) router.push(href);
                 }}
-                className={`block w-full rounded-card border p-4 text-left transition-colors ${
+                className={`block w-full rounded-card border p-4 text-left transition-colors duration-fast ${
                   n.readAt
-                    ? "border-line bg-surface"
+                    ? "border-line bg-surface hover:bg-surface-hover"
                     : "border-accent/30 bg-accent-soft/40 hover:bg-accent-soft/60"
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-surface-hover">
-                    <Icon className="h-4 w-4 text-content-secondary" />
+                  <span
+                    className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${meta.tone}`}
+                  >
+                    <Icon className="h-4 w-4" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -222,7 +263,7 @@ export default function NotificationsPage() {
                           markRead.mutate(n.id);
                         }
                       }}
-                      className="flex-shrink-0 rounded-md px-2 py-1 text-xs text-content-secondary hover:bg-surface-hover hover:text-content"
+                      className="flex-shrink-0 rounded-md px-2 py-1 text-xs text-content-secondary transition-colors duration-fast hover:bg-surface-hover hover:text-content"
                     >
                       Прочитать
                     </span>

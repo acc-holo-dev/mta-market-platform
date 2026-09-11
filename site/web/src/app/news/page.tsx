@@ -1,5 +1,6 @@
 // Глобальная лента новостей (PLAN-005 H-005): публичный фид новостей и
 // обновлений серверов с вкладками Все | Новости | Обновления. ?page= в URL.
+// PLAN-013: NewsRow — cover + KindChip + server-chip + author-строка на токенах.
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
@@ -15,7 +16,8 @@ import {
 } from "@/lib/api-ext";
 import { Button } from "@/components/ui/Button";
 import { Tabs } from "@/components/ui/Tabs";
-import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
+import { EmptyState, ErrorState } from "@/components/ui/States";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Avatar } from "@/components/ui/Avatar";
 
 type Kind = "all" | "news" | "updates";
@@ -37,14 +39,14 @@ function formatDateTime(iso: string): string {
 function KindChip({ item }: { item: NewsFeedItem }) {
   if (item.kind === "UPDATE") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-hover px-2 py-0.5 text-xs text-content-secondary">
+      <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-pill border border-line bg-surface-inset px-2 py-0.5 text-xs text-content-secondary">
         <RefreshCcw className="h-3 w-3" aria-hidden />
         Обновление{item.version ? ` v${item.version}` : ""}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs text-accent-strong">
+    <span className="inline-flex flex-shrink-0 items-center gap-1 rounded-pill border border-accent/30 bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-strong">
       <Newspaper className="h-3 w-3" aria-hidden />
       Новость
     </span>
@@ -56,15 +58,15 @@ function NewsRow({ item }: { item: NewsFeedItem }) {
   const authorName = item.author?.displayName || item.author?.username || null;
 
   return (
-    <div className="p-4 rounded-card border border-line bg-surface-raised">
-      <div className="flex flex-col gap-3 sm:flex-row">
+    <div className="rounded-card border border-line bg-surface p-4 shadow-card transition-colors duration-fast hover:border-line-strong hover:bg-surface-hover">
+      <div className="flex flex-col gap-4 sm:flex-row">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={cover}
             alt={item.title}
             loading="lazy"
-            className="h-28 w-full flex-shrink-0 rounded-md object-cover sm:w-48"
+            className="aspect-video w-full flex-shrink-0 rounded-card object-cover sm:w-48"
           />
         ) : null}
         <div className="min-w-0 flex-1">
@@ -73,14 +75,14 @@ function NewsRow({ item }: { item: NewsFeedItem }) {
             {item.server ? (
               <Link
                 href={`/servers/${item.server.slug}`}
-                className="inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2 py-0.5 text-xs text-content-secondary hover:text-accent-strong"
+                className="inline-flex items-center gap-1 rounded-pill border border-line bg-surface-inset px-2 py-0.5 text-xs text-content-secondary transition-colors duration-fast hover:text-accent-strong"
               >
                 <Globe className="h-3 w-3" aria-hidden />
                 {item.server.name}
               </Link>
             ) : null}
           </div>
-          <h2 className="mt-2 font-semibold leading-snug">{item.title}</h2>
+          <h2 className="mt-2 text-lg font-semibold leading-snug tracking-tight">{item.title}</h2>
           <p className="mt-1 line-clamp-2 text-sm text-content-secondary">{item.preview}</p>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-content-muted">
             {authorName ? (
@@ -92,7 +94,7 @@ function NewsRow({ item }: { item: NewsFeedItem }) {
                   className="h-5 w-5 text-[10px]"
                 />
                 {item.author?.username ? (
-                  <Link href={`/profile/${item.author.username}`} className="hover:text-accent-strong">
+                  <Link href={`/profile/${item.author.username}`} className="transition-colors duration-fast hover:text-accent-strong">
                     {authorName}
                   </Link>
                 ) : (
@@ -105,7 +107,7 @@ function NewsRow({ item }: { item: NewsFeedItem }) {
                 Автор
               </span>
             )}
-            <span>{formatDateTime(item.publishedAt)}</span>
+            <span className="tabular-nums">{formatDateTime(item.publishedAt)}</span>
           </div>
         </div>
       </div>
@@ -157,7 +159,7 @@ function NewsPageContent() {
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight">Новости</h1>
-        <p className="mt-1 text-content-secondary">
+        <p className="mt-1 text-sm text-content-secondary">
           Новости и обновления серверов сообщества MTA:SA
         </p>
       </div>
@@ -175,7 +177,19 @@ function NewsPageContent() {
       </div>
 
       {isLoading ? (
-        <LoadingSpinner label="Загрузка ленты..." />
+        <div className="space-y-3" aria-busy="true">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex flex-col gap-4 rounded-card border border-line bg-surface p-4 sm:flex-row">
+              <Skeleton className="aspect-video w-full flex-shrink-0 rounded-card sm:w-48" />
+              <div className="flex-1 space-y-3 py-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : items.length === 0 ? (
@@ -194,11 +208,11 @@ function NewsPageContent() {
 
       {/* Пагинация: без метаданных — «Вперёд» включена, пока страница заполнена */}
       {items.length > 0 ? (
-        <nav className="flex items-center justify-center gap-4 mt-10" aria-label="Постраничная навигация">
+        <nav className="mt-10 flex items-center justify-center gap-4" aria-label="Постраничная навигация">
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => changePage(page - 1)}>
             Назад
           </Button>
-          <span className="text-sm text-content-secondary">Страница {page}</span>
+          <span className="text-sm tabular-nums text-content-secondary">Страница {page}</span>
           <Button
             variant="outline"
             size="sm"
@@ -219,7 +233,12 @@ export default function NewsPage() {
     <Suspense
       fallback={
         <div className="mx-auto max-w-5xl px-4 py-10">
-          <LoadingSpinner label="Загрузка ленты..." />
+          <Skeleton className="h-9 w-48" />
+          <div className="mt-6 space-y-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-card" />
+            ))}
+          </div>
         </div>
       }
     >
