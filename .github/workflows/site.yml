@@ -1,28 +1,24 @@
 name: Site
 
-# Build + lint the site components and publish Docker images on main.
+# Site build gate. Publishing is intentionally owned by the unified Platform CI
+# workflow and is allowed only after every platform gate passes.
 
 on:
   push:
     branches: [main, develop]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
-  packages: write
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
-  IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
 
 jobs:
   build:
     name: Build (server + web) & lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - uses: pnpm/action-setup@v4
@@ -35,49 +31,3 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001
         run: pnpm --filter @mta-market/web build
-
-  docker:
-    name: Docker publish (ghcr)
-    needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Backend metadata
-        id: meta-backend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
-          tags: |
-            type=sha,format=long
-            type=ref,event=branch
-      - name: Backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infrastructure/docker/site/server.Dockerfile
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: org.opencontainers.image.version=${{ steps.meta-backend.outputs.version }}
-      - name: Frontend metadata
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
-          tags: |
-            type=sha,format=long
-            type=ref,event=branch
-      - name: Frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infrastructure/docker/site/web.Dockerfile
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: org.opencontainers.image.version=${{ steps.meta-frontend.outputs.version }}
