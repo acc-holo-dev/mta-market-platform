@@ -1,8 +1,8 @@
-﻿// PLAN-012 В§5: durable, database-backed idempotency for financially
+﻿// PLAN-012 §5: durable, database-backed idempotency for financially
 // significant mutations (checkout, payment creation, payment simulation,
 // refunds).
 //
-// Contract (documents/api/COMMERCE.md, PLAN-012 В§5):
+// Contract (documents/api/COMMERCE.md, PLAN-012 §5):
 //   same key + same operation + same payload  -> replay the stored outcome;
 //   same key + same operation + other payload -> deterministic rejection
 //                                                (idempotency_key_conflict);

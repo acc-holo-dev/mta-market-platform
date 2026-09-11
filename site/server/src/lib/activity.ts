@@ -1,10 +1,10 @@
 ﻿// PLAN-006 Workstreams B/C/D/E/H: Daily Experience Foundation read-layer.
 //
-// Activity is a DERIVED aggregation layer (DAILY-EXPERIENCE В§17/В§45): the
+// Activity is a DERIVED aggregation layer (DAILY-EXPERIENCE §17/§45): the
 // sources of truth remain Server / Resource / Forum / ServerNews /
 // ServerUpdate / Review. Nothing here writes to those domains — every item
 // is computed from bounded, indexed window queries over existing tables and
-// merged deterministically (chronological + type priority, no ML В§19).
+// merged deterministically (chronological + type priority, no ML §19).
 //
 // Publicity rules (PLAN-006 E, DAILY-EXPERIENCE §41–42) are enforced HERE,
 // at the read layer, not by hiding things in the UI:
@@ -42,7 +42,7 @@ export type ActivityType =
   | "NEW_ARTICLE";
 
 // PLAN-006 D-004: deterministic priority when timestamps are close.
-// PLAN-007: NEW_ARTICLE is a high-value event (DAILY-EXPERIENCE В§40) with
+// PLAN-007: NEW_ARTICLE is a high-value event (DAILY-EXPERIENCE §40) with
 // the same tier as NEW_SERVER.
 const TYPE_PRIORITY: Record<ActivityType, number> = {
   SERVER_UPDATE: 6,
@@ -60,7 +60,7 @@ const TYPE_PRIORITY: Record<ActivityType, number> = {
 export interface ActivityItem {
   type: ActivityType;
   at: string; // real event time (ISO)
-  href: string; // deep link destination (В§43)
+  href: string; // deep link destination (§43)
   server?: {
     slug: string;
     name: string;

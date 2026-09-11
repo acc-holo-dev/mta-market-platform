@@ -21,7 +21,7 @@ const router: Router = Router();
 // PLAN-012 §5: honored when the client sends an Idempotency-Key — a repeated
 // request replays the stored response instead of creating a second checkout.
 // The checkout is additionally protected by the purchase_buyer_resource_live_uq
-// database invariant (PLAN-012 В§4).
+// database invariant (PLAN-012 §4).
 router.post(
   "/",
   authenticate,

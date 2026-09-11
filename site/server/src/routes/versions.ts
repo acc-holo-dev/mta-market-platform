@@ -137,7 +137,7 @@ router.post(
         // PLAN-008 D-002 (Update delivery path): a new version of a PUBLISHED
         // resource re-enters moderation — PUBLISHED → PENDING_REVIEW as a
         // system-initiated transition recorded for audit. Moderation approval
-        // then releases the version and notifies buyers (В§26) and followers.
+        // then releases the version and notifies buyers (§26) and followers.
         let reenteredReview = false;
         if (resource.status === "PUBLISHED") {
           await db.orm.public.Resource

@@ -107,7 +107,7 @@ router.post("/", authenticate, standardRateLimit, async (req: AuthRequest, res: 
 
     // One open dispute per order — application pre-check, backed by the
     // dispute_purchase_open_uq / dispute_service_purchase_open_uq partial
-    // unique indexes (PLAN-012 В§13): two concurrent OPEN requests for one
+    // unique indexes (PLAN-012 §13): two concurrent OPEN requests for one
     // order cannot both commit.
     const existing = await db.orm.public.Dispute
       .where(

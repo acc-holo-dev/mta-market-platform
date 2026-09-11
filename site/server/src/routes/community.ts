@@ -302,7 +302,7 @@ router.get("/threads/:id", standardRateLimit, async (req, res: Response) => {
     }
 
     // PLAN-009 B-002: aggregate follower count only — the list is never
-    // exposed (DAILY-EXPERIENCE В§42).
+    // exposed (DAILY-EXPERIENCE §42).
     const threadFollowersAgg = await db.orm.public.ForumThreadFollow
       .where({ threadId: thread.id })
       .aggregate((a: any) => ({ total: a.count() }));
@@ -412,7 +412,7 @@ router.post(
 
       // FORUM_REPLY: author of the thread + everyone who already spoke +
       // PLAN-009 C-001: thread followers (the Follow step of the Community
-      // Loop, В§10). Deduplicated by createNotifications (a user who is both
+      // Loop, §10). Deduplicated by createNotifications (a user who is both
       // a participant and a follower receives exactly one); the actor never
       // notifies self.
       const participants = await db.orm.public.ForumPost
@@ -430,7 +430,7 @@ router.post(
       ].map((recipientId) => ({
         recipientId,
         type: "FORUM_REPLY" as const,
-        title: `МеУъй етУет У теКе «${thread.title}»`,
+        title: `Новый ответ в теме «${thread.title}»`,
         body: content.slice(0, 120),
         entityType: "forumThread",
         entityId: thread.id,
@@ -741,7 +741,7 @@ async function threadCardGroup(...groups: any[][]): Promise<{ latest: any[]; act
 
 // ---------------------------------------------------------------------------
 // PLAN-009: Thread Follow (Community Loop completion). Private relationship:
-// aggregate count on the page, follower lists never exposed (В§42).
+// aggregate count on the page, follower lists never exposed (§42).
 // ---------------------------------------------------------------------------
 
 router.post(

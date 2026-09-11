@@ -101,7 +101,7 @@ router.post("/content/:id/approve", authenticate, adminOnly, standardRateLimit, 
         (recipientId) => ({
           recipientId,
           type: "CREATOR_ARTICLE" as const,
-          title: `МеУаџ статьџ ет аУтера: ${article.title}`,
+          title: `Новая статья от автора: ${article.title}`,
           body: article.excerpt.slice(0, 200),
           entityType: "article",
           entityId: article.id,

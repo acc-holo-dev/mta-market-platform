@@ -211,7 +211,7 @@ router.post(
         isUniqueViolation(error, "payment_purchase_captured_uq") ||
         isUniqueViolation(error, "payment_orderitem_captured_uq")
       ) {
-        // PLAN-012 В§6: a parallel request already captured money for this
+        // PLAN-012 §6: a parallel request already captured money for this
         // line — the database rejected the second capture.
         res.status(409).json({ error: "Payment for this order is already captured" });
         return;
@@ -300,7 +300,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
             "paymentProviderEvent_provider_providerEventId_eventType_key"
           )
         ) {
-          // PLAN-012 В§7: a parallel delivery (other instance) persisted the
+          // PLAN-012 §7: a parallel delivery (other instance) persisted the
           // same event first — adopt its record instead of failing.
           eventRecord = await db.orm.public.PaymentProviderEvent.where({
             provider: "YUKASSA",
@@ -658,7 +658,7 @@ router.post(
 // POST /payments/refunds - create a refund (ADMIN only, E-008)
 // INV-013: the refunded total can never exceed the captured amount (the
 // per-payment advisory lock + transaction in the refund service hold the
-// ceiling across instances). PLAN-012 В§5: honored when the client sends an
+// ceiling across instances). PLAN-012 §5: honored when the client sends an
 // Idempotency-Key.
 router.post(
   "/refunds",
@@ -723,7 +723,7 @@ router.get(
 
 // POST /payments/:id/simulate - Simulate payment (development only)
 // This route is ONLY compiled in non-production environments.
-// PLAN-012 В§5: honored when the client sends an Idempotency-Key (the
+// PLAN-012 §5: honored when the client sends an Idempotency-Key (the
 // underlying completion is already CAS-idempotent; the key replays the
 // stored response).
 if (process.env.NODE_ENV !== 'production') {

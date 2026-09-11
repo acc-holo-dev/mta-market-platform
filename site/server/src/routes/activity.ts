@@ -1,8 +1,8 @@
 ﻿// PLAN-006 Workstreams B/C: public read endpoints for the Daily Experience
-// layer. Read-only, guest-accessible (В§29), rate-limited like other bulk
+// layer. Read-only, guest-accessible (§29), rate-limited like other bulk
 // surfaces. /activity/live — the LIVE line; /activity — the Home snapshot
 // (items + popular blocks). The potential continuous /activity feed route
-// (DAILY-EXPERIENCE В§21) is intentionally NOT built in PLAN-006.
+// (DAILY-EXPERIENCE §21) is intentionally NOT built in PLAN-006.
 import { Router, Response } from "express";
 import { standardRateLimit } from "../lib/rateLimit.js";
 import { getActivitySnapshot, getLiveAggregates } from "../lib/activity.js";

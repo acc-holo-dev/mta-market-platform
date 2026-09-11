@@ -1,5 +1,5 @@
 ﻿// PLAN-008 Workstreams B/C: Follow Expansion (Creator + Resource).
-// Follows are PRIVATE relationships (DAILY-EXPERIENCE В§42): only aggregate
+// Follows are PRIVATE relationships (DAILY-EXPERIENCE §42): only aggregate
 // counts are public; follower lists are never exposed. /me/follows/* returns
 // the user's OWN follows only. Delivery hooks live in the mutation sites
 // (admin.ts: resource publish + version release; adminContent.ts: article
@@ -155,7 +155,7 @@ router.delete("/resources/:slug/follow", authenticate, standardRateLimit, async 
   }
 });
 
-// ---------- own follow state (В§ privacy: only own lists) ----------
+// ---------- own follow state (§ privacy: only own lists) ----------
 
 router.get("/me/follows/creators", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
@@ -177,7 +177,7 @@ router.get("/me/follows/creators", authenticate, standardRateLimit, async (req: 
   }
 });
 
-// PLAN-009: own thread follows (private list, В§42).
+// PLAN-009: own thread follows (private list, §42).
 router.get("/me/follows/threads", authenticate, standardRateLimit, async (req: AuthRequest, res: Response) => {
   try {
     const rows = await db.orm.public.ForumThreadFollow

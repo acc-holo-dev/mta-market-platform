@@ -61,13 +61,13 @@ export async function sendWelcomeEmail(email: string, username: string): Promise
     to: email,
     subject: "Добро пожаловать в MTA Market!",
     html: `
-      <h1>��риУет, ${username}!</h1>
+      <h1>Привет, ${username}!</h1>
       <p>Добро пожаловать в MTA Market — маркетплейс для MTA:SA ресурсов.</p>
       <p>Теперь вы можете:</p>
       <ul>
         <li>Покупать готовые скрипты и моды</li>
         <li>Продавать свои разработки</li>
-        <li>ЛстаУлџть етзъУъ</li>
+        <li>Оставлять отзывы</li>
       </ul>
       <p>Удачи!</p>
     `,
@@ -108,7 +108,7 @@ export async function sendReviewNotification(
       <h1>МеУъй етзъУ!</h1>
       <p>Пользователь оставил отзыв на ваш ресурс: <strong>${resourceTitle}</strong></p>
       <p>Оценка: ${"⭐".repeat(rating)}</p>
-      <p><a href="${process.env.FRONTEND_URL}/resources/${resourceTitle}">��есКетреть етзъУъ</a></p>
+      <p><a href="${process.env.FRONTEND_URL}/resources/${resourceTitle}">Посмотреть отзывы</a></p>
     `,
     text: `Новый отзыв на "${resourceTitle}". Оценка: ${rating}/5`,
   });
@@ -145,7 +145,7 @@ export async function sendLicenseActivatedEmail(
     html: `
       <h1>Лицензия активирована!</h1>
       <p>Ваша лицензия на <strong>${resourceTitle}</strong> активирована.</p>
-      <p>ЎерУер: <strong>${serverName}</strong></p>
+      <p>Сервер: <strong>${serverName}</strong></p>
       <p>Если это были не вы, обратитесь в поддержку.</p>
     `,
     text: `Лицензия на "${resourceTitle}" активирована на сервере "${serverName}".`,
@@ -165,7 +165,7 @@ export async function sendPayoutEmail(
     subject: `Выплата ${amountFormatted} ${currency} обработана`,
     html: `
       <h1>Выплата обработана!</h1>
-      <p>ЎуККа: <strong>${amountFormatted} ${currency}</strong></p>
+      <p>Сумма: <strong>${amountFormatted} ${currency}</strong></p>
       <p>Средства будут зачислены в течение 1-3 рабочих дней.</p>
       <p><a href="${process.env.FRONTEND_URL}/dashboard/balance">Посмотреть баланс</a></p>
     `,

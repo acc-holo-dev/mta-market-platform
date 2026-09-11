@@ -34,7 +34,7 @@ program
   .option('--output <path>', 'Output directory for the new private key', '.keys')
   .action(async (options) => {
     try {
-      console.log('�ߔ� Rotating DRM server signing key...');
+      console.log('🔑 Rotating DRM server signing key...');
 
       const result = await rotateServerSigningKey();
 
@@ -47,7 +47,7 @@ program
       await mkdir(options.output, { recursive: true });
       const keyPath = join(options.output, `drm-server-key-${result.keyId}.txt`);
       await writeFile(keyPath, result.privateKey, { mode: 0o600 });
-      console.log(`�ߒ� New private key written once to ${keyPath} (0600). Delete it after installing into the environment.`);
+      console.log(`💾 New private key written once to ${keyPath} (0600). Delete it after installing into the environment.`);
       process.exit(0);
     } catch (error) {
       console.error('✌ Rotation failed:', error instanceof Error ? error.message : error);
@@ -62,13 +62,13 @@ program
   .option('--output <path>', 'Output directory for private key', '.keys')
   .action(async (options) => {
     try {
-      console.log('�ߔ� Generating DRM server signing keypair...');
+      console.log('🔑 Generating DRM server signing keypair...');
       
       const result = await createServerSigningKey();
       
       console.log('✅ Server key generated successfully!');
-      console.log(`�ߓ� Key ID: ${result.keyId}`);
-      console.log(`�ߔ� Public Key: ${result.publicKey.substring(0, 20)}...`);
+      console.log(`📋 Key ID: ${result.keyId}`);
+      console.log(`🔓 Public Key: ${result.publicKey.substring(0, 20)}...`);
       
       // Save private key to file
       const keyFile = join(process.cwd(), options.output, 'drm-server.key');
@@ -79,7 +79,7 @@ program
         createdAt: new Date().toISOString()
       }, null, 2));
       
-      console.log(`�ߔ� Private key saved to: ${keyFile}`);
+      console.log(`🔐 Private key saved to: ${keyFile}`);
       console.log('');
       console.log('⚠️  IMPORTANT: Configure environment variable!');
       console.log(`   export DRM_SERVER_PRIVATE_KEY="${result.privateKey}"`);
@@ -99,14 +99,14 @@ program
   .description('Test installation keypair generation')
   .action(async () => {
     try {
-      console.log('рџ§Є Testing installation keypair generation...');
+      console.log('🧪 Testing installation keypair generation...');
       
       // Generate installation keypair
       const keypair = generateInstallationKeypair();
       
       console.log('✅ Installation keypair generated!');
-      console.log(`�ߔ� Public Key: ${keypair.publicKey.substring(0, 40)}...`);
-      console.log(`�ߔ� Private Key: ${keypair.privateKey.substring(0, 40)}... (client-side only)`);
+      console.log(`🔓 Public Key: ${keypair.publicKey.substring(0, 40)}...`);
+      console.log(`🔐 Private Key: ${keypair.privateKey.substring(0, 40)}... (client-side only)`);
       
       // Save for testing
       const testFile = join(process.cwd(), '.keys', 'test-installation.key');
@@ -117,9 +117,9 @@ program
         note: 'Test installation keypair - for development only'
       }, null, 2));
       
-      console.log(`�ߒ� Test keypair saved to: ${testFile}`);
+      console.log(`💾 Test keypair saved to: ${testFile}`);
       console.log('');
-      console.log('�ߓ� Next steps:');
+      console.log('📝 Next steps:');
       console.log('   1. Register installation: POST /drm/v2/installations');
       console.log('      Body: { "publicKey": "...", "mtaVersion": "1.5.9", "moduleVersion": "0.5.0" }');
       console.log('   2. Sign challenge with privateKey');
@@ -137,7 +137,7 @@ program
   .description('Generate random nonce for testing')
   .action(() => {
     const nonce = generateNonce();
-    console.log('рџЋІ Generated nonce:');
+    console.log('🎲 Generated nonce:');
     console.log(nonce);
     console.log('');
     console.log('Use this in lease activation request.');
@@ -148,7 +148,7 @@ program
   .command('info')
   .description('Show DRM protocol information')
   .action(() => {
-    console.log('�ߓ� DRM Protocol v2 Information');
+    console.log('📖 DRM Protocol v2 Information');
     console.log('');
     console.log('Protocol Version: 2');
     console.log('Cryptography: Ed25519 (asymmetric)');

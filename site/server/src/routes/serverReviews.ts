@@ -82,7 +82,7 @@ router.get("/:slug/reviews", standardRateLimit, async (req, res: Response) => {
 });
 
 // GET /servers/:slug/reviews/eligibility — the form shows ONLY for eligible
-// users (SURFACE В§12); everyone else gets an explanation, not a dead form.
+// users (SURFACE §12); everyone else gets an explanation, not a dead form.
 router.get(
   "/:slug/reviews/eligibility",
   authenticate,

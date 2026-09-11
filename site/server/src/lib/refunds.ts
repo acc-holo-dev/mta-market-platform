@@ -20,7 +20,7 @@
 //   CREDIT platform_cash            refundedAmount
 // The seller/platform split is proportional to the original revenue split.
 //
-// PLAN-012 В§12: the confirmed-refund business effects (payment CAS, purchase
+// PLAN-012 §12: the confirmed-refund business effects (payment CAS, purchase
 // state, license revocation, seller cache, ledger posting, audit) run in ONE
 // database transaction — "balance updated without ledger" states are no
 // longer reachable.

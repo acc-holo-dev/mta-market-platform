@@ -4,7 +4,7 @@
 // PLAN-006 Workstream I: GET /dashboard/now — "Сейчас / За ночь" summary
 // measured since the user's previous dashboard visit (User.dashboardSeenAt).
 // Only real, personal facts (existing relations) — no algorithmic
-// personalization (DAILY-EXPERIENCE В§6/В§15).
+// personalization (DAILY-EXPERIENCE §6/§15).
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
 import { standardRateLimit } from "../lib/rateLimit.js";

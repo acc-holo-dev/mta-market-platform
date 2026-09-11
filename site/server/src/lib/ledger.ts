@@ -12,7 +12,7 @@
 // F-005: free orders create commerce/audit records but never money movement
 // — zero-amount settlements post nothing.
 //
-// PLAN-012 В§8/В§9/В§10 (transactional correctness):
+// PLAN-012 §8/§9/§10 (transactional correctness):
 //   - the cached SellerBalance is mutated ATOMICALLY in SQL
 //     ("availableAmount = availableAmount + delta" via the raw lane) — the
 //     read-then-write race is gone;
@@ -204,7 +204,7 @@ export async function isLedgerTransactionBalanced(transactionId: string): Promis
 }
 
 /**
- * PLAN-012 В§8: ATOMIC balance mutation. The delta is applied by the database
+ * PLAN-012 §8: ATOMIC balance mutation. The delta is applied by the database
  * itself ("availableAmount = availableAmount + delta" in a single UPDATE with
  * RETURNING) — two concurrent mutations can no longer overwrite each other,
  * whatever the number of backend instances. The row is created if missing.
@@ -259,7 +259,7 @@ export async function applySellerBalanceDelta(
  * F-003: also posts the balanced double-entry settlement transaction.
  */
 /**
- * PLAN-011 concurrency foundation + PLAN-012 В§9/В§10: settlement is
+ * PLAN-011 concurrency foundation + PLAN-012 §9/§10: settlement is
  * exactly-once per purchase. The per-purchase key lock serializes repair
  * passes within one process; the database invariants (unique
  * financialTransaction row per SELLER_REVENUE settlement, unique ledger
@@ -306,7 +306,7 @@ async function settlePurchaseRevenueUnlocked(purchase: SettleInput): Promise<voi
     : undefined;
 
   // F-003: one database transaction for the legacy cache, the legacy
-  // transaction row and the double-entry settlement (В§9). Free orders post
+  // transaction row and the double-entry settlement (§9). Free orders post
   // nothing (F-005). Exactly-once: the FinancialTransaction row is the dedup
   // marker (pre-checked here, enforced by the
   // financial_txn_settlement_once_uq unique index across instances) — a
@@ -387,7 +387,7 @@ async function postSettlementLedger(
     return null;
   }
 
-  // PLAN-004 D-006/E-003 (audit GAP-2) + PLAN-012 В§10: the settlement
+  // PLAN-004 D-006/E-003 (audit GAP-2) + PLAN-012 §10: the settlement
   // transaction id is deterministic (one ledger settlement per purchase /
   // service line, ever); the unique (transactionId, accountId, direction)
   // index turns it into a hard invariant. A crash between purchase
@@ -435,7 +435,7 @@ async function postSettlementLedger(
  * Atomically updates the seller's cached balance and records the legacy
  * financial transaction.
  *
- * PLAN-012 В§8/В§10:
+ * PLAN-012 §8/§10:
  *   - the balance delta is applied by the DATABASE (single UPDATE ... +
  *     delta ... RETURNING), never read-then-write in JS;
  *   - the FinancialTransaction row is the dedup marker: for SELLER_REVENUE a
@@ -519,7 +519,7 @@ export async function recordSellerRevenue(
  * C-009/C-011: records the revenue split for an ACCEPTED service order.
  * Mirrors settlePurchaseRevenue: seller gets sellerRevenue, platform keeps
  * platformFee; the split is validated against the FINAL price.
- * PLAN-012 В§9: one database transaction for the cache, the legacy row and
+ * PLAN-012 §9: one database transaction for the cache, the legacy row and
  * the double-entry settlement; exactly-once is enforced by the same
  * database invariants as purchase settlement.
  */

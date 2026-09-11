@@ -78,7 +78,7 @@ export interface ResourceCheckoutInput {
  * migration path) — see documents/history/MIGRATION.md.
  */
 /**
- * PLAN-012 В§4: checkout exactly-once is a DATABASE invariant. The in-process
+ * PLAN-012 §4: checkout exactly-once is a DATABASE invariant. The in-process
  * key lock serializes same-buyer checkouts within one instance (cheap fast
  * path); the partial unique index purchase_buyer_resource_live_uq (at most
  * one PENDING|COMPLETED purchase per buyer+resource) is the hard guarantee —
@@ -313,7 +313,7 @@ export interface ServiceCheckoutInput {
 }
 
 /**
- * PLAN-012 В§4: re-present the winning checkout of a lost create race (same
+ * PLAN-012 §4: re-present the winning checkout of a lost create race (same
  * buyer + resource) instead of surfacing an error — the loser's HTTP answer
  * is the winner's checkout state, exactly as the in-process pending path
  * behaves. Null when the winner cannot be re-presented (caller rejects).
