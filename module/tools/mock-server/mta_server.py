@@ -12,7 +12,7 @@ Manages a PINNED, locally-installed MTA:SA server for integration tests:
                              dir, module install, test resources, scenario
                              choreography, graceful stop, log capture)
 
-The integration test suite itself lives in other/tests/integration/:
+The integration test suite itself lives in tests/module/integration/:
 
     main_resource.lua      the "sdkintegration" resource: every scenario
                            reports its own "SCENARIO <name>: PASS|FAIL"
@@ -31,7 +31,7 @@ The pinned build identity lives in PINNED_WINDOWS / PINNED_LINUX (chosen for
 the host by pinned_build()) and is recorded (with the download checksum) into
 install.json after a successful install. Server binaries are never committed
 (see .gitignore). No developer's global MTA installation is used; everything
-runs from other/server/servers/<build> and a fresh temp directory per test
+runs from tools/mock-server/servers/<build> and a fresh temp directory per test
 run (cleaned up afterwards).
 """
 
@@ -54,8 +54,8 @@ from pathlib import Path
 
 SELF = Path(__file__).resolve()
 SERVER_DIR = SELF.parent
-PROJECT_ROOT = SERVER_DIR.parents[1]
-TOOLS_DIR = PROJECT_ROOT / "other" / "tools" / "mta"
+PROJECT_ROOT = SERVER_DIR.parents[1]  # module/tools/mock-server -> module -> (component root)
+TOOLS_DIR = SERVER_DIR.parent / "mta"
 
 DOWNLOADS = SERVER_DIR / "downloads"
 INSTALL_ROOT = SERVER_DIR / "servers"
@@ -109,7 +109,7 @@ SEVENZIP_DIR = SERVER_DIR / "tools" / "7zip"
 
 TEST_RESOURCE_NAME = "sdkintegration"
 WITNESS_RESOURCE_NAME = "sdkintegration2"
-INTEGRATION_DIR = PROJECT_ROOT / "other" / "tests" / "integration"
+INTEGRATION_DIR = SERVER_DIR.parents[2] / "tests" / "module" / "integration"
 MAIN_LUA_PATH = INTEGRATION_DIR / "main_resource.lua"
 WITNESS_LUA_PATH = INTEGRATION_DIR / "witness_resource.lua"
 INTEGRATION_TIMEOUT = 180.0
@@ -373,7 +373,7 @@ def cmd_install(update: bool) -> int:
         encoding="utf-8",
     )
     out(f"Server executable: {server_exe}")
-    out("Installed; identity recorded in other/server/install.json")
+    out("Installed; identity recorded in module/tools/mock-server/install.json")
     return 0
 
 

@@ -187,8 +187,10 @@ describe('DRM Protocol v2 - Cryptography', () => {
       };
 
       const signature = signLease(leasePayload, serverKeypair.privateKey);
-      const signedLease = { ...leasePayload, protocolVersion: 2 as const, signature };
-      
+      // keep protocolVersion 99: verify must REJECT it (the lease payload is
+      // intentionally malformed — typed any, SignedLease requires literal 2)
+      const signedLease: any = { ...leasePayload, signature };
+
       const result = verifyLeaseSignature(signedLease, serverKeypair.publicKey);
       expect(result.valid).toBe(false);
       expect(result.errors.some(e => e.includes('protocol version'))).toBe(true);

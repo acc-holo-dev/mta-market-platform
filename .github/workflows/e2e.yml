@@ -66,14 +66,15 @@ jobs:
           echo "DRM_MASTER_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
           echo "JWT_SECRET=$(openssl rand -base64 48)" >> "$GITHUB_ENV"
 
-      - name: Build API + web (production build)
-        run: |
-          pnpm --filter @mta-market/server build
-          pnpm --filter @mta-market/web build
+      - name: Build web (production build)
+        run: pnpm --filter @mta-market/web build
 
       - name: Start API and web
         run: |
-          node site/server/dist/index.js &> /tmp/backend.log &
+          # The API runs via tsx (the documented dev path). `node dist/` needs
+          # ESM file extensions — production packaging is tracked separately
+          # (documents/history/MIGRATION.md, remaining tech debt).
+          ( cd site/server && pnpm exec tsx src/index.ts ) &> /tmp/backend.log &
           ( cd site/web && pnpm start ) &> /tmp/web.log &
           for i in $(seq 1 60); do
             curl -sf http://localhost:3001/health >/dev/null 2>&1 && \
