@@ -133,3 +133,14 @@ CREATE (создан с нуля), DELETE (удалён), KEEP-LEGACY (исто�
 8. **PRODUCT-MODEL §3.1** (OFFLINE как lifecycle-стадия) противоречит
    PRODUCT-ARCHITECTURE §4.1 (monitoring — отдельная ось); реализация соответствует
    ARCHITECTURE. Правка MODEL — отдельное решение (foundational doc).
+9. **`node dist/` не запускается напрямую** (ESM-импорты без расширений при
+   `module: preserve` и без `"type": "module"`): production-образы API
+   исторически не проверялись рантаймом (Blockers в CURRENT.md). CI-E2E
+   запускает API документированным dev-путём (tsx); самодостаточная упаковка
+   dist — отдельная задача перед production-проверкой.
+10. **Clang-leg**: clang18 + libstdc++-14 требует complete-type инстанцирования
+    самореферентного `Json::Members` (GCC допускает) — джоба report-only;
+    основной тулчейн релиза — GCC (Linux x64 verified).
+11. **CI-E2E окружение**: сиды (plan003/plan005), heartbeat-симулятор,
+    CORS_ORIGINS и ослабленный rate-limit профиль задаются в `e2e.yml` —
+    в CI нет локального `.env`; это часть сборки среды прогона.

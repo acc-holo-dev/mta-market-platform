@@ -139,6 +139,11 @@
 
 - Multi-instance exactly-once (checkout/settlement) требует unique partial index
   (formal migration path) — key-lock покрывает single-instance топологию.
+- `node dist/` для API не стартует (ESM без расширений; production image
+  исторически не проверялся рантаймом) — CI-E2E запускает API через tsx;
+  упаковка dist — tech debt (MIGRATION.md §5).
+- clang-leg (clang18 + libstdc++-14, incomplete-type у Json::Members) —
+  report-only; GCC = release-тулчейн (MIGRATION.md §5).
 - Windows-сборка модуля не проверялась (best-effort CI); real-server integration —
   best-effort (сетевые загрузки pinned-сервера).
 - OpenAPI: тела запросов/ответов формализованы пока только для DRM v2/module.
