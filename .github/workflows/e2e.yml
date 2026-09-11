@@ -1,14 +1,13 @@
 name: E2E
 
-# BLOCKING GATE (PLAN-010 §21): browser E2E must pass — "unit tests green +
-# E2E skipped + docker published" is exactly the situation this workflow
-# forbids. Boots the real stack (Postgres + Redis + API + web) and runs the
-# Playwright suite against it.
+# BLOCKING GATE (PLAN-010 §21): browser E2E must pass. Boots the real stack
+# (Postgres + Redis + API + web) and runs the Playwright suite against it.
 
 on:
   push:
     branches: [main, develop]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -46,23 +45,17 @@ jobs:
       NEXT_PUBLIC_API_URL: http://localhost:3001
       FRONTEND_URL: http://localhost:3000
       BASE_URL: http://localhost:3001
-      # Browser (localhost:3000) talks to the API cross-origin — without the
-      # allowlist the CORS middleware rejects every browser call (the local
-      # dev .env carries this value; CI has no .env).
       CORS_ORIGINS: http://localhost:3000
       COOKIE_SAMESITE: lax
       TRUST_PROXY: "false"
-      # Intentionally loose dev/E2E rate-limit profile (.env.example: "loose
-      # for browser E2E runs") — without it the catalog/API returns 429 and
-      # the UI renders the error state mid-suite.
       AUTH_RATE_LIMIT_MAX: "10000"
       STANDARD_RATE_LIMIT_MAX: "10000"
       STRICT_RATE_LIMIT_MAX: "10000"
       LOGIN_RATE_LIMIT_MAX: "10000"
       REFRESH_RATE_LIMIT_MAX: "10000"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - uses: pnpm/action-setup@v4
@@ -85,9 +78,6 @@ jobs:
 
       - name: Start API and web
         run: |
-          # The API runs via tsx (the documented dev path). `node dist/` needs
-          # ESM file extensions — production packaging is tracked separately
-          # (documents/history/MIGRATION.md, remaining tech debt).
           ( cd site/server && pnpm exec tsx src/index.ts ) &> /tmp/backend.log &
           ( cd site/web && pnpm start ) &> /tmp/web.log &
           for i in $(seq 1 60); do
@@ -101,9 +91,6 @@ jobs:
       - name: Seed E2E admin
         run: pnpm test:e2e:admin
 
-      # The plan005/plan006 specs run against the documented seed datasets
-      # (scripts/dev-* are idempotent) and need fresh server heartbeats for
-      # the LIVE layer (docs: documents/operations/DEVELOPMENT.md).
       - name: Seed dev datasets (marketplace + community/servers)
         working-directory: site/server
         run: |
