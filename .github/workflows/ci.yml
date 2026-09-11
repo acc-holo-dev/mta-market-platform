@@ -1,0 +1,115 @@
+name: Platform CI
+
+# Single blocking CI entry point for the whole monorepo.
+# Component workflows are reusable and are orchestrated here so publishing
+# cannot happen until validation, contracts, security, tests, E2E, module,
+# and site build gates all pass.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
+
+  contracts:
+    name: Contracts
+    uses: ./.github/workflows/contracts.yml
+    permissions:
+      contents: read
+
+  security:
+    name: Security
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+
+  tests:
+    name: Tests
+    uses: ./.github/workflows/tests.yml
+    permissions:
+      contents: read
+
+  module:
+    name: Module
+    uses: ./.github/workflows/module.yml
+    permissions:
+      contents: read
+
+  site:
+    name: Site
+    uses: ./.github/workflows/site.yml
+    permissions:
+      contents: read
+
+  e2e:
+    name: E2E
+    uses: ./.github/workflows/e2e.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish site images
+    needs: [validate, contracts, security, tests, module, site, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
+      IMAGE_NAME_FRONTEND: ${{ github.repository }}/frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Backend metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+      - name: Backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/site/server.Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: org.opencontainers.image.version=${{ steps.meta-backend.outputs.version }}
+      - name: Frontend metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+      - name: Frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/site/web.Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: org.opencontainers.image.version=${{ steps.meta-frontend.outputs.version }}
