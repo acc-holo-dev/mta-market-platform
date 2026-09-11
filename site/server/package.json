@@ -35,14 +35,14 @@
     "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.3.0",
-    "nodemailer": "^10.0.0",
+    "nodemailer": "^10.0.1",
     "unzipper": "^0.12.5",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@mta-market/eslint-config": "workspace:*",
     "@mta-market/tsconfig": "workspace:*",
-    "@prisma/cli-engine": "0.2.3",
+    "@prisma/cli-engine": "0.3.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",

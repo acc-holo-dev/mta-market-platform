@@ -8,8 +8,8 @@
     "node.js"
   ],
   "dependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.18.1",
-    "@typescript-eslint/parser": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.70.0",
+    "@typescript-eslint/parser": "^8.70.0",
     "eslint": "^8.57.1",
     "eslint-config-next": "15.1.3",
     "eslint-config-prettier": "^9.1.0"
