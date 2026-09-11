@@ -1,9 +1,26 @@
 # NEXT-PHASE — решение о следующей фазе
 
 STATUS: DECISION ANALYSIS
-DATE: 2026-09-11
+DATE: 2026-09-12 (после PLAN-014)
 
 Этот документ определяет состояние, которое необходимо получить следующим Development Plan. Он не является самим Plan.
+
+## Обновление после PLAN-012…PLAN-014 (2026-09-12)
+
+- Разрыв **№2 (Financial correctness under concurrency)** закрыт PLAN-012:
+  DB-инварианты, Idempotency-Key, atomic ledger — формализованы и
+  верифицированы (392 теста).
+- Разрыв **№5 (Cross-platform module support)** частично: GCC release path
+  подтверждён, clang/Windows политики формализованы (MODULE.md §8/§9);
+  clang FIX и Windows-порт — будущие отдельные этапы.
+- PLAN-014 закрыл maintenance-гигиену: единый dependency policy
+  (DEPENDENCY-POLICY.md), toolchain matrix (TOOLCHAIN.md), переписанный
+  Dependabot, актуальные actions, унифицированный Prisma 8 RC stack,
+  воспроизводимый Docker runner. Платформа «актуальна + совместима +
+  воспроизводима»; dependency/toolchain debt больше не блокирует
+  продуктовые планы.
+- «Dependabot PR не являются development phase» — теперь и структурно:
+  majors игнорируются конфигом, ручные миграции идут по матрице.
 
 ## Метод
 

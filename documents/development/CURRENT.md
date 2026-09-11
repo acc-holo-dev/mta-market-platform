@@ -1,12 +1,43 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-11 (PLAN-012 выполнен; PLAN-013 в работе).
+Обновлено: 2026-09-12 (PLAN-014 выполнен).
 
 ## Активный план
 
-**PLAN-012 — Transactional Correctness & Platform Consistency — IMPLEMENTATION COMPLETE**
-(запись: completed/PLAN-012.md). Следом идёт
-**PLAN-013 — Visual System & UX Redesign** (см. active/PLAN-013.md).
+**PLAN-014 — Dependency, Toolchain, CI & Platform Maintenance Modernization —
+IMPLEMENTATION COMPLETE** (запись: completed/PLAN-014.md). Следующий план не
+сформирован (см. NEXT-PHASE).
+
+### Что появилось в PLAN-014 (2026-09-12)
+
+- **E2E regression PLAN-013 закрыта** (root cause: второй слой мойдибейка
+  от багованной починки d3b0320 в серверных шаблонах уведомлений + баг
+  `Новинка от [object Object]` + устаревший локатор поиска после редизайна
+  + сирота logs/tests/.gitkeep). Кодемод scripts/development/repair-cyrillic.cjs
+  (идемпотентный, --check для CI). Локальный полный E2E **59/59**.
+- **Prisma унифицирована** (§16 вариант C): CLI 8.0.0-rc.13, orm-postgres
+  rc.9, cli-engine 0.3.0, client 7.10.0 exact; contract-хеш идентичен,
+  392/392 тестов.
+- **Node 22 LTS + pnpm 9.15.0 — единая матрица** (local/CI/Docker; Docker
+  приведён с node:24 к node:22).
+- **Dependabot переписан**: patch/minor группами, majors игнорируются
+  (ручная миграция), actions minor+patch группой.
+- **GitHub Actions** на текущих stable (pnpm/action-setup v6, gitleaks v3
+  и др. — Node 20 runtime удаляется с раннеров 2026-09-16).
+- **Docker runner-баг исправлен**: .pnpm-стор не копировался в образ —
+  ESM-импорты были битыми симлинками (ERR_MODULE_NOT_FOUND при старте
+  контейнера); UPLOAD_DIR=/app/uploads пиннут. Production runtime
+  верифицирован: /health, /ready, graceful shutdown, fail-fast.
+- Зависимости: 15 UPDATE (patch/minor + prisma-линейка), 1 REMOVE
+  (@types/bcryptjs), date-fns → dependencies; audit 0 уязвимостей;
+  license audit чист (MPL/LGPL-исключения задокументированы).
+- **Документы**: architecture/TOOLCHAIN.md и
+  architecture/DEPENDENCY-POLICY.md (normative),
+  reference/DEPENDENCY-MATRIX.md, TESTING.md синхронизирован.
+- Осознанные DEFER-мажоры: Next 16 (+ESLint 9), Express 5, TS 7,
+  Tailwind 4, commander/dotenv — каждый отдельной волной.
+- Приёмка: vitest **392/392**, type-check чист, E2E **59/59**, module
+  ctest 3/3 + DRM PASS, Docker build + production smoke зелёные.
 
 ### Что появилось в PLAN-012 (2026-09-11)
 

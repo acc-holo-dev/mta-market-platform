@@ -57,7 +57,10 @@ tests/
 - `testDir: tests/e2e`, `workers: 1`, `fullyParallel: false`, `retries: 0`,
   таймаут теста 120 c / expect 15 c; `baseURL` = `E2E_BASE_URL` (по умолчанию
   `http://localhost:3000`); headless Chromium; screenshot only-on-failure,
-  trace retain-on-failure. Команда: `pnpm e2e`.
+  trace retain-on-failure. Команда: `pnpm test:e2e`.
+- Локальный запуск Chromium требует системных библиотек (libnspr4 и др.);
+  при установке без root — `playwright install-deps` либо LD_LIBRARY_PATH на
+  заранее распакованные библиотеки.
 - Тесты прогоняют **продуктовые сценарии в браузере** на живых dev-серверах —
   acceptance-уровень (не только HTTP).
 
@@ -97,7 +100,14 @@ tests/
 3. **Seed-данные** (по необходимости): `site/server/scripts/seed-plan003.ts`
    (маркетплейс), `site/server/scripts/seed-plan005.ts` (10 серверов,
    12 пользователей, 7 категорий, новости/обновления/отзывы; пароль seed-пользователей
-   `seed-password-123`), `scripts/dev-heartbeat.ts` (держит серверы онлайн).
+   `seed-password-123`), `scripts/dev-heartbeat.ts` (держит серверы онлайн —
+   должен быть запущен и успеть протикаться **до** старта спеков, проверяющих
+   онлайн-агрегаты, например plan006).
+4. **Mojibake-политика**: исходники должны быть чисты от двойного
+   кодирования; проверка — `node scripts/development/repair-cyrillic.cjs
+   --check` (exit 1 при остатках; сам кодемод описан в
+   [DEPENDENCY-POLICY](../architecture/DEPENDENCY-POLICY.md) и истории
+   коммитов PLAN-014).
 4. Приложение считает лимиты по открытым env'ам — в dev установлены
    ослабленные значения; E2E идут с дефолтными dev-лимитами.
 
