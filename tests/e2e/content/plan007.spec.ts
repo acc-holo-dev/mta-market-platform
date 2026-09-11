@@ -93,7 +93,11 @@ test.describe("PLAN-007 Content Foundation", () => {
 
   test("search finds the article as a separate group (E-004)", async ({ page }) => {
     await page.goto(`/search?q=${encodeURIComponent(TITLE)}`);
-    await expect(page.getByText(/Статьи \(/)).toBeVisible({ timeout: 15_000 });
+    // PLAN-013 redesign: the group heading renders the count in a styled
+    // pill element, so the accessible name is "Статьи <n>" (no parentheses).
+    await expect(
+      page.getByRole("heading", { name: /^Статьи \d/ })
+    ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(TITLE).first()).toBeVisible();
   });
 
