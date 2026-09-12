@@ -66,7 +66,7 @@ jobs:
           ctest --preset linux-gcc --output-on-failure --no-tests=error
           cd build/linux-gcc && cpack
       - name: Attach module package to the release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: module/build/linux-gcc/package/*.zip
           generate_release_notes: true
