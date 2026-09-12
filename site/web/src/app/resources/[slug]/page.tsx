@@ -22,6 +22,10 @@ import {
   followResource,
   unfollowResource,
   fetchMyResourceFollows,
+  fetchMyFavorites,
+  fetchMyAlerts,
+  toggleResourceFavorite,
+  type MyFavorites,
   type Purchase,
 } from "@/lib/api-ext";
 import { useAuthStore } from "@/store/auth";
@@ -34,8 +38,19 @@ import { Price } from "@/components/ui/Price";
 import { Rating } from "@/components/ui/Rating";
 import { Gallery } from "@/components/ui/Gallery";
 import { Avatar } from "@/components/ui/Avatar";
+import { PriceAlertDialog, myAlertsKey } from "@/components/market/PriceAlertDialog";
+import { ResourceTrustPanel } from "@/components/market/ResourceTrustPanel";
 import { typeLabel, formatDate } from "@/lib/domain";
-import { Star, ShieldCheck, Package, Store, CheckCircle2, Clock, Copy, Check } from "lucide-react";
+import {
+  meFollowsKey,
+  myPurchasesKey,
+  purchasesKeys,
+  resourceKeys,
+} from "@/lib/queries";
+import { Star, ShieldCheck, Package, Store, CheckCircle2, Clock, Copy, Check, Heart, Bell } from "lucide-react";
+
+// namespaced favorites key (общий с /me/favorites — one cache entry)
+const myFavoritesKey = () => ["favorites", "mine"] as const;
 
 export default function ResourceDetailPage() {
   const params = useParams();
@@ -54,17 +69,17 @@ export default function ResourceDetailPage() {
   }, [accessToken]);
 
   const { data: resource, isLoading, error } = useQuery({
-    queryKey: ["resource", slug],
+    queryKey: resourceKeys.resource(slug),
     queryFn: () => fetchResource(slug),
   });
 
   const { data: versions } = useQuery({
-    queryKey: ["resource-versions", slug],
+    queryKey: resourceKeys.resourceVersions(slug),
     queryFn: () => fetchResourceVersions(slug),
   });
 
   const { data: reviewsData } = useQuery({
-    queryKey: ["resource-reviews", slug],
+    queryKey: resourceKeys.resourceReviews(slug),
     queryFn: () => fetchResourceReviews(slug, 1, 20),
   });
 
@@ -107,7 +122,7 @@ export default function ResourceDetailPage() {
 
   // Ownership: needed for the "already acquired" state and the review form.
   const { data: myPurchases } = useQuery({
-    queryKey: ["purchases", "my", slug],
+    queryKey: myPurchasesKey(slug),
     queryFn: fetchMyPurchases,
     enabled: accessToken !== null,
     // PLAN-016 P-005 §10: polling of the purchase status — only while an
@@ -139,7 +154,9 @@ export default function ResourceDetailPage() {
   // PLAN-008 E-002: resource follow (§26 — optional relationship on top of
   // the purchase relationship). Own state only; aggregate count from payload.
   const { data: myResourceFollows } = useQuery({
-    queryKey: ["me", "follows", "resources", accessToken ?? "guest"],
+    // O-001: token-free key — the access token is attached per request by the
+    // axios interceptor; auth changes invalidate the follows family instead.
+    queryKey: meFollowsKey("resources"),
     queryFn: fetchMyResourceFollows,
     enabled: isAuthenticated() && !!accessToken,
     retry: false,
@@ -158,9 +175,85 @@ export default function ResourceDetailPage() {
     },
     onSuccess: (res: any) => {
       setFollowState({ following: res.following, count: res.resourceFollowers });
-      qc?.invalidateQueries({ queryKey: ["me", "follows", "resources"] });
+      qc?.invalidateQueries({ queryKey: meFollowsKey("resources") });
     },
   });
+
+  // ---------- PLAN-018 Wave-6: избранное + оповещения о цене ----------
+  // Избранное: bookmark по /me/favorites (общий кэш со страницей «Избранное»),
+  // оптимистичный toggle + invalidate; гости идут на логин.
+  const authedFavorite = accessToken !== null && isAuthenticated();
+  const { data: myFavorites } = useQuery({
+    queryKey: myFavoritesKey(),
+    queryFn: () => fetchMyFavorites(),
+    enabled: authedFavorite,
+    retry: false,
+  });
+  const favoriteEntry =
+    myFavorites?.data?.RESOURCE?.find((e) => e.subject?.slug === slug) ?? null;
+  const [favoriteOverride, setFavoriteOverride] = useState<boolean | null>(null);
+  const isFavorited = favoriteOverride ?? Boolean(favoriteEntry);
+
+  const favoriteToggle = useMutation({
+    mutationFn: (on: boolean) => toggleResourceFavorite(slug, on),
+    onMutate: async (on) => {
+      setFavoriteOverride(on);
+      await qc.cancelQueries({ queryKey: myFavoritesKey() });
+      const prev = qc.getQueryData<MyFavorites>(myFavoritesKey());
+      qc.setQueryData<MyFavorites>(myFavoritesKey(), (old) => {
+        if (!old) return old;
+        const list = old.data?.RESOURCE ?? [];
+        const nextList = on
+          ? list.some((e) => e.subject?.slug === slug)
+            ? list
+            : [
+                ...list,
+                {
+                  id: `optimistic-${slug}`,
+                  targetType: "RESOURCE" as const,
+                  targetId: "",
+                  subject: {
+                    slug,
+                    title: resource?.title,
+                    coverUrl: resource?.coverUrl ?? null,
+                    price: resource?.price ?? 0,
+                  },
+                },
+              ]
+          : list.filter((e) => e.subject?.slug !== slug);
+        return { ...old, data: { ...old.data, RESOURCE: nextList } };
+      });
+      return { prev };
+    },
+    onError: (_err, _on, ctx) => {
+      setFavoriteOverride(null);
+      if (ctx?.prev) qc.setQueryData(myFavoritesKey(), ctx.prev);
+    },
+    onSettled: () => {
+      setFavoriteOverride(null);
+      qc.invalidateQueries({ queryKey: myFavoritesKey() });
+    },
+  });
+
+  const handleFavoriteClick = () => {
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+    favoriteToggle.mutate(!isFavorited);
+  };
+
+  // Оповещения о цене: состояние из GET /me/alerts (общий кэш с диалогом).
+  const [alertOpen, setAlertOpen] = useState(false);
+  const { data: myAlerts } = useQuery({
+    queryKey: myAlertsKey(),
+    queryFn: fetchMyAlerts,
+    enabled: authedFavorite,
+    staleTime: 30_000,
+    retry: false,
+  });
+  const alertActive =
+    (myAlerts?.data ?? []).some((a) => a.resource?.slug === slug && a.active) || false;
 
   // ---------- Checkout handlers (M-004/M-005) ----------
 
@@ -177,7 +270,7 @@ export default function ResourceDetailPage() {
         kind: "completed",
         licenseId: row.license?.id ?? "",
       });
-      qc.invalidateQueries({ queryKey: ["purchases"] });
+      qc.invalidateQueries({ queryKey: purchasesKeys.all() });
     }
   }, [myPurchases, checkoutResult, qc]);
 
@@ -193,7 +286,7 @@ export default function ResourceDetailPage() {
 
       if (purchase.status === "completed") {
         setCheckoutResult({ kind: "completed", licenseId: purchase.licenseId });
-        qc.invalidateQueries({ queryKey: ["purchases"] });
+        qc.invalidateQueries({ queryKey: purchasesKeys.all() });
         return;
       }
 
@@ -231,7 +324,7 @@ export default function ResourceDetailPage() {
         discount: purchase.discount,
         devMessage,
       });
-      qc.invalidateQueries({ queryKey: ["purchases"] });
+      qc.invalidateQueries({ queryKey: purchasesKeys.all() });
     } catch (e) {
       setCheckoutError(getErrorMessage(e, "Ошибка при оформлении покупки"));
     } finally {
@@ -251,7 +344,7 @@ export default function ResourceDetailPage() {
       setReviewMsg("Отзыв отправлен. Спасибо!");
       setComment("");
       setReviewErr(null);
-      qc.invalidateQueries({ queryKey: ["resource-reviews", slug] });
+      qc.invalidateQueries({ queryKey: resourceKeys.resourceReviews(slug) });
     },
     onError: (e) => {
       setReviewMsg(null);
@@ -337,7 +430,7 @@ export default function ResourceDetailPage() {
 
           {/* Hero area (D-001): градиентная surface с chips */}
           <div className="rounded-lg border border-line bg-gradient-to-br from-accent-soft via-surface-raised to-surface p-6 md:p-8 flex flex-col items-start gap-4">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2">
               <span className="rounded-pill bg-accent-soft px-3 py-1 text-xs font-semibold text-accent-strong">
                 {typeLabel(resource.type)}
               </span>
@@ -346,6 +439,51 @@ export default function ResourceDetailPage() {
                   v{latestVersion.version}
                 </span>
               ) : null}
+              {/* PLAN-018 Wave-6: избранное + оповещения — рядом с заголовком */}
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleFavoriteClick}
+                  disabled={favoriteToggle.isPending}
+                  aria-pressed={isFavorited}
+                  aria-label={isFavorited ? "Убрать из избранного" : "В избранное"}
+                  title={isFavorited ? "Убрать из избранного" : "В избранное"}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 text-sm font-medium text-content-secondary transition-colors duration-fast hover:bg-surface-hover hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  <Heart
+                    className={`h-4 w-4 ${
+                      isFavorited ? "fill-bad text-bad" : "text-content-secondary"
+                    }`}
+                    aria-hidden
+                  />
+                  <span className="hidden sm:inline">
+                    {isFavorited ? "В избранном" : "В избранное"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!user) {
+                      router.push("/auth/login");
+                      return;
+                    }
+                    setAlertOpen(true);
+                  }}
+                  aria-haspopup="dialog"
+                  aria-label="Следить за ценой"
+                  title="Следить за ценой"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-md border px-2.5 text-sm font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    alertActive
+                      ? "border-ok/40 bg-ok/10 text-ok"
+                      : "border-line bg-surface text-content-secondary hover:bg-surface-hover hover:text-content"
+                  }`}
+                >
+                  <Bell className="h-4 w-4" aria-hidden />
+                  <span className="hidden sm:inline">
+                    {alertActive ? "Оповещения включены" : "Следить за ценой"}
+                  </span>
+                </button>
+              </div>
             </div>
             <h1 className="text-3xl font-bold tracking-tight">{resource.title}</h1>
             <p className="text-content-secondary leading-relaxed max-w-2xl line-clamp-3">
@@ -466,7 +604,7 @@ export default function ResourceDetailPage() {
                         <Star
                           className={`h-6 w-6 ${
                             n <= rating
-                              ? "text-amber-400 fill-amber-400"
+                              ? "text-star fill-star"
                               : "text-line-strong"
                           }`}
                         />
@@ -515,7 +653,7 @@ export default function ResourceDetailPage() {
                         <Star
                           key={n}
                           className={`h-4 w-4 ${
-                            n <= r.rating ? "text-amber-400 fill-amber-400" : "text-line-strong"
+                            n <= r.rating ? "text-star fill-star" : "text-line-strong"
                           }`}
                         />
                       ))}
@@ -783,6 +921,9 @@ export default function ResourceDetailPage() {
             </Card>
           ) : null}
 
+          {/* PLAN-018 Wave-6 C-001..C-003: панель доверия (lazy GET, 60s) */}
+          <ResourceTrustPanel slug={slug} enabled={Boolean(resource)} />
+
           <Card>
             <CardContent className="pt-6 space-y-3 text-sm">
               <div className="flex items-start gap-3">
@@ -801,6 +942,14 @@ export default function ResourceDetailPage() {
           </Card>
         </div>
       </div>
+
+      {/* PLAN-018 Wave-6: диалог подписки на события цены */}
+      <PriceAlertDialog
+        slug={slug}
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        basePriceKopecks={resource.price}
+      />
     </div>
   );
 }

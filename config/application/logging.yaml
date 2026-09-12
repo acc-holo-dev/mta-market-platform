@@ -1,0 +1,15 @@
+# Logging defaults per environment (PLAN-017 §6/§10).
+# The server reads LOG_FORMAT/LOG_LEVEL from the environment; startup.py
+# injects the selected column. Production deployment may still override via
+# compose env.
+logging:
+  format:
+    development: pretty
+    test: pretty
+    staging: json
+    production: json
+  level:
+    development: debug
+    test: warn
+    staging: info
+    production: info

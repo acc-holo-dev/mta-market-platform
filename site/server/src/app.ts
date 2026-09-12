@@ -44,6 +44,30 @@ import adminContentRoutes from "./routes/adminContent.js";
 // PLAN-008: Follow Expansion (Creator + Resource).
 import followsRoutes from "./routes/follows.js";
 import adminCommunityRoutes from "./routes/adminCommunity.js";
+// PLAN-017 §9/§10: platform configuration surface (feature flags).
+import configRoutes from "./routes/config.js";
+// PLAN-017 F/G/H: admin platform, advertising control center, premium
+// entitlements (feature module routers).
+import adminPlatformRoutes from "./routes/adminPlatform.js";
+import advertisingRoutes from "./routes/advertising.js";
+import adminAdvertisingRoutes from "./routes/adminAdvertising.js";
+import adminPremiumRoutes from "./routes/adminPremium.js";
+// Wave-6 productization routers (PLAN-018): finance, trust, updates,
+// favorites, alerts, subscriptions, deals, demo, feedback, leak radar.
+import adminFinanceRoutes from "./routes/adminFinance.js";
+import sellerPayoutsRoutes from "./routes/sellerPayouts.js";
+import sellerDiscountRoutes from "./routes/discounts.js";
+import trustRoutes from "./routes/trust.js";
+import updatesRoutes from "./routes/updates.js";
+import favoritesRoutes from "./routes/favorites.js";
+import alertsRoutes from "./routes/alerts.js";
+import subscriptionRoutes from "./routes/subscriptions.js";
+import dealRoutes from "./routes/deals.js";
+import demoRoutes from "./routes/demo.js";
+import feedbackRoutes from "./routes/feedback.js";
+import leakRoutes from "./routes/leak.js";
+// PLAN-017 §44: unhandled route errors land in the SystemLog admin surface.
+import { logUnhandled, type RequestLogContext } from "./lib/systemLog.js";
 import { standardRateLimit } from "./lib/rateLimit.js";
 import { reqLog } from "./middleware/requestId.js";
 
@@ -153,6 +177,9 @@ export function createApp(): Express {
     res.send(metrics.render());
   });
 
+  // PLAN-017 §9: typed feature flags (config/application/features.yaml).
+  app.use("/config", configRoutes);
+
   app.use("/auth", authRoutes);
   app.use("/resources", resourcesRoutes);
   app.use("/resources", versionsRoutes);
@@ -173,6 +200,13 @@ export function createApp(): Express {
   // PLAN-003 E-001: public seller storefront (читаеКъй username У URL).
   app.use("/sellers", sellersRoutes);
   app.use("/disputes", disputesRoutes);
+  // PLAN-017 §36–§45: the admin platform router MUST precede the legacy
+  // admin router — both define GET /admin/users and PATCH /admin/users/:id/role,
+  // and Express matches mounts in registration order. Without this ordering
+  // the §37 user list and the §41 guarded role change are unreachable.
+  // All other legacy admin paths (/resources, /stats, /versions, ...) do not
+  // overlap and still resolve through adminRoutes.
+  app.use("/admin", adminPlatformRoutes);
   app.use("/admin", adminRoutes);
   // PLAN-005 mounts. /servers/:slug/create-safety: static subroutes are
   // registered inside each router before dynamic ones.
@@ -193,6 +227,28 @@ export function createApp(): Express {
   app.use("/content", contentRoutes);
   app.use("/admin", adminCommunityRoutes);
   app.use("/admin", adminContentRoutes);
+  // PLAN-017 F/G/H: admin platform (users/roles/audit/logs/overview),
+  // advertising control center, premium entitlements.
+  app.use("/admin/advertising", adminAdvertisingRoutes);
+  app.use("/admin/premium", adminPremiumRoutes);
+  app.use("/advertising", advertisingRoutes);
+  // Wave-6 productization: prefixed mounts (routers use prefixed-relative
+  // paths) plus root-late mounts for routers that own mixed surfaces
+  // (user + admin paths inside one file, follows-router precedent). The
+  // /seller sub-routers come after sellerRoutes and only handle paths the
+  // legacy seller router leaves unmatched.
+  app.use("/seller", sellerPayoutsRoutes);
+  app.use("/seller", sellerDiscountRoutes);
+  app.use("/trust", trustRoutes);
+  app.use("/me", updatesRoutes);
+  app.use("/admin/finance", adminFinanceRoutes);
+  app.use("/admin/leak-cases", leakRoutes);
+  app.use("/", favoritesRoutes);
+  app.use("/", alertsRoutes);
+  app.use("/", subscriptionRoutes);
+  app.use("/", dealRoutes);
+  app.use("/", demoRoutes);
+  app.use("/", feedbackRoutes);
   // PLAN-008: Follow Expansion (creator/resource follow, own follow state).
   // Paths inside the router are absolute (/creators/..., /resources/...,
   // /me/follows/...); a single root mount avoids double prefixes.
@@ -201,7 +257,8 @@ export function createApp(): Express {
   // PLAN-004 J-003 (audit): global error handler — in Express 4 a rejected
   // async handler would otherwise become an unhandledRejection and crash the
   // process. Must be registered after all routes (4 args make it an error
-  // middleware).
+  // middleware). PLAN-017 §44: unhandled errors are mirrored into the
+  // SystemLog (append-only admin surface) in addition to the request log.
   app.use(
     (
       error: unknown,
@@ -210,6 +267,7 @@ export function createApp(): Express {
       _next: express.NextFunction
     ) => {
       reqLog(req).error("unhandled_route_error", { error });
+      logUnhandled(error, { req: req as unknown as RequestLogContext });
       if (!res.headersSent) {
         res.status(500).json({ error: "Internal server error" });
       }

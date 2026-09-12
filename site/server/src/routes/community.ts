@@ -1,4 +1,4 @@
-﻿// PLAN-005 Workstream F (+G surfaces): global community forum.
+// PLAN-005 Workstream F (+G surfaces): global community forum.
 //
 // Category -> Thread -> Posts. Threads may carry an explicit Server link
 // (G-004: server discussion) or a ServerNews link (news discussion) — links
@@ -13,6 +13,7 @@ import { verifyAccessToken } from "../lib/jwt.js";
 import { loadStaffRole, isPubliclyVisible } from "../lib/serverAccess.js";
 import { createNotifications } from "../lib/notify.js";
 import { bustActivityCache } from "../lib/activity.js";
+import { isUniqueViolation } from "../lib/dbErrors.js";
 
 const router: Router = Router();
 
@@ -171,6 +172,7 @@ router.get("/categories/:slug/threads", standardRateLimit, async (req, res: Resp
       (a: any) => ({ total: a.count() })
     );
     const authors = await publicAuthors(threads.map((t: any) => t.authorId));
+    const resourceLabels = await resourceLabelsByThreadId(threads);
     const total = Number(agg.total ?? 0);
     res.json({
       category: { id: category.id, slug: category.slug, name: category.name, description: category.description },
@@ -184,6 +186,7 @@ router.get("/categories/:slug/threads", standardRateLimit, async (req, res: Resp
         lastPostAt: t.lastPostAt,
         createdAt: t.createdAt,
         author: authors.get(t.authorId) ?? null,
+        resource: resourceLabels.get(t.id as string) ?? null,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
@@ -232,10 +235,43 @@ router.post(
         linkedServerId = server.id;
       }
 
+      // PLAN-018 G-001: an explicit resource link creates the resource's
+      // OFFICIAL discussion thread — PUBLISHED resources only, created by the
+      // resource's own seller or platform moderation, and a resource carries
+      // at most one thread (schema-level UNIQUE resourceId; clean 409 here).
+      let linkedResourceId: string | null = null;
+      if (req.body?.resourceId) {
+        const resource = await db.orm.public.Resource
+          .where({ id: req.body.resourceId as string })
+          .first();
+        if (!resource || resource.status !== "PUBLISHED") {
+          res.status(404).json({ error: "Resource not found" });
+          return;
+        }
+        const isOwner = resource.sellerId === req.user!.userId;
+        const isModerator = req.user!.role === "ADMIN" || req.user!.role === "MODERATOR";
+        if (!isOwner && !isModerator) {
+          res.status(403).json({
+            error: "Только автор ресурса или модерация может создать официальную тему ресурса",
+          });
+          return;
+        }
+        const existingThread = await db.orm.public.ForumThread
+          .where({ resourceId: resource.id })
+          .select("id")
+          .first();
+        if (existingThread) {
+          res.status(409).json({ error: "У этого ресурса уже есть официальная тема" });
+          return;
+        }
+        linkedResourceId = resource.id as string;
+      }
+
       const thread = await db.orm.public.ForumThread.create({
         categoryId: category.id,
         authorId: req.user!.userId,
         serverId: linkedServerId,
+        resourceId: linkedResourceId,
         title: title.trim(),
         state: "OPEN",
       });
@@ -250,6 +286,12 @@ router.post(
       await bustActivityCache();
       res.status(201).json(thread);
     } catch (error) {
+      // G-001: a concurrent official-thread creation loses the schema-level
+      // UNIQUE(resourceId) race — surface the same clean 409.
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: "У этого ресурса уже есть официальная тема" });
+        return;
+      }
       reqLog(req).error("thread_create_failed", { error });
       res.status(500).json({ error: "Failed to create thread" });
     }
@@ -271,6 +313,13 @@ router.get("/threads/:id", standardRateLimit, async (req, res: Response) => {
     const category = await db.orm.public.ForumCategory.where({ id: thread.categoryId }).first();
     const server = thread.serverId
       ? await db.orm.public.Server.where({ id: thread.serverId }).select("id", "slug", "name").first()
+      : null;
+    // G-001: resource-linked threads expose the resource label on the detail.
+    const resource = thread.resourceId
+      ? await db.orm.public.Resource
+          .where({ id: thread.resourceId })
+          .select("id", "slug", "title")
+          .first()
       : null;
     // Thread author is part of the surface (F-003: author is shown).
     const threadAuthor = await db.orm.public.User
@@ -347,6 +396,7 @@ router.get("/threads/:id", standardRateLimit, async (req, res: Response) => {
       thread: { ...thread, author: threadAuthor },
       category: category ? { id: category.id, slug: category.slug, name: category.name } : null,
       server,
+      resource: resource ? { id: resource.id, slug: resource.slug, title: resource.title } : null,
       caller: { isModerator: callerIsModerator },
       data: posts.map((p: any) => ({
         id: p.id,
@@ -412,9 +462,9 @@ router.post(
 
       // FORUM_REPLY: author of the thread + everyone who already spoke +
       // PLAN-009 C-001: thread followers (the Follow step of the Community
-      // Loop, §10). Deduplicated by createNotifications (a user who is both
-      // a participant and a follower receives exactly one); the actor never
-      // notifies self.
+      // Loop, §10) + PLAN-018 G-004: @username mentions. Deduplicated by
+      // createNotifications (a user who is both a participant and a follower
+      // receives exactly one); the actor never notifies self.
       const participants = await db.orm.public.ForumPost
         .where({ threadId: thread.id, deletedAt: null })
         .select("authorId")
@@ -424,7 +474,23 @@ router.post(
         .select("userId")
         .limit(500)
         .all();
-      const inputs = [
+      // G-004: mentioned users get the mention wording; they are resolved to
+      // EXISTING users only (unknown tokens are silently ignored) and never
+      // include the actor or the thread author (the author is already a
+      // participant and would otherwise receive a duplicate).
+      const mentionedIds = await mentionedUserIds(content, [
+        req.user!.userId,
+        thread.authorId as string,
+      ]);
+      const mentionInputs = mentionedIds.map((recipientId) => ({
+        recipientId,
+        type: "FORUM_REPLY" as const,
+        title: `Вас упомянули в теме «${thread.title}»`,
+        body: content.slice(0, 120),
+        entityType: "forumThread",
+        entityId: thread.id,
+      }));
+      const replyInputs = [
         ...participants.map((p: any) => p.authorId as string),
         ...followers.map((f: any) => f.userId as string),
       ].map((recipientId) => ({
@@ -435,7 +501,12 @@ router.post(
         entityType: "forumThread",
         entityId: thread.id,
       }));
-      await createNotifications(inputs, { excludeActorId: req.user!.userId });
+      // Mentions are prepended so createNotifications' first-wins dedup gives
+      // a mentioned participant/follower the mention wording exactly once
+      // (one notification per user per reply, never a duplicate pair).
+      await createNotifications([...mentionInputs, ...replyInputs], {
+        excludeActorId: req.user!.userId,
+      });
       // PLAN-006: fresh replies surface in Home within the cache cycle.
       await bustActivityCache();
       res.status(201).json(post);
@@ -634,6 +705,7 @@ router.get("/servers/:slug/threads", standardRateLimit, async (req, res: Respons
       (a: any) => ({ total: a.count() })
     );
     const authors = await publicAuthors(threads.map((t: any) => t.authorId));
+    const resourceLabels = await resourceLabelsByThreadId(threads);
     const total = Number(agg.total ?? 0);
     res.json({
       enabled: true,
@@ -645,6 +717,7 @@ router.get("/servers/:slug/threads", standardRateLimit, async (req, res: Respons
         lastPostAt: t.lastPostAt,
         createdAt: t.createdAt,
         author: authors.get(t.authorId) ?? null,
+        resource: resourceLabels.get(t.id as string) ?? null,
       })),
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
@@ -697,6 +770,66 @@ router.get("/servers/:slug/members", standardRateLimit, async (req, res: Respons
 // Helpers
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// PLAN-018 G-001/G-004 helpers
+// ---------------------------------------------------------------------------
+
+const MENTION_PATTERN = /@([a-z0-9_]{3,30})/gi;
+const MAX_MENTIONS_PER_POST = 10;
+
+/** G-004: bounded @username resolution → ids of EXISTING users only. */
+async function mentionedUserIds(content: string, excludedIds: string[]): Promise<string[]> {
+  const lowered = new Set<string>();
+  for (const match of content.matchAll(MENTION_PATTERN)) {
+    lowered.add(match[1].toLowerCase());
+    if (lowered.size >= MAX_MENTIONS_PER_POST) break;
+  }
+  if (lowered.size === 0) return [];
+  // Registration allows uppercase usernames (a-zA-Z0-9_-), so match both the
+  // raw tokens and their lowercase forms, then compare case-insensitively.
+  // (Usernames containing "-" cannot be mentioned — outside the token set.)
+  const raw = new Set<string>();
+  for (const match of content.matchAll(MENTION_PATTERN)) raw.add(match[1]);
+  const candidates = Array.from(new Set([...lowered, ...raw]));
+  const users = (await db.orm.public.User
+    .where((u: any) => u.username.in(candidates))
+    .select("id", "username")
+    .all()) as any[];
+  const excluded = new Set(excludedIds);
+  return users
+    .filter((u) => lowered.has(String(u.username ?? "").toLowerCase()))
+    .map((u) => u.id as string)
+    .filter((id) => !excluded.has(id));
+}
+
+/** G-001: batched resource labels for threads carrying a resourceId. */
+async function resourceLabelsByThreadId(
+  threads: any[]
+): Promise<Map<string, { id: string; slug: string; title: string }>> {
+  const resourceIds = Array.from(
+    new Set(
+      threads
+        .map((t) => t.resourceId as string | null)
+        .filter((id): id is string => !!id)
+    )
+  );
+  if (resourceIds.length === 0) return new Map();
+  const resources = await db.orm.public.Resource
+    .where((r: any) => r.id.in(resourceIds))
+    .select("id", "slug", "title")
+    .all();
+  const labelById = new Map(
+    resources.map((r: any) => [r.id as string, { id: r.id as string, slug: r.slug as string, title: r.title as string }])
+  );
+  const labelsByThreadId = new Map<string, { id: string; slug: string; title: string }>();
+  for (const t of threads) {
+    if (!t.resourceId) continue;
+    const label = labelById.get(t.resourceId as string);
+    if (label) labelsByThreadId.set(t.id as string, label);
+  }
+  return labelsByThreadId;
+}
+
 /** Global moderators + the linked server's own staff can moderate a thread. */
 async function isForumModerator(req: AuthRequest, thread: any): Promise<boolean> {
   if (!req.user) return false;
@@ -716,7 +849,10 @@ function nextPosValue(value: number): number {
 }
 
 async function threadCardList(threads: any[]): Promise<any[]> {
-  const authors = await publicAuthors(threads.map((t: any) => t.authorId));
+  const [authors, resourceLabels] = await Promise.all([
+    publicAuthors(threads.map((t: any) => t.authorId)),
+    resourceLabelsByThreadId(threads),
+  ]);
   return threads.map((t: any) => ({
     id: t.id,
     title: t.title,
@@ -727,6 +863,8 @@ async function threadCardList(threads: any[]): Promise<any[]> {
     lastPostAt: t.lastPostAt,
     createdAt: t.createdAt,
     author: authors.get(t.authorId) ?? null,
+    // G-001: resource label for resource-linked discussions (null otherwise).
+    resource: resourceLabels.get(t.id as string) ?? null,
   }));
 }
 

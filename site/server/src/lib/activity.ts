@@ -1,4 +1,4 @@
-﻿// PLAN-006 Workstreams B/C/D/E/H: Daily Experience Foundation read-layer.
+// PLAN-006 Workstreams B/C/D/E/H: Daily Experience Foundation read-layer.
 //
 // Activity is a DERIVED aggregation layer (DAILY-EXPERIENCE §17/§45): the
 // sources of truth remain Server / Resource / Forum / ServerNews /
@@ -24,9 +24,11 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WINDOW_DAYS = Math.min(Math.max(parseInt(process.env.ACTIVITY_WINDOW_DAYS || "7", 10) || 7, 1), 30);
 
 // PLAN-006 K-001: cache TTL — a fast signal, not a monitor (§4).
+// Key naming is behavior-based (no historical plan prefixes; PLAN-017 §75).
+// The v2 suffix invalidates caches written by the legacy keys.
 const CACHE_TTL_SECONDS = 45;
-const LIVE_CACHE_KEY = "plan006:activity:live:v1";
-const snapshotCacheKey = (limit: number) => `plan006:activity:snapshot:v1:${limit}`;
+const LIVE_CACHE_KEY = "activity:live:v2";
+const snapshotCacheKey = (limit: number) => `activity:snapshot:v2:${limit}`;
 
 export type ActivityType =
   | "SERVER_ONLINE"

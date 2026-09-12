@@ -19,8 +19,9 @@ production/staging.
 backup → migration → verification → application deployment
 ```
 
-1. **Backup.** `./scripts/backup.sh` (deploy.sh делает это автоматически перед
-   миграцией и прерывает деплой при провале). Нет бэкапа — нет миграции.
+1. **Backup.** `./scripts/database/backup.sh` (deploy.sh делает это
+   автоматически перед миграцией и прерывает деплой при провале). Нет
+   бэкапа — нет миграции.
 2. **Migration** — до обмена контейнеров: deploy.sh выполняет миграцию внутри
    backend-образа (версия тулинга совпадает с деплоем) против живой БД.
 3. **Verification**: деплой продолжается только при успешном коде выхода

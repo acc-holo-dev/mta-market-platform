@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { Search, Loader2, SearchX, Package, Server, MessagesSquare, FileText, ArrowRight } from "lucide-react";
 import { search } from "@/lib/api-ext";
+import { searchKeys } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 const MIN_QUERY = 2;
@@ -86,7 +87,7 @@ export function GlobalSearch() {
   const enabled = open && debounced.length >= MIN_QUERY;
 
   const { data, isFetching, isError, refetch } = useQuery({
-    queryKey: ["search", "dropdown", debounced],
+    queryKey: searchKeys.dropdownKey(debounced),
     queryFn: () => search(debounced),
     enabled,
     staleTime: 30_000,
@@ -171,10 +172,17 @@ export function GlobalSearch() {
 
   return (
     <div ref={containerRef} className="relative w-full max-w-xl">
+      {/* Состояния поля (PLAN-017 §54): normal → hover → focus-within →
+          active. Фокус обрабатывается на обёртке через :focus-within, поэтому
+          input подавляет глобальный :focus-visible-ring (без двойного кольца).
+          Ошибочное состояние не применимо (поиск не валидирует ввод). */}
       <div
         className={cn(
           "flex h-9 items-center gap-2 rounded-pill border bg-surface-inset px-3.5 transition-colors duration-fast",
-          open ? "border-line-accent" : "border-line hover:border-line-strong"
+          "border-line hover:border-line-strong",
+          "focus-within:border-line-accent focus-within:bg-surface focus-within:ring-1 focus-within:ring-inset focus-within:ring-line-accent/50",
+          "active:border-line-accent",
+          open && "border-line-accent bg-surface"
         )}
       >
         <Search className="h-4 w-4 flex-shrink-0 text-content-muted" aria-hidden />
@@ -195,7 +203,7 @@ export function GlobalSearch() {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onInputKeyDown}
-          className="h-full w-full bg-transparent text-sm text-content outline-none placeholder:text-content-muted"
+          className="h-full w-full bg-transparent text-sm text-content outline-none focus-visible:outline-none placeholder:text-content-muted [&::-webkit-search-cancel-button]:hidden"
         />
         <kbd
           aria-hidden

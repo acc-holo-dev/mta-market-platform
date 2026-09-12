@@ -29,9 +29,11 @@ chmod 600 .env
 
 ## 3. Настроить database
 
-Управляемый Postgres или bundled-контейнер (docker-compose.prod.yml).
-Проверка: `docker compose -f docker-compose.prod.yml up -d postgres && docker
-compose -f docker-compose.prod.yml exec postgres pg_isready`.
+Управляемый Postgres или bundled-контейнер
+(`infrastructure/docker/compose/production.yml`).
+Проверка: `docker compose -f infrastructure/docker/compose/production.yml up -d
+postgres && docker compose -f infrastructure/docker/compose/production.yml exec
+postgres pg_isready`.
 
 ## 4. Настроить Redis
 
@@ -55,7 +57,7 @@ persistence не требуется). Security-лимитеры fail-closed (M-0
 ## 7–8. Deploy backend + frontend
 
 ```bash
-./scripts/deploy.sh production sha-<commit>   # immutable CI tag (K-003/K-004)
+./scripts/deployments/deploy.sh production sha-<commit>   # immutable CI tag (K-003/K-004)
 ```
 
 Скрипт: backup → migrate → `up -d --wait` (health-gate K-006) → при провале
@@ -75,7 +77,7 @@ persistence не требуется). Security-лимитеры fail-closed (M-0
 ```bash
 curl -s https://<domain>/api/ready | jq   # DB ping обязателен
 curl -s https://<domain>/api/live
-docker compose -f docker-compose.prod.yml ps   # все healthy
+docker compose -f infrastructure/docker/compose/production.yml ps   # все healthy
 ```
 
 ## 11. Проверить OAuth
@@ -111,7 +113,7 @@ pnpm --filter @mta-market/server drm:test-installation
 ## 15. Проверить rollback
 
 ```bash
-./scripts/deploy.sh production <previous-tag>
+./scripts/deployments/deploy.sh production <previous-tag>
 curl -s https://<domain>/api/ready | jq .checks   # DB ok
 ```
 
@@ -124,6 +126,31 @@ curl -s https://<domain>/api/ready | jq .checks   # DB ok
 - внешний uptime: на публичный `/health` (раз в минуту, алерт на 3 промаха);
 - алерты (I-005): app down, /ready failing, 5xx spike, payment failures,
   reconciliation failed, DB недоступна, storage failure, SSL expiry ≤ 14 дней.
+
+### Пороги алертов (PLAN-018 P-003)
+
+Практические порты по сериям `/metrics` (внутренняя сеть, scrapе раз в
+30–60 c). Значения стартовые — калибруются по факту нагрузки (P-002
+slow-endpoint report после первого боевого прогона).
+
+| Метрика | Условие | Действие |
+|---|---|---|
+| `http_5xx_total` | рост > 5/мин или доля > 2% | дежурный смотрит `docker logs` по request_id; откат при корреляции с деплоем |
+| `http_latency_ms` (max/avg) | p-тренд ×3 за 10 мин | slow-endpoint разбор (DB time vs external) |
+| `db_latency_ms` | max > 2 c за 5 мин | проверить postgres (`pg_isready`, connection count), медленные запросы |
+| `redis_latency_ms` / fail-closed 503 | 503 на `/auth/*` | поднять Redis (fail-closed лимитеры, см. INCIDENT-RESPONSE §3.2) |
+| `payment_webhook_lag_ms` | max > 60 c | проверить backlog провайдера; идемпотентность повторной доставки уже включена |
+| `payment_success_total` | падение к нулю при живом трафике checkout | проверить провайдерский контур + webhooks |
+| `outbox_depth` | > 500 устойчиво | воркер не успевает/завис — `docker logs worker`, рестарт воркера |
+| `outbox_dead_letter_total` | рост > 0 | разбор FAILED-событий (dead-letter, без повторов) вручную |
+| `license_verify_failures_total` | всплеск ×5 за 15 мин | возможен DRM-инцидент — INCIDENT-RESPONSE §4 |
+| `download_failures_total` | всплеск | проверить entitle-цепочку и хранилище |
+| `sandbox_failures_total` | всплеск | INCIDENT-RESPONSE §3.6 |
+| `email_failures_total` | > 50% попыток | SMTP-контур (учёт: email off в dev/staging — нулевой трафик норма) |
+
+Дополнительно: reconciliation-джоба сама пишет FAILED-отчёты и
+MISMATCH-строки (`ReconciliationReport` / `ReconciliationMismatch`) —
+алерт по их появлению эквивалентен «ledger mismatch» из P-003.
 
 ## Известные границы (честный список)
 

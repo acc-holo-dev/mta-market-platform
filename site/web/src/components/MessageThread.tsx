@@ -1,7 +1,7 @@
 "use client";
 
 // Reusable message thread + send box (disputes, service order messages).
-// PLAN-013: bubbles on tokens — own messages bg-accent/text-white, others
+// PLAN-013: bubbles on tokens — own messages bg-accent/text-on-accent, others
 // bg-surface-raised/text-content, metadata caption muted. Props/API unchanged.
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";

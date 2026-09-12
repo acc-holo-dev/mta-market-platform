@@ -1,16 +1,19 @@
 // PLAN-015 §7: Topbar — продуктивная контрольная панель.
-// Состав: burger (mobile) · SidebarToggle · Logo · GlobalSearch ·
-// ContextCreate · Live · Theme · Notifications · Account+Balance.
-// Каждый элемент имеет назначение; без декоративных иконок (§7).
+// Состав: burger (mobile) · Logo · GlobalSearch · ContextCreate · Live ·
+// Theme · Notifications · Account. Каждый элемент имеет ОДНО чёткое место
+// (PLAN-017 §53): сворачивание меню — только в Sidebar, выход — только в
+// AccountMenu, уведомления — только здесь (колокольчик). Без декоративных
+// иконок (§7).
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Gauge, LogOut, PanelLeft } from "lucide-react";
+import { Bell, Gauge } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { fetchNotifications } from "@/lib/api-ext";
+import { notificationsKeys } from "@/lib/queries";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { ContextCreate } from "@/components/layout/ContextCreate";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
@@ -18,22 +21,15 @@ import { AccountMenu } from "@/components/layout/AccountMenu";
 import { LiveChip } from "@/components/layout/LiveChip";
 import { SidebarDrawer } from "@/components/layout/Sidebar";
 
-export function Topbar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
+export function Topbar() {
   const pathname = usePathname();
   const { user, accessToken } = useAuthStore();
   const authed = accessToken !== null && Boolean(user);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const quickLogout = () => {
-    useAuthStore.getState().clearAuth();
-    // Hard navigation (как в PLAN-002 Navbar): гарантированный выход без
-    // гонок клиентского роутера (E2E полагается на «Войти» после выхода).
-    window.location.assign("/");
-  };
-
   // Unread badge (reuse PLAN-005 M).
   const { data: notifData } = useQuery({
-    queryKey: ["notifications", "badge"],
+    queryKey: notificationsKeys.badgeKey(),
     queryFn: () => fetchNotifications("unread"),
     enabled: authed,
     staleTime: 60_000,
@@ -48,17 +44,8 @@ export function Topbar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
     <>
       <header className="sticky top-0 z-40 border-b border-line bg-background/85 backdrop-blur-md">
         <div className="flex h-14 items-center gap-3 px-3 sm:px-4">
-          {/* Sidebar toggle — desktop; burger — mobile */}
-          {onToggleSidebar ? (
-            <button
-              type="button"
-              onClick={onToggleSidebar}
-              aria-label="Показать или скрыть меню"
-              className="hidden h-9 w-9 items-center justify-center rounded-md text-content-secondary transition-colors duration-fast hover:bg-surface-hover hover:text-content lg:inline-flex"
-            >
-              <PanelLeft className="h-[18px] w-[18px]" aria-hidden />
-            </button>
-          ) : null}
+          {/* Burger — mobile (<lg). На desktop сворачивание живёт в Sidebar
+              (PLAN-017 §52: один контрол на одно действие). */}
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
@@ -102,19 +89,6 @@ export function Topbar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
                   </span>
                 ) : null}
               </Link>
-            ) : null}
-            {/* Быстрый выход — стабильная видимая кнопка (E2E + клавиатура) */}
-            {authed ? (
-              <button
-                type="button"
-                onClick={quickLogout}
-                aria-label="Выход"
-                title="Выйти"
-                className="hidden h-9 w-9 items-center justify-center rounded-md text-content-secondary transition-colors duration-fast hover:bg-surface-hover hover:text-content md:inline-flex"
-              >
-                <LogOut className="h-[18px] w-[18px]" aria-hidden />
-                <span className="sr-only">Выход</span>
-              </button>
             ) : null}
             <AccountMenu />
           </div>

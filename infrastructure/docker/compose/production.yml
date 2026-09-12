@@ -1,10 +1,86 @@
-version: '3.8'
+
+name: mta-market-production
+
+# Container names are parameterized so a local production-like rehearsal
+# (python startup.py release, STACK_PREFIX=mta-market-release) can coexist
+# with a real deployment that keeps the canonical mta-market-* names.
+# Health model: /ready is the readiness probe everywhere (it checks the DB
+# dependency); /health remains the static liveness signal.
+
+# PLAN-019 H: the backend and the worker share ONE environment definition
+# (single source of truth — the worker only adds its own knobs).
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  PORT: 3001
+  DATABASE_URL: postgresql://${POSTGRES_USER:-mtamarket}:${POSTGRES_PASSWORD}@postgres:5432/mtamarket
+  REDIS_URL: redis://redis:6379
+  JWT_SECRET: ${JWT_SECRET}
+  JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+  JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
+  DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+  DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+  DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
+  # TASK A-012: DRM signing key is a required production secret
+  DRM_SERVER_PRIVATE_KEY: ${DRM_SERVER_PRIVATE_KEY}
+  # PLAN-004 A-002 (audit P0-2): master key for DEK envelope encryption —
+  # without it artifact upload/DEK release fails at runtime
+  DRM_MASTER_KEY: ${DRM_MASTER_KEY}
+  # TASK A-012/B-002: artifact signing key is a required production secret
+  ARTIFACT_SIGNING_PRIVATE_KEY: ${ARTIFACT_SIGNING_PRIVATE_KEY}
+  BASE_URL: ${BASE_URL}
+  FRONTEND_URL: ${FRONTEND_URL}
+  # PLAN-004 B-002: controlled public media delivery (CDN/object URL base,
+  # no trailing slash). Empty = stream media from the bucket via backend.
+  MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-}
+  UPLOAD_DIR: ./uploads
+  S3_ENABLED: ${S3_ENABLED:-true}
+  S3_BUCKET: ${S3_BUCKET}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+  S3_SECRET_KEY: ${S3_SECRET_KEY}
+  S3_ENDPOINT: ${S3_ENDPOINT}
+  YOOKASSA_ENABLED: ${YOOKASSA_ENABLED:-true}
+  YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID}
+  YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY}
+  YOOKASSA_NOTIFICATION_PASSWORD: ${YOOKASSA_NOTIFICATION_PASSWORD}
+  EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
+  SMTP_HOST: ${SMTP_HOST}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER}
+  SMTP_PASS: ${SMTP_PASS}
+  EMAIL_FROM: ${EMAIL_FROM}
+  # PLAN-004 A-003: production rate limits must be explicit — dev/E2E
+  # values (AUTH/STANDARD 2000, LOGIN 500, REFRESH 400) must never leak
+  # into production. See .env.example for guidance.
+  AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-100}
+  STANDARD_RATE_LIMIT_MAX: ${STANDARD_RATE_LIMIT_MAX:-300}
+  STRICT_RATE_LIMIT_MAX: ${STRICT_RATE_LIMIT_MAX:-10}
+  LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-10}
+  REFRESH_RATE_LIMIT_MAX: ${REFRESH_RATE_LIMIT_MAX:-30}
+  # PLAN-004 A-004/M-002: topology + Redis outage semantics.
+  TRUST_PROXY: ${TRUST_PROXY:-true}
+  REDIS_ENABLE_OFFLINE_QUEUE: ${REDIS_ENABLE_OFFLINE_QUEUE:-false}
+  # PLAN-004 I-001: JSON logs in production.
+  LOG_FORMAT: ${LOG_FORMAT:-json}
+  LOG_LEVEL: ${LOG_LEVEL:-log}
+  # PLAN-004 G-005/A-005: CORS allowlist and refresh-cookie policy.
+  CORS_ORIGINS: ${CORS_ORIGINS:-}
+  COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
+  # PLAN-005 E-006: server monitoring sweep (stale heartbeat -> UNKNOWN,
+  # never OFFLINE; expired review tokens -> EXPIRED).
+  SERVER_MONITORING_ENABLED: ${SERVER_MONITORING_ENABLED:-true}
+  SERVER_MONITORING_INTERVAL_MS: ${SERVER_MONITORING_INTERVAL_MS:-60000}
+  SERVER_HEARTBEAT_INTERVAL_SECONDS: ${SERVER_HEARTBEAT_INTERVAL_SECONDS:-60}
+  # PLAN-019 H: worker runtime knobs (inert for the API server).
+  WORKER_POLL_INTERVAL_MS: ${WORKER_POLL_INTERVAL_MS:-5000}
+  WORKER_CLAIM_LIMIT: ${WORKER_CLAIM_LIMIT:-10}
+  WORKER_MAX_ATTEMPTS: ${WORKER_MAX_ATTEMPTS:-5}
 
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: mta-market-postgres
+    container_name: ${STACK_PREFIX:-mta-market}-postgres
     restart: always
     environment:
       POSTGRES_DB: mtamarket
@@ -23,7 +99,7 @@ services:
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: mta-market-redis
+    container_name: ${STACK_PREFIX:-mta-market}-redis
     restart: always
     volumes:
       - redis_data:/data
@@ -38,72 +114,17 @@ services:
   # Backend API
   backend:
     # PLAN-004 K-004: IMAGE_TAG pins the exact deployed version (CI SHA tag).
-    # :latest is only a local default — deploys must pass an immutable tag.
+    # :latest is only a local default вЂ” deploys must pass an immutable tag.
+    # build: lets `docker compose build` produce the image locally (local
+    # release rehearsal); CI continues to build and push the same image.
     image: ghcr.io/${GITHUB_REPOSITORY}/backend:${IMAGE_TAG:-latest}
-    container_name: mta-market-backend
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/site/server.Dockerfile
+    container_name: ${STACK_PREFIX:-mta-market}-backend
     restart: always
-    environment:
-      NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: postgresql://${POSTGRES_USER:-mtamarket}:${POSTGRES_PASSWORD}@postgres:5432/mtamarket
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
-      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
-      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
-      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
-      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
-      # TASK A-012: DRM signing key is a required production secret
-      DRM_SERVER_PRIVATE_KEY: ${DRM_SERVER_PRIVATE_KEY}
-      # PLAN-004 A-002 (audit P0-2): master key for DEK envelope encryption —
-      # without it artifact upload/DEK release fails at runtime
-      DRM_MASTER_KEY: ${DRM_MASTER_KEY}
-      # TASK A-012/B-002: artifact signing key is a required production secret
-      ARTIFACT_SIGNING_PRIVATE_KEY: ${ARTIFACT_SIGNING_PRIVATE_KEY}
-      BASE_URL: ${BASE_URL}
-      FRONTEND_URL: ${FRONTEND_URL}
-      # PLAN-004 B-002: controlled public media delivery (CDN/object URL base,
-      # no trailing slash). Empty = stream media from the bucket via backend.
-      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-}
-      UPLOAD_DIR: ./uploads
-      S3_ENABLED: ${S3_ENABLED:-true}
-      S3_BUCKET: ${S3_BUCKET}
-      S3_REGION: ${S3_REGION:-us-east-1}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
-      S3_SECRET_KEY: ${S3_SECRET_KEY}
-      S3_ENDPOINT: ${S3_ENDPOINT}
-      YOOKASSA_ENABLED: ${YOOKASSA_ENABLED:-true}
-      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID}
-      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY}
-      YOOKASSA_NOTIFICATION_PASSWORD: ${YOOKASSA_NOTIFICATION_PASSWORD}
-      EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
-      EMAIL_FROM: ${EMAIL_FROM}
-      # PLAN-004 A-003: production rate limits must be explicit — dev/E2E
-      # values (AUTH/STANDARD 2000, LOGIN 500, REFRESH 400) must never leak
-      # into production. See .env.example for guidance.
-      AUTH_RATE_LIMIT_MAX: ${AUTH_RATE_LIMIT_MAX:-100}
-      STANDARD_RATE_LIMIT_MAX: ${STANDARD_RATE_LIMIT_MAX:-300}
-      STRICT_RATE_LIMIT_MAX: ${STRICT_RATE_LIMIT_MAX:-10}
-      LOGIN_RATE_LIMIT_MAX: ${LOGIN_RATE_LIMIT_MAX:-10}
-      REFRESH_RATE_LIMIT_MAX: ${REFRESH_RATE_LIMIT_MAX:-30}
-      # PLAN-004 A-004/M-002: topology + Redis outage semantics.
-      TRUST_PROXY: ${TRUST_PROXY:-true}
-      REDIS_ENABLE_OFFLINE_QUEUE: ${REDIS_ENABLE_OFFLINE_QUEUE:-false}
-      # PLAN-004 I-001: JSON logs in production.
-      LOG_FORMAT: ${LOG_FORMAT:-json}
-      LOG_LEVEL: ${LOG_LEVEL:-log}
-      # PLAN-004 G-005/A-005: CORS allowlist and refresh-cookie policy.
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
-      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-lax}
-      # PLAN-005 E-006: server monitoring sweep (stale heartbeat -> UNKNOWN,
-      # never OFFLINE; expired review tokens -> EXPIRED).
-      SERVER_MONITORING_ENABLED: ${SERVER_MONITORING_ENABLED:-true}
-      SERVER_MONITORING_INTERVAL_MS: ${SERVER_MONITORING_INTERVAL_MS:-60000}
-      SERVER_HEARTBEAT_INTERVAL_SECONDS: ${SERVER_HEARTBEAT_INTERVAL_SECONDS:-60}
+    # PLAN-019 H: environment is the shared anchor above (backend + worker).
+    environment: *backend-environment
     volumes:
       - uploads_data:/app/uploads
     networks:
@@ -122,11 +143,46 @@ services:
       retries: 3
       start_period: 30s
 
+  # PLAN-019 H-003: worker runtime — outbox consumer (H-001/H-002 events)
+  # and the periodic schedulers (reconciliation, server monitoring, demo and
+  # price-alert sweeps), moved out of the API process. Reuses the backend
+  # image: tsx is not available in the production image, so the command runs
+  # the compiled worker entrypoint (tsc emits dist/worker/index.js from
+  # src/worker/index.ts alongside dist/index.js). No ports: the worker has
+  # no HTTP surface.
+  worker:
+    image: ghcr.io/${GITHUB_REPOSITORY}/backend:${IMAGE_TAG:-latest}
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/site/server.Dockerfile
+    container_name: ${STACK_PREFIX:-mta-market}-worker
+    restart: always
+    command: ['node', 'dist/worker/index.js']
+    environment: *backend-environment
+    networks:
+      - mta-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Process check: the worker exposes no HTTP endpoint; PID 1 (dumb-init)
+      # is alive exactly while the worker process tree is.
+      test: ['CMD-SHELL', 'kill -0 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   # Frontend Web
   frontend:
     # PLAN-004 K-004: IMAGE_TAG pins the exact deployed version (CI SHA tag).
     image: ghcr.io/${GITHUB_REPOSITORY}/frontend:${IMAGE_TAG:-latest}
-    container_name: mta-market-frontend
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/site/web.Dockerfile
+    container_name: ${STACK_PREFIX:-mta-market}-frontend
     restart: always
     environment:
       NODE_ENV: production
@@ -145,11 +201,13 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: mta-market-nginx
+    container_name: ${STACK_PREFIX:-mta-market}-nginx
     restart: always
     ports:
-      - '80:80'
-      - '443:443'
+      # Host ports parameterized so a local release rehearsal can share a
+      # host with the canonical deployment (NGINX_HTTP_PORT=8080 locally).
+      - '${NGINX_HTTP_PORT:-80}:80'
+      - '${NGINX_HTTPS_PORT:-443}:443'
     volumes:
       - ../../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ../../nginx/ssl:/etc/nginx/ssl:ro

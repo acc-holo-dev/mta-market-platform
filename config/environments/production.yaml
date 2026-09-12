@@ -1,0 +1,26 @@
+# Production environment — defaults pinned by
+# infrastructure/docker/compose/production.yml; secrets ONLY via .env.
+# This file documents the non-secret shape; deployment overrides come from
+# the environment. startup.py release uses production-style builds without
+# ever touching real production secrets.
+api:
+  port: 3001
+  nodeEnv: production
+  corsOrigins: []          # same-origin behind nginx (/api/ -> backend)
+  cookieSameSite: lax
+  trustProxy: true
+web:
+  port: 3000
+storage:
+  s3Enabled: true          # startup validation fails closed without S3
+module:
+  drm:
+    marketApiBase: https://<production-domain>   # pinned by deployment env
+    keyStoreHome: ~/.mta-market
+payments:
+  providersEnabled: true   # individual providers still need their own env
+email:
+  enabled: true
+jobs:
+  reconciliationEnabled: true   # financial correctness requires it
+  serverMonitoringEnabled: true

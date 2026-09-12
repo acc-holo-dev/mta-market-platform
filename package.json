@@ -7,6 +7,7 @@
     "dev": "turbo run dev",
     "dev:web": "pnpm --filter @mta-market/web dev",
     "dev:server": "pnpm --filter @mta-market/server dev",
+    "worker": "pnpm --filter @mta-market/server exec tsx src/worker/index.ts",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml}\"",
@@ -38,8 +39,6 @@
   "packageManager": "pnpm@9.15.0",
   "pnpm": {
     "overrides": {
-      "hono": "^4.13.5",
-      "@hono/node-server": "^1.19.15",
       "lodash": "^4.17.23",
       "qs": "^6.16.0",
       "valibot": "^1.4.2",

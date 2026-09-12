@@ -45,6 +45,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/utils";
+import { meFollowsKey } from "@/lib/queries";
 import { ThreadStateChip, PinnedChip, authorName } from "@/components/community/ThreadRow";
 import { ReportDialog } from "@/components/community/ReportDialog";
 
@@ -609,7 +610,8 @@ function ThreadFollowButton({ threadId, followersCount }: { threadId: string; fo
   const [error, setError] = useState<string | null>(null);
 
   const { data: myFollows } = useQuery({
-    queryKey: ["me", "follows", "threads", accessToken ?? "guest"],
+    // O-001: token-free key — token attached per request by the interceptor.
+    queryKey: meFollowsKey("threads"),
     queryFn: fetchMyThreadFollows,
     enabled: isAuthenticated() && !!accessToken,
     retry: false,
@@ -624,7 +626,7 @@ function ThreadFollowButton({ threadId, followersCount }: { threadId: string; fo
     onSuccess: (res: any) => {
       setOverride({ following: res.following, count: res.followersCount });
       setError(null);
-      qc.invalidateQueries({ queryKey: ["me", "follows", "threads"] });
+      qc.invalidateQueries({ queryKey: meFollowsKey("threads") });
     },
     onError: (e) => setError(getErrorMessage(e, "Не удалось изменить подписку")),
   });

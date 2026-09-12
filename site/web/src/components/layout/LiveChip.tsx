@@ -5,10 +5,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { fetchActivity } from "@/lib/api-ext";
+import { activityKeys } from "@/lib/queries";
 
 export function LiveChip({ compact = true }: { compact?: boolean }) {
   const { data, isError, isLoading } = useQuery({
-    queryKey: ["activity", "live"],
+    queryKey: activityKeys.liveKey(),
     queryFn: fetchActivity,
     staleTime: 60_000,
     refetchInterval: 60_000,

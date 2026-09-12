@@ -120,12 +120,12 @@ export function Gallery({
           role="dialog"
           aria-modal="true"
           aria-label="Просмотр изображения"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/85 p-4"
           onClick={close}
         >
           <button
             type="button"
-            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="absolute right-4 top-4 rounded-full bg-on-media/10 p-2 text-on-media hover:bg-on-media/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-media"
             onClick={close}
             aria-label="Закрыть просмотр"
           >
@@ -142,7 +142,7 @@ export function Gallery({
             <>
               <button
                 type="button"
-                className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-on-media/10 p-3 text-on-media hover:bg-on-media/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-media"
                 onClick={(e) => {
                   e.stopPropagation();
                   step(-1);
@@ -153,7 +153,7 @@ export function Gallery({
               </button>
               <button
                 type="button"
-                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-on-media/10 p-3 text-on-media hover:bg-on-media/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-media"
                 onClick={(e) => {
                   e.stopPropagation();
                   step(1);
@@ -162,7 +162,7 @@ export function Gallery({
               >
                 <ChevronRight className="h-6 w-6" />
               </button>
-              <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm text-white/80">
+              <p className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sm text-on-media/80">
                 {openIndex! + 1} / {images.length}
               </p>
             </>

@@ -1,0 +1,167 @@
+[
+  {
+    "id": "column.public.forumThread.resourceId",
+    "label": "Add column \"resourceId\" to \"forumThread\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "resourceId",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"resourceId\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "forumThread",
+          "resourceId"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"resourceId\"",
+        "sql": "ALTER TABLE \"public\".\"forumThread\" ADD COLUMN \"resourceId\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"resourceId\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "forumThread",
+          "resourceId"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.forumThread.forumThread_resourceId_key",
+    "label": "Add unique constraint on \"forumThread\" (resourceId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "forumThread_resourceId_key",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"forumThread_resourceId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_resourceId_key",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"forumThread_resourceId_key\"",
+        "sql": "ALTER TABLE \"public\".\"forumThread\" ADD CONSTRAINT \"forumThread_resourceId_key\" UNIQUE (\"resourceId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"forumThread_resourceId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_resourceId_key",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.forumThread.forumThread_resourceId_idx_72964925",
+    "label": "Create index \"forumThread_resourceId_idx_72964925\" on \"forumThread\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "forumThread_resourceId_idx_72964925",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"forumThread_resourceId_idx_72964925\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThread_resourceId_idx_72964925\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"forumThread_resourceId_idx_72964925\"",
+        "sql": "CREATE INDEX \"forumThread_resourceId_idx_72964925\" ON \"public\".\"forumThread\" (\"resourceId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"forumThread_resourceId_idx_72964925\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"forumThread_resourceId_idx_72964925\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.forumThread.forumThread_resourceId_fkey",
+    "label": "Add foreign key \"forumThread_resourceId_fkey\" on \"forumThread\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "forumThread_resourceId_fkey",
+        "table": "forumThread"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"forumThread_resourceId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_resourceId_fkey",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"forumThread_resourceId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"forumThread\"\nADD CONSTRAINT \"forumThread_resourceId_fkey\"\nFOREIGN KEY (\"resourceId\")\nREFERENCES \"public\".\"resource\" (\"id\")\nON DELETE SET NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"forumThread_resourceId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "forumThread_resourceId_fkey",
+          "public",
+          "\"public\".\"forumThread\""
+        ]
+      }
+    ]
+  }
+]

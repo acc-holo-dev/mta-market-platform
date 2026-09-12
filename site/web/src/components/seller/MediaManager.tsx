@@ -355,7 +355,7 @@ export function MediaManager({
                       onClick={() => void move(i, -1)}
                       disabled={i === 0}
                       aria-label={`Сдвинуть скриншот ${i + 1} к началу`}
-                      className="rounded bg-black/60 p-1 text-white disabled:opacity-30 hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                      className="rounded bg-overlay/60 p-1 text-on-media disabled:opacity-30 hover:bg-overlay/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-media"
                     >
                       <ArrowLeft className="h-3.5 w-3.5" />
                     </button>
@@ -364,7 +364,7 @@ export function MediaManager({
                       onClick={() => void move(i, 1)}
                       disabled={i === screenshots.length - 1}
                       aria-label={`Сдвинуть скриншот ${i + 1} к концу`}
-                      className="rounded bg-black/60 p-1 text-white disabled:opacity-30 hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                      className="rounded bg-overlay/60 p-1 text-on-media disabled:opacity-30 hover:bg-overlay/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-media"
                     >
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
@@ -376,7 +376,7 @@ export function MediaManager({
                   onClick={() => void removeScreenshot(s)}
                   disabled={s.state === "uploading" || s.state === "removing"}
                   aria-label={`Удалить скриншот ${i + 1}`}
-                  className="absolute left-1 top-1 rounded bg-black/60 p-1 text-white hover:bg-bad/90 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="absolute left-1 top-1 rounded bg-overlay/60 p-1 text-on-media hover:bg-bad/90 disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-media"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

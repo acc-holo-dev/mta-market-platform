@@ -1,4 +1,4 @@
-﻿// Resources API routes (CRUD for marketplace products)
+// Resources API routes (CRUD for marketplace products)
 import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
 import { standardRateLimit } from "../lib/rateLimit.js";
@@ -290,7 +290,12 @@ router.put(
 // рейтинг и cover. Rating/reviewCount агрегируются одним include-запросом
 // (PLAN-003 S-002: не выполнять по 2 запроса на каждый ресурс страницы).
 // Additive fields — существующий контракт не меняется.
-function withCardEnrichment(resource: any): any {
+//
+// PLAN-018 Wave-6: активная кампания скидки добавляет ОПЦИОНАЛЬНОЕ поле
+// `discount: { originalPrice }` (originalPrice — неизменяемая базовая цена)
+// и показывает на карточке итоговую цену в `price`. Контракт списка шире не
+// становится: без кампании поле = null, остальные поля не тронуты.
+function withCardEnrichment(resource: any, discountAmount?: number): any {
   const agg = resource.reviews as { total?: number; avg?: number | null } | undefined;
   const total = Number(agg?.total ?? 0);
   const average = agg?.avg != null ? Number(agg.avg) : null;
@@ -298,12 +303,100 @@ function withCardEnrichment(resource: any): any {
     | { username: string | null; displayName: string | null; avatar: string | null }
     | undefined;
   const { reviews: _reviews, seller: _seller, ...rest } = resource;
+
+  const basePrice = Number(resource.price ?? 0);
+  let price: number = rest.price;
+  let discount: { originalPrice: number } | null = null;
+  if (discountAmount != null && discountAmount > 0 && basePrice > 0) {
+    const finalPrice = Math.max(0, basePrice - discountAmount);
+    if (finalPrice < basePrice) {
+      price = finalPrice;
+      discount = { originalPrice: basePrice };
+    }
+  }
+
   return {
     ...rest,
+    price,
     seller: seller ?? null,
     rating: total > 0 && average != null ? Math.round(average * 10) / 10 : null,
     reviewCount: total,
+    discount,
   };
+}
+
+// ---------------------------------------------------------------------------
+// PLAN-018 Wave-6: скидочные кампании для карточек маркетплейса.
+// ОДИН ограниченный pre-query шаг: активные DiscountCampaign, покрывающие
+// id ресурсов страницы (scope RESOURCE) и продавцов страницы (scope ALL);
+// сопоставление — в JS. Семантика «активной» зеркалит lib/discount.ts
+// validateDiscount(): isActive, окно startsAt/endsAt, usageLimit/usedCount
+// не исчерпан, minOrderAmount, FIXED — только RUB. Бесплатные ресурсы и
+// скидки, не снижающие цену, не покрываются.
+// ---------------------------------------------------------------------------
+const MAX_DISCOUNT_CAMPAIGNS = 100;
+
+async function loadCardDiscounts(
+  cards: { id: string; price: number; sellerId: string }[]
+): Promise<Map<string, number>> {
+  // resourceId -> лучший (максимальный) размер скидки в копейках
+  const bestByResource = new Map<string, number>();
+  const resourceIds = [...new Set(cards.map((c) => c.id).filter(Boolean))];
+  const sellerIds = [...new Set(cards.map((c) => c.sellerId).filter(Boolean))];
+  if (resourceIds.length === 0 && sellerIds.length === 0) return bestByResource;
+
+  const [scoped, sellerWide] = await Promise.all([
+    resourceIds.length
+      ? db.orm.public.DiscountCampaign
+          .where({ isActive: true, scope: "RESOURCE" })
+          .where((c: any) => c.scopeId.in(resourceIds))
+          .limit(MAX_DISCOUNT_CAMPAIGNS)
+          .all()
+      : Promise.resolve([] as any[]),
+    sellerIds.length
+      ? db.orm.public.DiscountCampaign
+          .where({ isActive: true, scope: "ALL" })
+          .where((c: any) => c.sellerId.in(sellerIds))
+          .limit(MAX_DISCOUNT_CAMPAIGNS)
+          .all()
+      : Promise.resolve([] as any[]),
+  ]);
+
+  const now = Date.now();
+  const isActiveCampaign = (c: any): boolean => {
+    if (!c || c.isActive !== true) return false;
+    if (c.startsAt && new Date(c.startsAt).getTime() > now) return false;
+    if (c.endsAt && new Date(c.endsAt).getTime() < now) return false;
+    if (c.usageLimit != null && Number(c.usedCount ?? 0) >= Number(c.usageLimit)) return false;
+    return true;
+  };
+
+  const consider = (resourceId: string, basePrice: number, campaign: any): void => {
+    if (!isActiveCampaign(campaign)) return;
+    const base = Number(basePrice ?? 0);
+    if (base <= 0) return; // бесплатные ресурсы не дисконтируются
+    if (campaign.minOrderAmount != null && base < Number(campaign.minOrderAmount)) return;
+    if (campaign.type === "FIXED" && campaign.currency !== "RUB") return;
+    const value = Number(campaign.value ?? 0);
+    const amount =
+      campaign.type === "PERCENT" ? Math.floor((base * value) / 100) : value;
+    const clamped = Math.max(0, Math.min(amount, base));
+    if (clamped <= 0) return; // скидка обязана реально снижать цену
+    if (clamped > (bestByResource.get(resourceId) ?? 0)) bestByResource.set(resourceId, clamped);
+  };
+
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  for (const campaign of scoped as any[]) {
+    const card = byId.get(campaign.scopeId as string);
+    if (card) consider(card.id, Number(card.price), campaign);
+  }
+  for (const campaign of sellerWide as any[]) {
+    const sellerId = campaign.sellerId as string;
+    for (const card of cards) {
+      if (card.sellerId === sellerId) consider(card.id, Number(card.price), campaign);
+    }
+  }
+  return bestByResource;
 }
 
 // Загрузка карточек c seller + review-агрегатами одним запросом.
@@ -426,9 +519,11 @@ router.get(
       const baseCount = await filtered().aggregate((agg: any) => ({ total: agg.count() }));
       const total = Number(baseCount.total);
 
-      const respond = (cards: any[]) => {
+      const respond = async (cards: any[]) => {
+        // PLAN-018 Wave-6: один bounded pre-query скидок на страницу.
+        const discounts = await loadCardDiscounts(cards);
         res.json({
-          data: cards.map(withCardEnrichment),
+          data: cards.map((c: any) => withCardEnrichment(c, discounts.get(c.id))),
           pagination: { page, limit, total, pages: Math.ceil(total / limit) },
         });
       };
@@ -445,12 +540,12 @@ router.get(
         const idRows = await filtered().select("id").orderBy(orderBy).limit(limit).offset(skip).all();
         const pageIds = idRows.map((r: any) => r.id);
         if (pageIds.length === 0) {
-          respond([]);
+          await respond([]);
           return;
         }
         const cards = await cardsWithAggregates().where((r: any) => r.id.in(pageIds)).all();
         const byId = new Map(cards.map((c: any) => [c.id, c]));
-        respond(pageIds.map((id: string) => byId.get(id)).filter(Boolean));
+        await respond(pageIds.map((id: string) => byId.get(id)).filter(Boolean));
         return;
       }
 
@@ -495,8 +590,9 @@ router.get(
         });
       }
 
+      const discounts = await loadCardDiscounts(sorted);
       res.json({
-        data: sorted.slice(skip, skip + limit).map(withCardEnrichment),
+        data: sorted.slice(skip, skip + limit).map((c: any) => withCardEnrichment(c, discounts.get(c.id))),
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       });
     } catch (error) {
@@ -549,10 +645,14 @@ router.get("/homepage", standardRateLimit, async (req, res: Response) => {
             .filter((r: any) => Number(r.reviews?.total ?? 0) > 0)
             .slice(0, 8);
 
+    // PLAN-018 Wave-6: один bounded pre-query скидок на все секции
+    // (аддитивное поле, null-safe — с homepage совместимость сохранена).
+    const discounts = await loadCardDiscounts([...newest, ...popular, ...free]);
+
     res.json({
-      newest: newest.map(withCardEnrichment),
-      popular: popular.map(withCardEnrichment),
-      free: free.map(withCardEnrichment),
+      newest: newest.map((c: any) => withCardEnrichment(c, discounts.get(c.id))),
+      popular: popular.map((c: any) => withCardEnrichment(c, discounts.get(c.id))),
+      free: free.map((c: any) => withCardEnrichment(c, discounts.get(c.id))),
     });
   } catch (error) {
     reqLog(req).error("homepage_fetch_failed", { error });
@@ -679,8 +779,11 @@ router.get("/:slug", standardRateLimit, async (req, res: Response) => {
       .orderBy((m: any) => m.position.asc())
       .all();
 
+    // PLAN-018 Wave-6: активная скидка и на карточке товара (аддитивно).
+    const discounts = await loadCardDiscounts([resource]);
+
     res.json({
-      ...withCardEnrichment(resource),
+      ...withCardEnrichment(resource, discounts.get(resource.id)),
       resourceFollowers: Number(followersAgg.total ?? 0),
       screenshots: screenshots.map((m: any) => ({
         id: m.id,

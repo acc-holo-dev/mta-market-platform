@@ -427,6 +427,100 @@ router.post("/logout", authRateLimit, async (req: Request, res: Response) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Session management (PLAN-019 L-001/L-003, Q-001): the user can inspect and
+// revoke their own sessions. Token material is NEVER exposed — only device
+// metadata. `current` marks the session matching the presented refresh
+// cookie (when the browser sent one).
+// ---------------------------------------------------------------------------
+
+/** GET /auth/sessions — active sessions of the current user. */
+router.get("/sessions", authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const sessions = await db.orm.public.Session
+      .where({ userId: req.user!.userId })
+      .orderBy((m) => m.createdAt.desc())
+      .limit(50)
+      .all();
+
+    const nowMs = Date.now();
+    const active = sessions.filter((s) => new Date(s.expiresAt).getTime() > nowMs);
+
+    const presentedCookie =
+      typeof req.cookies?.refresh_token === "string" ? req.cookies.refresh_token : null;
+    const currentHash = presentedCookie ? hashRefreshToken(presentedCookie) : null;
+
+    res.json({
+      sessions: active.map((s) => ({
+        id: s.id,
+        ipAddress: s.ipAddress ?? null,
+        userAgent: s.userAgent ?? null,
+        createdAt: s.createdAt,
+        lastRotatedAt: s.lastRotatedAt ?? null,
+        current: currentHash !== null && s.refreshTokenHash === currentHash,
+      })),
+    });
+  } catch (error) {
+    reqLog(req).error("session_list_failed", { error });
+    res.status(500).json({ error: "Failed to list sessions" });
+  }
+});
+
+/** DELETE /auth/sessions/:id — revoke one own session. */
+router.delete("/sessions/:id", authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = req.params.id;
+    if (!id || id.length < 10 || id.length > 64) {
+      res.status(400).json({ error: "Invalid session id" });
+      return;
+    }
+    // Ownership guard: fetch first and verify it belongs to the caller
+    // (delete-by-composite keeps the CAS semantics of the codebase).
+    const session = await db.orm.public.Session.where({ id: String(id) }).first();
+    if (!session || session.userId !== req.user!.userId) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    const deleted = await db.orm.public.Session.where({ id: session.id }).delete();
+    if (!deleted) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    reqLog(req).info("session_revoked", { session_id: id, user_id: req.user!.userId });
+    res.json({ message: "Session revoked" });
+  } catch (error) {
+    reqLog(req).error("session_revoke_failed", { error });
+    res.status(500).json({ error: "Failed to revoke session" });
+  }
+});
+
+/** DELETE /auth/sessions — revoke ALL sessions of the caller except the
+ * current one (identified by the presented refresh cookie, when available). */
+router.delete("/sessions", authenticate, async (req: AuthRequest, res: Response) => {
+  try {
+    const presentedCookie = typeof req.cookies?.refresh_token === "string" ? req.cookies.refresh_token : null;
+    const currentHash = presentedCookie ? hashRefreshToken(presentedCookie) : null;
+
+    const sessions = await db.orm.public.Session.where({ userId: req.user!.userId }).all();
+    const nowMs = Date.now();
+    const targets = sessions.filter(
+      (s) =>
+        new Date(s.expiresAt).getTime() > nowMs &&
+        (currentHash === null || s.refreshTokenHash !== currentHash)
+    );
+    let revoked = 0;
+    for (const session of targets) {
+      const deleted = await db.orm.public.Session.where({ id: session.id }).delete();
+      if (deleted) revoked += 1;
+    }
+    reqLog(req).info("sessions_revoked_all_others", { user_id: req.user!.userId, revoked });
+    res.json({ revoked, keptCurrent: currentHash !== null });
+  } catch (error) {
+    reqLog(req).error("session_revoke_all_failed", { error });
+    res.status(500).json({ error: "Failed to revoke sessions" });
+  }
+});
+
 // PATCH /auth/me - edit allowed profile fields (PLAN-001 B-002).
 // role, status, email, username and any protected/identity fields are NOT
 // editable here — attempts are ignored/rejected.
@@ -848,15 +942,22 @@ async function handleLinkingCallback(
 ): Promise<void> {
   clearOAuthCookies(res);
 
+  // План PLAN-017 §63: это БРАУЗЕРНЫЙ редирект-флоу — любая ошибка обязана
+  // возвращать пользователя на страницу идентичностей с явным параметром
+  // ошибки, а не «неожиданным» JSON-ответом в пустой вкладке.
+  const redirectToIdentities = (error: string) => {
+    res.redirect(`${frontendUrl()}/account/identities?linked=0&error=${error}`);
+  };
+
   const payload = verifyAccessToken(linkToken);
   if (!payload) {
-    res.status(401).json({ error: "Link session expired" });
+    redirectToIdentities("link_session_expired");
     return;
   }
 
   const linkingUser = await db.orm.public.User.where({ id: payload.userId }).first();
   if (!linkingUser) {
-    res.status(401).json({ error: "Link session expired" });
+    redirectToIdentities("link_session_expired");
     return;
   }
 
@@ -872,7 +973,7 @@ async function handleLinkingCallback(
       provider: providerName,
       owner_user_id: existingAccount.userId,
     });
-    res.status(409).json({ error: "Identity already linked to another account" });
+    redirectToIdentities("identity_conflict");
     return;
   }
 

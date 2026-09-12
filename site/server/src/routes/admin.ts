@@ -9,6 +9,11 @@ import { isResourceStatus, isTransitionAllowed, type ResourceStatus } from "../l
 import { hasValidSignature } from "../lib/artifact/signing.js";
 import { getSandboxRun } from "../lib/sandbox/service.js";
 import { bustActivityCache } from "../lib/activity.js";
+// PLAN-019 H-002: domain events ride the outbox; the worker consumes them
+// (price alerts, future integrations). Emitted AFTER the primary writes
+// commit — this legacy path is not yet transactional, so the events reflect
+// already-committed state.
+import { emitOutbox } from "../lib/events.js";
 import {
   creatorFollowerIds,
   resourceFollowerIds,
@@ -188,6 +193,15 @@ router.patch(
             await db.orm.public.ResourceVersion
               .where({ id: version.id })
               .update({ releaseStatus: "PUBLISHED" });
+            // PLAN-019 H-002: version publish event → worker (price alerts:
+            // VERSION_RELEASED watchers). Payload contract matches the
+            // worker's RESOURCE_VERSION_PUBLISHED handler.
+            emitOutbox(db, "RESOURCE_VERSION_PUBLISHED", {
+              resourceId: resource.id,
+              versionId: version.id,
+              version: version.version,
+              changelog: version.changelog ?? undefined,
+            });
             // PLAN-006: RESOURCE_UPDATE activity item.
             await bustActivityCache();
             // PLAN-008 D-002: buyers (§26 — purchase already creates the
@@ -223,6 +237,14 @@ router.patch(
 
       // PLAN-006: RESOURCE_RELEASE is a high-value activity item.
       if (status === "PUBLISHED" && resource.status !== "PUBLISHED") {
+        // PLAN-019 H-002: resource-level release event → outbox (worker
+        // consumers; future email/digest channels). Emitted after the
+        // status transition and version updates committed.
+        emitOutbox(db, "RESOURCE_PUBLISHED", {
+          resourceId: resource.id,
+          slug: resource.slug,
+          sellerId: resource.sellerId,
+        });
         await bustActivityCache();
         // PLAN-008 D-001: notify the creator's followers about the release.
         const followerIds = await creatorFollowerIds(resource.sellerId);

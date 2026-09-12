@@ -1,0 +1,27 @@
+# Staging environment — mirrors production defaults with staging host ports
+# (compose: infrastructure/docker/compose/staging.yml; secrets via .env).
+# No secret values live here.
+api:
+  port: 3001
+  hostPort: 3101
+  nodeEnv: production
+  corsOrigins: []          # same-origin behind the reverse proxy
+  cookieSameSite: lax
+  trustProxy: true
+web:
+  port: 3000
+  hostPort: 3100
+storage:
+  s3Enabled: true
+module:
+  drm:
+    marketApiBase: https://staging.example.com
+    keyStoreHome: ~/.mta-market
+payments:
+  # Enable only with staging provider credentials (never production keys).
+  providersEnabled: false
+email:
+  enabled: false
+jobs:
+  reconciliationEnabled: true
+  serverMonitoringEnabled: true

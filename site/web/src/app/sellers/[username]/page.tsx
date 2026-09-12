@@ -20,6 +20,7 @@ import { ResourceCardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/States";
 import { Avatar } from "@/components/ui/Avatar";
 import { formatDate } from "@/lib/domain";
+import { meFollowsKey } from "@/lib/queries";
 import { useAuthStore } from "@/store/auth";
 import { PackageCheck, Store, UserPlus } from "lucide-react";
 
@@ -36,7 +37,9 @@ export default function SellerStorePage({ params }: { params: Promise<{ username
   const [followError, setFollowError] = useState<string | null>(null);
 
   const { data: myFollows } = useQuery({
-    queryKey: ["me", "follows", "creators", accessToken ?? "guest"],
+    // O-001: token-free key (axios interceptor carries the token; auth
+    // changes invalidate the follows family — no per-token cache misses).
+    queryKey: meFollowsKey("creators"),
     queryFn: fetchMyCreatorFollows,
     enabled: isAuthenticated() && !!accessToken,
     retry: false,

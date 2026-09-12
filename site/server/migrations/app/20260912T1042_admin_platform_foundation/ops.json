@@ -1,0 +1,719 @@
+[
+  {
+    "id": "dropCheckConstraint.user.user_role_check_e7d7eb9e",
+    "label": "Drop check constraint \"user_role_check_e7d7eb9e\" on \"user\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "user_role_check_e7d7eb9e",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"user_role_check_e7d7eb9e\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_role_check_e7d7eb9e",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"user_role_check_e7d7eb9e\"",
+        "sql": "ALTER TABLE \"public\".\"user\" DROP CONSTRAINT \"user_role_check_e7d7eb9e\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"user_role_check_e7d7eb9e\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_role_check_e7d7eb9e",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.adCampaign",
+    "label": "Create table \"adCampaign\"",
+    "summary": "Creates table \"adCampaign\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "adCampaign"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"adCampaign\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"adCampaign\"",
+        "sql": "CREATE TABLE \"public\".\"adCampaign\" (\n  \"advertiserId\" text NOT NULL,\n  \"body\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"ctaLabel\" text,\n  \"ctaUrl\" text,\n  \"endsAt\" timestamptz,\n  \"id\" text NOT NULL,\n  \"imageUrl\" text,\n  \"name\" text NOT NULL,\n  \"placement\" text NOT NULL,\n  \"priority\" int4 DEFAULT 0 NOT NULL,\n  \"reviewNote\" text,\n  \"reviewStatus\" text DEFAULT 'PENDING' NOT NULL,\n  \"startsAt\" timestamptz,\n  \"status\" text DEFAULT 'DRAFT' NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"adCampaign_placement_check_dadad663\" CHECK (\"placement\" IN ('HOME_HERO', 'HOME_RAIL_SECONDARY', 'MARKET_FEATURED', 'SERVER_FEATURED', 'COMMUNITY_FEATURED')),\n  CONSTRAINT \"adCampaign_reviewStatus_check_e84a3cf1\" CHECK (\"reviewStatus\" IN ('PENDING', 'APPROVED', 'REJECTED')),\n  CONSTRAINT \"adCampaign_status_check_68bbbf22\" CHECK (\"status\" IN ('DRAFT', 'SCHEDULED', 'ACTIVE', 'PAUSED', 'EXPIRED', 'CANCELLED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"adCampaign\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.adMetric",
+    "label": "Create table \"adMetric\"",
+    "summary": "Creates table \"adMetric\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "adMetric"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"adMetric\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adMetric\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"adMetric\"",
+        "sql": "CREATE TABLE \"public\".\"adMetric\" (\n  \"campaignId\" text NOT NULL,\n  \"clicks\" int4 DEFAULT 0 NOT NULL,\n  \"date\" text NOT NULL,\n  \"id\" text NOT NULL,\n  \"impressions\" int4 DEFAULT 0 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"adMetric\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adMetric\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.entitlement",
+    "label": "Create table \"entitlement\"",
+    "summary": "Creates table \"entitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"entitlement\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"entitlement\"",
+        "sql": "CREATE TABLE \"public\".\"entitlement\" (\n  \"expiresAt\" timestamptz,\n  \"grantedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"grantedById\" text,\n  \"id\" text NOT NULL,\n  \"kind\" text NOT NULL,\n  \"note\" text,\n  \"revokedAt\" timestamptz,\n  \"revokedById\" text,\n  \"source\" text NOT NULL,\n  \"subjectId\" text NOT NULL,\n  \"subjectType\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"entitlement_kind_check_a21a9162\" CHECK (\"kind\" IN ('CREATOR_PREMIUM', 'SERVER_PREMIUM', 'MARKETPLACE_PREMIUM', 'ADVERTISING_PREMIUM', 'ANALYTICS_PREMIUM')),\n  CONSTRAINT \"entitlement_subjectType_check_a2adb08e\" CHECK (\"subjectType\" IN ('USER', 'RESOURCE', 'SERVER'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"entitlement\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.systemLog",
+    "label": "Create table \"systemLog\"",
+    "summary": "Creates table \"systemLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "systemLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"systemLog\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"systemLog\"",
+        "sql": "CREATE TABLE \"public\".\"systemLog\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"errorCode\" text,\n  \"id\" text NOT NULL,\n  \"level\" text DEFAULT 'INFO' NOT NULL,\n  \"message\" text NOT NULL,\n  \"meta\" json,\n  \"requestId\" text,\n  \"route\" text,\n  \"service\" text NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"systemLog_level_check_267a3d9e\" CHECK (\"level\" IN ('DEBUG', 'INFO', 'WARN', 'ERROR'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"systemLog\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.adMetric.adMetric_campaignId_date_key",
+    "label": "Add unique constraint on \"adMetric\" (campaignId, date)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "adMetric_campaignId_date_key",
+        "table": "adMetric"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"adMetric_campaignId_date_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adMetric_campaignId_date_key",
+          "public",
+          "\"public\".\"adMetric\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"adMetric_campaignId_date_key\"",
+        "sql": "ALTER TABLE \"public\".\"adMetric\" ADD CONSTRAINT \"adMetric_campaignId_date_key\" UNIQUE (\"campaignId\", \"date\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"adMetric_campaignId_date_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adMetric_campaignId_date_key",
+          "public",
+          "\"public\".\"adMetric\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.user.user_role_check_028dd02e",
+    "label": "Add check constraint \"user_role_check_028dd02e\" on \"user\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "user_role_check_028dd02e",
+        "table": "user"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"user_role_check_028dd02e\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_role_check_028dd02e",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"user_role_check_028dd02e\"",
+        "sql": "ALTER TABLE \"public\".\"user\" ADD CONSTRAINT \"user_role_check_028dd02e\" CHECK (\"role\" IN ('USER', 'SELLER', 'MODERATOR', 'SUPPORT', 'FINANCE', 'ADMIN', 'SUPERADMIN'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"user_role_check_028dd02e\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "user_role_check_028dd02e",
+          "public",
+          "\"public\".\"user\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adCampaign.adCampaign_advertiserId_idx_d211eb82",
+    "label": "Create index \"adCampaign_advertiserId_idx_d211eb82\" on \"adCampaign\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adCampaign_advertiserId_idx_d211eb82",
+        "table": "adCampaign"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adCampaign_advertiserId_idx_d211eb82\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign_advertiserId_idx_d211eb82\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adCampaign_advertiserId_idx_d211eb82\"",
+        "sql": "CREATE INDEX \"adCampaign_advertiserId_idx_d211eb82\" ON \"public\".\"adCampaign\" (\"advertiserId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adCampaign_advertiserId_idx_d211eb82\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign_advertiserId_idx_d211eb82\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adCampaign.adCampaign_placement_status_idx_ea901936",
+    "label": "Create index \"adCampaign_placement_status_idx_ea901936\" on \"adCampaign\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adCampaign_placement_status_idx_ea901936",
+        "table": "adCampaign"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adCampaign_placement_status_idx_ea901936\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign_placement_status_idx_ea901936\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adCampaign_placement_status_idx_ea901936\"",
+        "sql": "CREATE INDEX \"adCampaign_placement_status_idx_ea901936\" ON \"public\".\"adCampaign\" (\"placement\", \"status\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adCampaign_placement_status_idx_ea901936\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign_placement_status_idx_ea901936\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adCampaign.adCampaign_status_reviewStatus_idx_67c9a02a",
+    "label": "Create index \"adCampaign_status_reviewStatus_idx_67c9a02a\" on \"adCampaign\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adCampaign_status_reviewStatus_idx_67c9a02a",
+        "table": "adCampaign"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adCampaign_status_reviewStatus_idx_67c9a02a\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign_status_reviewStatus_idx_67c9a02a\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adCampaign_status_reviewStatus_idx_67c9a02a\"",
+        "sql": "CREATE INDEX \"adCampaign_status_reviewStatus_idx_67c9a02a\" ON \"public\".\"adCampaign\" (\"status\", \"reviewStatus\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adCampaign_status_reviewStatus_idx_67c9a02a\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adCampaign_status_reviewStatus_idx_67c9a02a\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.adMetric.adMetric_campaignId_idx_3aacd648",
+    "label": "Create index \"adMetric_campaignId_idx_3aacd648\" on \"adMetric\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "adMetric_campaignId_idx_3aacd648",
+        "table": "adMetric"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"adMetric_campaignId_idx_3aacd648\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adMetric_campaignId_idx_3aacd648\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"adMetric_campaignId_idx_3aacd648\"",
+        "sql": "CREATE INDEX \"adMetric_campaignId_idx_3aacd648\" ON \"public\".\"adMetric\" (\"campaignId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"adMetric_campaignId_idx_3aacd648\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"adMetric_campaignId_idx_3aacd648\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.entitlement.entitlement_kind_revokedAt_idx_fd297431",
+    "label": "Create index \"entitlement_kind_revokedAt_idx_fd297431\" on \"entitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "entitlement_kind_revokedAt_idx_fd297431",
+        "table": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"entitlement_kind_revokedAt_idx_fd297431\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_kind_revokedAt_idx_fd297431\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"entitlement_kind_revokedAt_idx_fd297431\"",
+        "sql": "CREATE INDEX \"entitlement_kind_revokedAt_idx_fd297431\" ON \"public\".\"entitlement\" (\"kind\", \"revokedAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"entitlement_kind_revokedAt_idx_fd297431\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_kind_revokedAt_idx_fd297431\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.entitlement.entitlement_subjectType_subjectId_kind_idx_de22942b",
+    "label": "Create index \"entitlement_subjectType_subjectId_kind_idx_de22942b\" on \"entitlement\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "entitlement_subjectType_subjectId_kind_idx_de22942b",
+        "table": "entitlement"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"entitlement_subjectType_subjectId_kind_idx_de22942b\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_subjectType_subjectId_kind_idx_de22942b\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"entitlement_subjectType_subjectId_kind_idx_de22942b\"",
+        "sql": "CREATE INDEX \"entitlement_subjectType_subjectId_kind_idx_de22942b\" ON \"public\".\"entitlement\" (\"subjectType\", \"subjectId\", \"kind\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"entitlement_subjectType_subjectId_kind_idx_de22942b\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"entitlement_subjectType_subjectId_kind_idx_de22942b\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.systemLog.systemLog_createdAt_idx_9575dbd7",
+    "label": "Create index \"systemLog_createdAt_idx_9575dbd7\" on \"systemLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "systemLog_createdAt_idx_9575dbd7",
+        "table": "systemLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"systemLog_createdAt_idx_9575dbd7\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"systemLog_createdAt_idx_9575dbd7\"",
+        "sql": "CREATE INDEX \"systemLog_createdAt_idx_9575dbd7\" ON \"public\".\"systemLog\" (\"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"systemLog_createdAt_idx_9575dbd7\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog_createdAt_idx_9575dbd7\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.systemLog.systemLog_level_createdAt_idx_85b9ef83",
+    "label": "Create index \"systemLog_level_createdAt_idx_85b9ef83\" on \"systemLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "systemLog_level_createdAt_idx_85b9ef83",
+        "table": "systemLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"systemLog_level_createdAt_idx_85b9ef83\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog_level_createdAt_idx_85b9ef83\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"systemLog_level_createdAt_idx_85b9ef83\"",
+        "sql": "CREATE INDEX \"systemLog_level_createdAt_idx_85b9ef83\" ON \"public\".\"systemLog\" (\"level\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"systemLog_level_createdAt_idx_85b9ef83\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog_level_createdAt_idx_85b9ef83\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.systemLog.systemLog_service_createdAt_idx_b0dbdc8e",
+    "label": "Create index \"systemLog_service_createdAt_idx_b0dbdc8e\" on \"systemLog\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "systemLog_service_createdAt_idx_b0dbdc8e",
+        "table": "systemLog"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"systemLog_service_createdAt_idx_b0dbdc8e\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog_service_createdAt_idx_b0dbdc8e\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"systemLog_service_createdAt_idx_b0dbdc8e\"",
+        "sql": "CREATE INDEX \"systemLog_service_createdAt_idx_b0dbdc8e\" ON \"public\".\"systemLog\" (\"service\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"systemLog_service_createdAt_idx_b0dbdc8e\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"systemLog_service_createdAt_idx_b0dbdc8e\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.adCampaign.adCampaign_advertiserId_fkey",
+    "label": "Add foreign key \"adCampaign_advertiserId_fkey\" on \"adCampaign\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "adCampaign_advertiserId_fkey",
+        "table": "adCampaign"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"adCampaign_advertiserId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adCampaign_advertiserId_fkey",
+          "public",
+          "\"public\".\"adCampaign\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"adCampaign_advertiserId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"adCampaign\"\nADD CONSTRAINT \"adCampaign_advertiserId_fkey\"\nFOREIGN KEY (\"advertiserId\")\nREFERENCES \"public\".\"user\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"adCampaign_advertiserId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adCampaign_advertiserId_fkey",
+          "public",
+          "\"public\".\"adCampaign\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.adMetric.adMetric_campaignId_fkey",
+    "label": "Add foreign key \"adMetric_campaignId_fkey\" on \"adMetric\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "adMetric_campaignId_fkey",
+        "table": "adMetric"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"adMetric_campaignId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adMetric_campaignId_fkey",
+          "public",
+          "\"public\".\"adMetric\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"adMetric_campaignId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"adMetric\"\nADD CONSTRAINT \"adMetric_campaignId_fkey\"\nFOREIGN KEY (\"campaignId\")\nREFERENCES \"public\".\"adCampaign\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"adMetric_campaignId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "adMetric_campaignId_fkey",
+          "public",
+          "\"public\".\"adMetric\""
+        ]
+      }
+    ]
+  }
+]

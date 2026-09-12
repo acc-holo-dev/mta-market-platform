@@ -2,6 +2,8 @@ node_modules/
 .next/
 dist/
 .turbo/
+temp/
+logs/
 site/server/.agents/
 site/server/.claude/
 site/server/.cursor/

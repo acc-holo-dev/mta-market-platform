@@ -1,4 +1,4 @@
-# DATA — архитектура данных
+﻿# DATA — архитектура данных
 
 Область: PostgreSQL 16 + Prisma 8 contract ORM + Redis + объектное хранилище.
 Процедура миграций: [DATABASE-MIGRATIONS](../operations/DATABASE-MIGRATIONS.md)
@@ -54,7 +54,7 @@
 | Назначение | Ключи | Поведение при недоступности |
 |---|---|---|
 | Rate limiting | `rl:standard|strict|auth:<ip>`, `rlu:<action>:<user>` | fail-open для bulk (`standard`, по умолчанию), fail-closed (503) для security-групп — M-002 |
-| Activity-кэш | `plan006:activity:live:v1`, `plan006:activity:snapshot:v1:<limit>` | TTL 45 c, fail-open; инвалидация `bustActivityCache()` на высокоценных мутациях |
+| Activity-кэш | `activity:live:v2`, `activity:snapshot:v2:<limit>` | TTL 45 c, fail-open; инвалидация `bustActivityCache()` на высокоценных мутациях |
 
 Сессии в Redis **не хранятся** — сессии в PostgreSQL (`Session`); в Redis
 только счётчики и кэш. Прочее (кэш запросов, очереди) не используется.

@@ -2,11 +2,6 @@ import dotenv from "dotenv";
 import { enforceEnvironmentValidation } from "./lib/startupValidation.js";
 import { createApp } from "./app.js";
 import { logger } from "./lib/logger.js";
-import { startReconciliationScheduler } from "./jobs/reconciliation.js";
-import {
-  startServerMonitoringScheduler,
-  stopServerMonitoringScheduler,
-} from "./jobs/serverMonitoring.js";
 import { redis } from "./lib/redis.js";
 import { db } from "./prisma/db.js";
 import { sweepLegacyStoredTokens } from "./lib/tokenCrypto.js";
@@ -32,13 +27,12 @@ const server = app.listen(PORT, () => {
     node_env: process.env.NODE_ENV ?? "development",
   });
 
-  // PLAN B-003: periodic financial reconciliation (payments/refunds/payouts/
-  // provider events/internal ledger). No-op in test env; stop() handle kept
-  // for graceful shutdown.
-  const stopReconciliation = startReconciliationScheduler();
-  // PLAN-005 E: server monitoring sweep (stale heartbeats -> UNKNOWN,
-  // expired review tokens). No-op in test env.
-  startServerMonitoringScheduler();
+  // PLAN B-003 / PLAN-005 E: the reconciliation and server-monitoring
+  // schedulers moved to the dedicated worker runtime (PLAN-019 H-003) so
+  // background work scales independently from the HTTP server.
+  logger.info("schedulers_moved_to_worker_runtime", {
+    started_by: "python startup.py dev | compose worker service",
+  });
 
   // PLAN-016 A-009: one-time idempotent re-encryption of legacy plaintext
   // provider tokens (converges to a no-op; failure must not block startup).
@@ -54,8 +48,6 @@ const server = app.listen(PORT, () => {
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info("server_shutdown", { signal });
-    stopReconciliation.stop();
-    stopServerMonitoringScheduler();
 
     // J-003: close dependency handles so connections drain cleanly instead
     // of being dropped by process exit (avoids orphaned PG/Redis sockets and

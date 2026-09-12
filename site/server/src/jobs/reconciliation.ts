@@ -27,7 +27,7 @@ import '../lib/providers/payment-tbank.js';
 import '../lib/providers/payment-crypto.js';
 import { reconcileAllPurchases } from '../lib/reconciliation/internal.js';
 import { logger } from '../lib/logger.js';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
+// PLAN-019 A-006: date helpers are native Date math — no date-fns dependency.
 import type { CycleResult, CycleStepResult } from '../lib/reconciliation/types.js';
 
 export type { CycleResult, CycleStepResult };
@@ -53,11 +53,12 @@ function windowFor(now: Date, intervalMs: number): { periodStart: Date; periodEn
 /** Run yesterday's window (kept for the `reconciliation:run` npm script). */
 export async function runDailyReconciliation(): Promise<void> {
   const now = new Date();
-  const yesterday = subDays(now, 1);
-  await runReconciliationCycle(now, {
-    periodStart: startOfDay(yesterday),
-    periodEnd: endOfDay(yesterday),
-  });
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const periodStart = new Date(yesterday);
+  periodStart.setHours(0, 0, 0, 0);
+  const periodEnd = new Date(yesterday);
+  periodEnd.setHours(23, 59, 59, 999);
+  await runReconciliationCycle(now, { periodStart, periodEnd });
 }
 
 /**

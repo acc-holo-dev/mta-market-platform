@@ -417,7 +417,7 @@ export default function NewResourcePage() {
                   id="res-file"
                   type="file"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="mt-1 block w-full text-sm text-content-secondary file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-white transition-colors duration-fast hover:file:bg-accent-strong"
+                  className="mt-1 block w-full text-sm text-content-secondary file:mr-3 file:rounded-md file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-on-accent transition-colors duration-fast hover:file:bg-accent-strong"
                 />
                 {upload ? (
                   <p className="text-xs text-ok mt-1">

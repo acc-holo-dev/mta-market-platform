@@ -5,6 +5,28 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { spawnSync } from "child_process";
 import path from "path";
+import { createRequire } from "module";
+
+// tsx CLI resolved through the server package's dependency graph — a
+// hard-coded relative path breaks when pnpm hoisting shifts (PLAN-019 A).
+// Resolution chain: package.json dir + dist/cli.mjs (verified on disk) →
+// package entry when it already points at the CLI.
+const serverRequire = createRequire(
+  path.resolve(__dirname, "../../../site/server/package.json")
+);
+function resolveTsxCli(): string {
+  try {
+    const pkgJsonPath = serverRequire.resolve("tsx/package.json");
+    const candidate = path.join(path.dirname(pkgJsonPath), "dist", "cli.mjs");
+    if (require("fs").existsSync(candidate)) return candidate;
+  } catch {
+    // fall through to the entry-based resolution
+  }
+  const entry = serverRequire.resolve("tsx");
+  if (entry.endsWith("cli.mjs") && require("fs").existsSync(entry)) return entry;
+  throw new Error(`tsx CLI not resolvable (entry: ${entry})`);
+}
+const tsxCli = resolveTsxCli();
 
 const savedEnv: Record<string, string | undefined> = {};
 
@@ -243,7 +265,7 @@ describe("A-012: acceptance — missing secret exits non-zero", () => {
       // the acceptance racy (server started, timeout-SIGTERM exited 0).
       env.JWT_SECRET = "";
 
-      const result = spawnSync(process.execPath, ["node_modules/tsx/dist/cli.mjs", "src/index.ts"], {
+      const result = spawnSync(process.execPath, [tsxCli, "src/index.ts"], {
         cwd: serverDir,
         env,
         encoding: "utf-8",

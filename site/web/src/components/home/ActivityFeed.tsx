@@ -11,6 +11,7 @@ import {
   type ActivitySnapshot,
 } from "@/lib/api-ext";
 import { timeAgo } from "@/lib/domain";
+import { activityKeys } from "@/lib/queries";
 import {
   Server,
   MessageSquare,
@@ -113,7 +114,7 @@ export function ActivityItemRow({ item }: { item: ActivityItem }) {
 
 export function ActivityFeed({ snapshot }: { snapshot?: ActivitySnapshot }) {
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["activity", "snapshot"],
+    queryKey: activityKeys.snapshotKey(),
     queryFn: fetchActivity,
     enabled: snapshot === undefined,
   });

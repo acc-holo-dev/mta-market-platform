@@ -29,11 +29,13 @@
 |---|---|---|---|---|
 | next | 15.5.x | 16.3.x | **DEFER** | RED: Next 16 + eslint-config-next 16 (требует ESLint >= 9) + flat-config миграция ESLint — единый шаг; PLAN-013 редизайн только что прошёл, риски дизайнерской поверхности не смешиваются с maintenance-этапом |
 | eslint | 8.57.1 | 10.x | **DEFER** | мигрируется вместе с eslint-config-next 16 (peer `eslint >=9`) |
-| express | 4.22.x | 5.2.x | **DEFER** | RED: path-to-regexp v8 / router behavior; миграция отдельной волной с полной payment/webhook regression |
-| commander | 12.x | 15.x | **DEFER** | major разрыв; используется только DRM CLI — низкий приоритет |
+| express | 4.22.x | 5.2.x | **DEFER** | RED: path-to-regexp v8 / router behavior; миграция отдельной волной с полной payment/webhook regression. `@types/express` запинен на 4.17.x ПОД рантайм 4.x — кросс-мажорные связки types/runtime недопустимы (PLAN-019 A-003) |
+| commander | — (удалён) | 15.x | **REMOVED** | PLAN-019 A-006: использовался только DRM CLI; CLI переписан на ручной разбор аргументов (площадь стабильна, зависимость не нужна) |
+| date-fns | — (удалён) | — | **REMOVED** | PLAN-019 A-006: три хелпера (subDays/startOfDay/endOfDay) в jobs/reconciliation.ts заменены нативной Date-математикой |
 | dotenv | 16.6.x | 17.4.x | **DEFER** | major (tips/behavior); приходит транзитивно через prisma rc.13 — прямой бамп не требуется |
 | typescript | 5.9.3 | 7.0.2 | **HOLD** | TS 7 — новая генерация; ecosystem (typescript-eslint 8.x, Next 15, Prisma emit) верифицирован на 5.9; миграция RED-класса отдельным планом |
 | tailwindcss | 3.4.x | 4.3.x | **HOLD** | PLAN-013 design system построен на 3.x; Tailwind 4 — только полная миграция (tokens/theme/globals/utilities/components/build/visual QA/E2E) |
+| axios | — (удалён) | 1.x | **REMOVED** | PLAN-019 A-005: канонический fetch-клиент (lib/api.ts) покрывает единственный сценарий axios (bearer + single-flight refresh); удаляется вместе с миграцией клиента |
 
 ## Dependabot
 
@@ -57,6 +59,15 @@
 `@prisma/client` — пин **exact** (7.10.0): финансовые инварианты и
 генерируемый контракт не должны дрейфовать с caret-обновлениями. Аналогично
 все Prisma-линейки пинятся точно (`8.0.0-rc.9`, `0.3.0`), пока 8.x в RC.
+
+**Парность Prisma client/adapter (PLAN-019 A-002)**: связка
+`@prisma/client 7.10.0` + `@prisma/orm-postgres 8.0.0-rc.9` — это
+ОСОЗНАННАЯ, поддерживаемая схема нового поколения Prisma: клиент —
+интерфейсный рантайм-пакет, adapter (`orm-postgres`) — драйвер, версионируемые
+независимо (peer-требование адаптера — только `typescript >= 5.9`, связи с
+мажором клиента нет). Смешения несовместимых мажоров нет; менять клиента
+на 8-rc без необходимости запрещено (финансовый пин). Валидация парности —
+`prisma contract emit` + `db update` + полный тестовый прогон.
 
 ## Лицензии (§35)
 

@@ -159,7 +159,7 @@ export default function CommunityPage() {
                     className="group rounded-card border border-line bg-surface p-4 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong transition-colors duration-fast group-hover:bg-accent group-hover:text-white">
+                      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-strong transition-colors duration-fast group-hover:bg-accent group-hover:text-on-accent">
                         <MessagesSquare className="h-4 w-4" aria-hidden />
                       </span>
                       <p className="font-semibold tracking-tight group-hover:text-accent-strong">{c.name}</p>

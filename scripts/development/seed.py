@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Seed the development database (dev-admin + plan003/plan005 datasets).
+"""Seed the development database (dev-admin + plan003/plan005/services datasets).
 
-Usage: seed.py [--admin-only | --plan003 | --plan005 | --heartbeat]
+Usage: seed.py [--admin-only | --plan003 | --plan005 | --services | --heartbeat]
 """
 import subprocess, sys
 from pathlib import Path
@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SERVER = ROOT / "site" / "server"
 which = [a for a in sys.argv[1:] if a.startswith("--")]
-which = which or ["--admin", "--plan003", "--plan005"]
+which = which or ["--admin", "--plan003", "--plan005", "--services"]
 
 def tsx(script: str, *args: str) -> int:
     return subprocess.run(
@@ -24,6 +24,8 @@ if "--plan003" in which:
     rc |= tsx("seed-plan003.ts")
 if "--plan005" in which:
     rc |= tsx("seed-plan005.ts")
+if "--services" in which:
+    rc |= tsx("seed-services.ts")
 if "--heartbeat" in which:
     rc |= tsx("dev-heartbeat.ts")
 sys.exit(rc)

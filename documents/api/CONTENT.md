@@ -1,4 +1,4 @@
-# CONTENT — статьи, глобальная лента, activity, дашборд
+﻿# CONTENT — статьи, глобальная лента, activity, дашборд
 
 Область: `site/server/src/routes/{content,news,activity,dashboard}.ts`,
 `routes/adminContent.ts`, `site/server/src/lib/activity.ts`.
@@ -66,7 +66,7 @@ PUBLISHED-новостей серверов (`kind NEWS`) и обновлени�
 Активность — **производный** слой агрегации поверх существующих таблиц
 (Server/Resource/Forum/ServerNews/ServerUpdate/Review/Article); ничего не
 пишет в домены. Окно `ACTIVITY_WINDOW_DAYS` (дефолт 7, кап 30);
-кэш Redis TTL 45 с (`plan006:activity:*`), fail-open.
+кэш Redis TTL 45 с (`activity:live:v2` / `activity:snapshot:v2:*`), fail-open.
 
 Типы событий и приоритеты (детерминированные, без ML):
 

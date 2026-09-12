@@ -121,3 +121,38 @@ export function incEmailFailure(): void {
 export function incPaymentSuccess(): void {
   metrics.counter("payment_success_total", METRIC_HELP.payment_success_total);
 }
+
+// ---- PLAN-018 P-001 / PLAN-019 Q-004: outbox (queue) observability --------
+// The worker reports depth each poll cycle; dead-letter increments fire when
+// an event exhausts its retry budget (H-005: no infinite retries).
+
+export const OUTBOX_HELP = {
+  outbox_depth: "Outbox events pending processing (last observed)",
+  outbox_dead_letter_total: "Outbox events moved to permanent FAILED after retries",
+  outbox_processed_total: "Outbox events processed successfully",
+} as const;
+
+export function recordOutboxDepth(depth: number): void {
+  // Depth is a gauge, not a counter: render through a counter keyed by the
+  // current depth bucket would churn labels; the worker reports the raw
+  // number via this helper, and the registry stores it as a single-value
+  // counter series reset each scrape cycle by the worker (last-write wins
+  // in practice — the worker overwrites every poll).
+  const series = (metrics as unknown as {
+    counters: Map<string, { help: string; values: Map<string, number> }>;
+  }).counters;
+  let existing = series.get("outbox_depth");
+  if (!existing) {
+    existing = { help: OUTBOX_HELP.outbox_depth, values: new Map() };
+    series.set("outbox_depth", existing);
+  }
+  existing.values.set("", depth);
+}
+
+export function incOutboxDeadLetter(): void {
+  metrics.counter("outbox_dead_letter_total", OUTBOX_HELP.outbox_dead_letter_total);
+}
+
+export function incOutboxProcessed(): void {
+  metrics.counter("outbox_processed_total", OUTBOX_HELP.outbox_processed_total);
+}

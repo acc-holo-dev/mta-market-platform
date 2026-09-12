@@ -1,8 +1,8 @@
 # Backup & Restore — Policy and Drill (PLAN-004 C-004/C-005, Q-001..Q-005)
 
 Статус: действующая политика (PLAN-004).
-Инструмент: `scripts/backup.sh` (вызывается автоматически из `scripts/deploy.sh`
-перед каждой миграцией).
+Инструмент: `scripts/database/backup.sh` (вызывается автоматически из
+`scripts/deployments/deploy.sh` перед каждой миграцией).
 
 ## 1. Backup policy (C-004, Q-001)
 
@@ -22,17 +22,17 @@ RPO = 24h (nightly + pre-deploy backup). RTO = 4h (см. §4).
 Полный drill (НЕ на живой production БД):
 
 ```bash
-# 1. Поднять чистый staging (docker-compose.prod.yml с staging .env)
-./scripts/deploy.sh staging <last-good-tag>
+# 1. Поднять чистый staging (infrastructure/docker/compose/production.yml с staging .env)
+./scripts/deployments/deploy.sh staging <last-good-tag>
 
 # 2. Остановить backend (чтобы не писал в клонируемую БД)
-docker compose -f docker-compose.prod.yml stop backend
+docker compose -f infrastructure/docker/compose/production.yml stop backend
 
 # 3. Проверить контрольные суммы бэкапа
 cd backups && sha256sum -c <(grep <date> SHA256SUMS)
 
 # 4. Восстановить БД
-docker compose -f docker-compose.prod.yml exec -T postgres \
+docker compose -f infrastructure/docker/compose/production.yml exec -T postgres \
   psql -U mtamarket -d mtamarket < backups/db_backup_<date>.sql
 
 # 5. Восстановить uploads
@@ -41,7 +41,7 @@ docker run --rm -v mta-market-platform_uploads_data:/dst \
   "cd /dst && tar -xzf /src/uploads_backup_<date>.tar.gz"
 
 # 6. Вернуть backend, проверить приложение
-docker compose -f docker-compose.prod.yml up -d backend
+docker compose -f infrastructure/docker/compose/production.yml up -d backend
 # 7. Acceptance: логин, Marketplace, resource detail, медиа из хранилища,
 #    DRM activate (lease выдаётся), покупка test-картой sandbox.
 ```
@@ -67,8 +67,8 @@ Restore считается успешным только при прохожде
 2. Поднять Postgres/Redis (`docker compose up -d postgres redis`).
 3. Восстановить БД из последнего backup (§2 шаги 3–4).
 4. Восстановить uploads volume из tar-бэкапа / пересоздать бакет из реплики.
-5. `./scripts/deploy.sh production <last-good-tag>` (deploy.sh сам прогонит
-   миграции — на восстановленной схеме они no-op).
+5. `./scripts/deployments/deploy.sh production <last-good-tag>` (deploy.sh сам
+   прогонит миграции — на восстановленной схеме они no-op).
 6. Acceptance как в §2 шаг 7.
 7. Целевые значения первой production версии: **RTO 4 часа, RPO 24 часа**.
 

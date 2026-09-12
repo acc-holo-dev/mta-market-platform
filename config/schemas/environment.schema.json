@@ -1,39 +1,128 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mta-market.local/schemas/environment.schema.json",
-  "title": "MTA Market environment config manifest",
+  "title": "MTA Market environment config (config/environments/*.yaml)",
   "type": "object",
   "required": ["api"],
+  "additionalProperties": false,
   "properties": {
     "api": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "hostPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "nodeEnv": { "enum": ["development", "production"] },
         "baseUrl": { "type": "string" },
         "frontendUrl": { "type": "string" },
         "corsOrigins": { "type": "array", "items": { "type": "string" } },
         "cookieSameSite": { "enum": ["lax", "strict", "none"] },
-        "trustProxy": { "type": "boolean" },
-        "logFormat": { "enum": ["pretty", "json"] }
+        "trustProxy": { "type": "boolean" }
       }
     },
-    "web": { "type": "object" },
-    "database": { "type": "object" },
-    "redis": { "type": "object" },
-    "storage": { "type": "object" },
-    "payments": { "type": "object" },
-    "email": { "type": "object" },
-    "rateLimits": {
+    "web": {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "auth": { "type": "integer", "minimum": 1 },
-        "standard": { "type": "integer", "minimum": 1 },
-        "strict": { "type": "integer", "minimum": 1 },
-        "login": { "type": "integer", "minimum": 1 },
-        "refresh": { "type": "integer", "minimum": 1 }
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "hostPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "publicApiUrl": { "type": "string" }
       }
     },
-    "jobs": { "type": "object" }
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "db": { "type": "string" },
+        "user": { "type": "string" },
+        "passwordEnv": { "type": "string" },
+        "test": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": { "type": "string" },
+            "composeFile": { "type": "string" },
+            "hostPort": { "type": "integer", "minimum": 1, "maximum": 65535 }
+          }
+        }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string" }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "s3Enabled": { "type": "boolean" },
+        "uploadDir": { "type": "string" }
+      }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preset": { "type": "string" }
+          }
+        },
+        "drm": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "marketApiBase": { "type": "string" },
+            "keyStoreHome": { "type": "string" }
+          }
+        }
+      }
+    },
+    "payments": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "providersEnabled": { "type": "boolean" }
+      }
+    },
+    "email": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "jobs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reconciliationEnabled": { "type": "boolean" },
+        "serverMonitoringEnabled": { "type": "boolean" }
+      }
+    },
+    "vitest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fileParallelism": { "type": "boolean" },
+        "testTimeoutMs": { "type": "integer", "minimum": 1000 }
+      }
+    },
+    "e2e": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseURL": { "type": "string" },
+        "apiUrl": { "type": "string" },
+        "adminEmail": { "type": "string" }
+      }
+    }
   }
 }

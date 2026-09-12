@@ -1,0 +1,40 @@
+# Rate-limit classes per environment — one source of truth (PLAN-017 §12).
+# startup.py injects the selected environment's column as
+# AUTH_RATE_LIMIT_MAX / STANDARD_RATE_LIMIT_MAX / STRICT_RATE_LIMIT_MAX /
+# LOGIN_RATE_LIMIT_MAX / REFRESH_RATE_LIMIT_MAX. Dev/E2E values are
+# intentionally loose; production values match
+# infrastructure/docker/compose/production.yml defaults.
+rateLimits:
+  auth:
+    development: 10000
+    test: 10000
+    staging: 100
+    production: 100
+  standard:
+    development: 10000
+    test: 10000
+    staging: 300
+    production: 300
+  strict:
+    development: 10000
+    test: 10000
+    staging: 10
+    production: 10
+  login:
+    development: 10000
+    test: 10000
+    staging: 10
+    production: 10
+  refresh:
+    development: 10000
+    test: 10000
+    staging: 30
+    production: 30
+
+# Rate-limit windows (documented intent; the server keeps its presets).
+windowsMs:
+  auth: 900000        # 15 minutes
+  standard: 60000
+  strict: 60000
+  login: 60000
+  refresh: 60000

@@ -7,7 +7,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link2, Unlink, ShieldAlert } from "lucide-react";
 import { bootstrapSession } from "@/lib/api";
@@ -24,9 +24,11 @@ import { Button } from "@/components/ui/Button";
 import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { useAuthStore } from "@/store/auth";
+import { identitiesKey } from "@/lib/queries";
 
 function IdentitiesPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { accessToken } = useAuthStore();
   const qc = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -43,15 +45,27 @@ function IdentitiesPageContent() {
     };
   }, [router]);
 
+  // Реагируем на изменение query (?linked=1 / ?linked=0&error=...), в том
+  // числе на клиентские повторные визиты (не только первый монтир).
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("linked") === "1") {
+    const linked = searchParams.get("linked");
+    const code = searchParams.get("error");
+    if (linked === "1") {
       setNotice("Идентичность привязана.");
+      setError(null);
+    } else if (linked === "0") {
+      // Коды соответствуют routes/auth.ts (PLAN-017 §63).
+      const messages: Record<string, string> = {
+        link_session_expired: "Сессия привязки истекла. Попробуйте ещё раз.",
+        identity_conflict: "Эта внешняя идичность уже привязана к другому аккаунту.",
+      };
+      setNotice(null);
+      setError(messages[code ?? ""] ?? "Не удалось привязать идентичность. Попробуйте ещё раз.");
     }
-  }, []);
+  }, [searchParams]);
 
   const identitiesQuery = useQuery({
-    queryKey: ["auth", "identities"],
+    queryKey: identitiesKey(),
     queryFn: fetchIdentities,
     enabled: accessToken !== null,
   });
@@ -76,7 +90,7 @@ function IdentitiesPageContent() {
     onSuccess: () => {
       setError(null);
       setNotice("Идентичность отвязана.");
-      qc.invalidateQueries({ queryKey: ["auth", "identities"] });
+      qc.invalidateQueries({ queryKey: identitiesKey() });
     },
     onError: (e) => setError(getErrorMessage(e)),
   });

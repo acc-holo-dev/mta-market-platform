@@ -177,6 +177,18 @@ async function deleteEntitiesForUserIds(testUserIds: Set<string>): Promise<void>
     console.warn("[reset] audit logs:", e instanceof Error ? e.message : e);
   }
 
+  // PLAN-019 H: outbox events have no user FK — commerce suites emit
+  // PAYMENT_SUCCEEDED rows during checkout tests; leaving them behind
+  // pollutes the outbox lifecycle suite (claim ordering/counting).
+  try {
+    const outboxRows = await db.orm.public.OutboxEvent.where({}).all();
+    for (const row of outboxRows) {
+      await db.orm.public.OutboxEvent.where({ id: row.id }).delete().catch(() => undefined);
+    }
+  } catch (e) {
+    console.warn("[reset] outbox events:", e instanceof Error ? e.message : e);
+  }
+
   // PLAN-012 §5: stale idempotency records from interrupted runs must not
   // leak into later runs (a same-key replay would replay a dead response or
   // conflict). Keys are namespaced per test file, so all test keys carry the
@@ -292,6 +304,49 @@ async function deleteEntitiesForUserIds(testUserIds: Set<string>): Promise<void>
     }
   } catch (e) {
     console.warn("[reset] server memberships:", e instanceof Error ? e.message : e);
+  }
+
+  // PLAN-017 G/H: advertising campaigns (metrics cascade via FK) and
+  // premium entitlements (standalone rows keyed by subjectId — test fixtures
+  // always use ids from the fixed test range). Deleted before users so the
+  // advertiser FK never restricts user cleanup.
+  try {
+    const adCampaigns = await db.orm.public.AdCampaign.where({}).all();
+    for (const c of adCampaigns) {
+      if (testUserIds.has(c.advertiserId)) {
+        const metrics = await db.orm.public.AdMetric.where({ campaignId: c.id }).all();
+        for (const m of metrics) {
+          await db.orm.public.AdMetric.where({ id: m.id }).delete().catch(() => undefined);
+        }
+        await db.orm.public.AdCampaign.where({ id: c.id }).delete().catch(() => undefined);
+      }
+    }
+  } catch (e) {
+    console.warn("[reset] ad campaigns:", e instanceof Error ? e.message : e);
+  }
+  try {
+    const entitlements = await db.orm.public.Entitlement.where({}).all();
+    for (const e of entitlements) {
+      if (e.subjectId.startsWith(TEST_ID_PREFIX)) {
+        await db.orm.public.Entitlement.where({ id: e.id }).delete().catch(() => undefined);
+      }
+    }
+  } catch (e) {
+    console.warn("[reset] entitlements:", e instanceof Error ? e.message : e);
+  }
+
+  // PLAN-017 F: SystemLog rows are userless — test-range rows are identified
+  // by the X-Request-Id the test range sends (the requestId middleware regex
+  // accepts it, so admin-platform routes stamp it onto every log entry).
+  try {
+    const logs = await db.orm.public.SystemLog.where({}).all();
+    for (const l of logs) {
+      if (l.requestId && l.requestId.startsWith(TEST_ID_PREFIX)) {
+        await db.orm.public.SystemLog.where({ id: l.id }).delete().catch(() => undefined);
+      }
+    }
+  } catch (e) {
+    console.warn("[reset] system logs:", e instanceof Error ? e.message : e);
   }
 
   // 7. Users last (sessions/accounts/reviews cascade)

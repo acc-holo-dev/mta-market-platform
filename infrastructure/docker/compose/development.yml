@@ -1,11 +1,14 @@
 # Development infrastructure (host-run dev stack for site/web + site/server).
 # Usage: docker compose -f infrastructure/docker/compose/development.yml up -d
+# or simply: python startup.py dev
 #
 # The application itself runs on the host in dev mode (python startup.py dev
-# or pnpm dev). Only the stateful services are containerized. This mirrors
-# the original mta-market-site docker-compose.yml infra services; the
-# build-based backend/frontend services moved to production.yml (images come
-# from CI) and to the host dev runner.
+# or pnpm dev). Only the stateful services are containerized.
+# Canonical container names (mta-market-postgres / mta-market-redis) are part
+# of the local service contract; startup.py reuses healthy containers from a
+# legacy stack that share these names and adopts them once it is gone.
+
+name: mta-market-dev
 
 services:
   postgres:

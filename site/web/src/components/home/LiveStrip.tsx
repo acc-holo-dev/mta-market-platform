@@ -6,10 +6,13 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { fetchActivity, type ActivitySnapshot } from "@/lib/api-ext";
+import { activityKeys } from "@/lib/queries";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ArrowRight } from "lucide-react";
 
-export const ACTIVITY_QUERY_KEY = ["activity", "snapshot"] as const;
+// PLAN-019 O-001: snapshot key lives in the key factory; this alias keeps the
+// existing import sites (PopularSection, home page) untouched.
+export const ACTIVITY_QUERY_KEY = activityKeys.snapshotKey();
 
 function Metric({
   value,

@@ -2,7 +2,7 @@
 // (PLAN-005 workstream AC: ownership verification, review token, online
 // status, minimum server heartbeat -- explicitly NOT a telemetry platform).
 //
-// Wire protocol (mta-market-site/apps/server/src/routes/integration.ts):
+// Wire protocol (site/server/src/routes/integration.ts):
 //   POST /integration/heartbeat      { token, state?, players?, maxPlayers? }
 //     -> { status, monitoring, verification }
 //   POST /integration/review-tokens  { token, note?, ttlMinutes? }

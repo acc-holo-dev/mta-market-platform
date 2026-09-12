@@ -5,8 +5,12 @@
 
 enum UserRole {
   USER
-  ADMIN
+  SELLER
   MODERATOR
+  SUPPORT
+  FINANCE
+  ADMIN
+  SUPERADMIN
 }
 
 enum UserStatus {
@@ -66,6 +70,20 @@ model User {
   resourceFollowsGiven ResourceFollow[]
   // PLAN-009: Thread Follow
   threadFollows        ForumThreadFollow[]
+  // Admin platform foundation: advertising campaigns owned by this user.
+  adCampaigns  AdCampaign[]
+  // Productization foundation (PLAN-018): payouts, favorites, alerts,
+  // subscriptions, deal rooms, feedback, demo sessions.
+  payouts           PayoutRequest[]
+  favorites         Favorite[]
+  priceAlerts       PriceAlert[]
+  subscriptions     Subscription[]
+  dealRoomsBought   DealRoom[] @relation("dealBuyer")
+  dealRoomsSold     DealRoom[] @relation("dealSeller")
+  dealEvidence      DealEvidence[]
+  dealMessages      DealMessage[]
+  feedbackReports   FeedbackReport[]
+  demoSessions      DemoSession[]
 
   @@index([email])
   @@index([username])
@@ -148,6 +166,10 @@ model Resource {
   articleLinks ArticleResourceLink[]
   follows      ResourceFollow[]
   viewDays     ResourceViewDaily[]
+  // Productization foundation (PLAN-018).
+  priceAlerts  PriceAlert[]
+  demoSessions DemoSession[]
+  forumThread  ForumThread?
 
   @@index([sellerId])
   @@index([status])
@@ -279,6 +301,9 @@ model ResourceVersion {
   publishedAt  TimestamptzString @default(now())
 
   releaseStatus VersionReleaseStatus @default(CANDIDATE)
+  // PLAN-018 D-004: release channels foundation (no automatic broad rollout
+  // without policy — the channel is metadata until the update center ships).
+  channel       ReleaseChannel       @default(STABLE)
 
   resource  Resource  @relation(fields: [resourceId], references: [id], onDelete: Cascade)
   licenses  License[]
@@ -287,11 +312,18 @@ model ResourceVersion {
   encryption ArtifactEncryption?
   sandboxRuns SandboxRun[]
   compatibilityReports CompatibilityReport[]
+  demoSessions DemoSession[]
 
   @@unique([resourceId, version])
   @@index([resourceId])
   // PLAN-006: activity window queries (RESOURCE_UPDATE ordering).
   @@index([releaseStatus, publishedAt])
+}
+
+enum ReleaseChannel {
+  STABLE
+  BETA
+  LEGACY
 }
 
 enum PurchaseStatus {
@@ -1708,6 +1740,7 @@ model ForumThread {
   serverId   String?
   newsId     String? @unique
   articleId  String? @unique
+  resourceId String? @unique // PLAN-018 G-001: resource-linked discussion (one per resource)
   title      String
   state      ForumThreadState @default(OPEN)
   pinned     Boolean @default(false)
@@ -1722,6 +1755,7 @@ model ForumThread {
   server   Server? @relation(fields: [serverId], references: [id], onDelete: Cascade)
   news     ServerNews? @relation(fields: [newsId], references: [id], onDelete: SetNull)
   article  Article?  @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  resource Resource? @relation(fields: [resourceId], references: [id], onDelete: SetNull)
   posts    ForumPost[]
   follows  ForumThreadFollow[]
 
@@ -1729,6 +1763,7 @@ model ForumThread {
   @@index([serverId])
   @@index([authorId])
   @@index([newsId])
+  @@index([resourceId])
   // PLAN-006: activity window queries (NEW_DISCUSSION ordering).
   @@index([createdAt])
 }
@@ -1882,4 +1917,455 @@ model ArticleServerLink {
 
   @@unique([articleId, serverId])
   @@index([serverId])
+}
+
+// =============================================================================
+// Admin platform foundation (PLAN-017 F/G/H)
+// =============================================================================
+
+// System logs (§44): what the application technically did. Separate from
+// AuditLog (who changed what). Bounded: entries are pruned on write.
+enum SystemLogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+model SystemLog {
+  id        String         @id @default(uuid())
+  level     SystemLogLevel @default(INFO)
+  service   String // api | worker | <job-name>
+  requestId String?
+  route     String?
+  errorCode String?
+  message   String
+  meta      Json?
+  createdAt TimestamptzString @default(now())
+
+  @@index([createdAt])
+  @@index([level, createdAt])
+  @@index([service, createdAt])
+}
+
+// Advertising control center (§46–§49). A campaign is a bounded placement
+// booking with an explicit review/approval lifecycle — the platform hosts
+// placements, it is not an ad exchange (DESIGN-SYSTEM §13: honest
+// "Реклама" label, product placements only).
+enum AdPlacement {
+  HOME_HERO
+  HOME_RAIL_SECONDARY
+  MARKET_FEATURED
+  SERVER_FEATURED
+  COMMUNITY_FEATURED
+}
+
+enum AdCampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  EXPIRED
+  CANCELLED
+}
+
+enum AdReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AdCampaign {
+  id           String          @id @default(uuid())
+  advertiserId String
+  name         String
+  placement    AdPlacement
+  title        String
+  body         String
+  imageUrl     String?
+  ctaLabel     String?
+  ctaUrl       String?
+  priority     Int             @default(0)
+  startsAt     TimestamptzString?
+  endsAt       TimestamptzString?
+  status       AdCampaignStatus @default(DRAFT)
+  reviewStatus AdReviewStatus  @default(PENDING)
+  reviewNote   String?
+  // PLAN-018 K-004: campaign billing rides the existing commerce model —
+  // the campaign is booked through a normal Order/Payment, never a second
+  // payment system.
+  orderId      String?
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  advertiser User      @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  metrics    AdMetric[]
+
+  @@index([placement, status])
+  @@index([status, reviewStatus])
+  @@index([advertiserId])
+  @@index([orderId])
+}
+
+// Aggregated daily counters (bounded, no per-request rows).
+model AdMetric {
+  id         String   @id @default(uuid())
+  campaignId String
+  date       String   // YYYY-MM-DD (UTC day bucket)
+  impressions Int     @default(0)
+  clicks      Int     @default(0)
+
+  campaign AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, date])
+}
+
+// Premium entitlement foundation (§50–§51). An entitlement is a real
+// capability grant — never a UI-only badge. Only plans backed by real
+// entitlements are exposed.
+enum EntitlementSubjectType {
+  USER
+  RESOURCE
+  SERVER
+}
+
+enum EntitlementKind {
+  CREATOR_PREMIUM
+  SERVER_PREMIUM
+  MARKETPLACE_PREMIUM
+  ADVERTISING_PREMIUM
+  ANALYTICS_PREMIUM
+}
+
+model Entitlement {
+  id          String                  @id @default(uuid())
+  subjectType EntitlementSubjectType
+  subjectId   String
+  kind        EntitlementKind
+  source      String // ADMIN_GRANT | PLAN_PURCHASE
+  grantedById String?
+  note        String?
+  grantedAt   TimestamptzString @default(now())
+  expiresAt   TimestamptzString?
+  revokedAt   TimestamptzString?
+  revokedById String?
+
+  @@index([subjectType, subjectId, kind])
+  @@index([kind, revokedAt])
+}
+
+// =============================================================================
+// Productization foundation (PLAN-018)
+// =============================================================================
+
+// PLAN-019 H-001/H-002: canonical domain events + outbox pattern. Events are
+// written in the SAME transaction as the domain action and consumed by the
+// worker; nothing critical publishes before the primary transaction commits.
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model OutboxEvent {
+  id          String            @id @default(uuid())
+  eventType   String // USER_REGISTERED, RESOURCE_PUBLISHED, PAYMENT_SUCCEEDED, ...
+  payload     Json
+  status      OutboxEventStatus @default(PENDING)
+  attempts    Int               @default(0)
+  lastError   String?
+  availableAt TimestamptzString @default(now())
+  processedAt TimestamptzString?
+  createdAt   TimestamptzString @default(now())
+
+  @@index([status, availableAt])
+  @@index([eventType, createdAt])
+}
+
+// PLAN-018 A-007: payout lifecycle (admin-reviewed; ledger is the source of
+// truth for available balance — never frontend state).
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model PayoutRequest {
+  id           String       @id @default(uuid())
+  sellerId     String
+  amountMinor  Int
+  currency     String       @default("RUB")
+  status       PayoutStatus @default(PENDING)
+  note         String?
+  reviewedById String?
+  decidedAt    TimestamptzString?
+  ledgerTxnId  String?
+  payoutRef    String?
+  requestedAt  TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+
+  seller User @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, status])
+  @@index([status, requestedAt])
+}
+
+// PLAN-018 I-002: favorites across the four supported surfaces.
+enum FavoriteTargetType {
+  RESOURCE
+  SERVER
+  CREATOR
+  DISCUSSION
+}
+
+model Favorite {
+  id         String             @id @default(uuid())
+  userId     String
+  targetType FavoriteTargetType
+  targetId   String
+  createdAt  TimestamptzString  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+}
+
+// PLAN-018 I-003: price/discount/version notifications watcher.
+enum PriceAlertEvent {
+  PRICE_DROP
+  DISCOUNT_STARTED
+  VERSION_RELEASED
+}
+
+model PriceAlert {
+  id               String           @id @default(uuid())
+  userId           String
+  resourceId       String
+  events           String // comma-separated subset of PriceAlertEvent
+  targetPriceMinor Int?
+  active           Boolean          @default(true)
+  createdAt        TimestamptzString @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resource Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, resourceId])
+  @@index([resourceId, active])
+}
+
+// PLAN-018 J-004: subscription lifecycle. A subscription drives real
+// Entitlement rows (source PLAN_PURCHASE); no recurring billing until the
+// provider contracts support it — renewal is explicit.
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  GRACE_PERIOD
+  CANCELLED
+  EXPIRED
+}
+
+model Subscription {
+  id            String             @id @default(uuid())
+  userId        String
+  plan          EntitlementKind // CREATOR_PREMIUM | SERVER_PREMIUM first
+  status        SubscriptionStatus @default(ACTIVE)
+  startedAt     TimestamptzString  @default(now())
+  expiresAt     TimestamptzString
+  graceUntil    TimestamptzString?
+  autoRenew     Boolean            @default(true)
+  cancelledAt   TimestamptzString?
+  lastPaymentId String?
+  createdAt     TimestamptzString @default(now())
+  updatedAt     temporal.updatedAtString()
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status, expiresAt])
+}
+
+// PLAN-018 L-001/L-002: protected deal room foundation — a bounded
+// transaction workspace with explicit protected states and access control.
+enum DealStatus {
+  CREATED
+  FUNDED
+  DELIVERING
+  DELIVERED
+  ACCEPTED
+  DISPUTED
+  RESOLVED
+  CLOSED
+}
+
+model DealRoom {
+  id          String     @id @default(uuid())
+  buyerId     String
+  sellerId    String
+  subjectType String? // resource | service | server
+  subjectId   String?
+  title       String
+  amountMinor Int
+  currency    String     @default("RUB")
+  status      DealStatus @default(CREATED)
+  orderId     String?
+  createdAt   TimestamptzString @default(now())
+  updatedAt   temporal.updatedAtString()
+
+  buyer  User @relation("dealBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller User @relation("dealSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([buyerId, status])
+  @@index([sellerId, status])
+  @@index([status, updatedAt])
+}
+
+enum DealEvidenceKind {
+  MESSAGE
+  FILE
+  DELIVERY
+  DISPUTE_EVENT
+}
+
+model DealMessage {
+  id        String  @id @default(uuid())
+  roomId    String
+  authorId  String
+  body      String
+  createdAt TimestamptzString @default(now())
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+model DealEvidence {
+  id        String           @id @default(uuid())
+  roomId    String
+  kind      DealEvidenceKind
+  url       String?
+  body      String?
+  createdBy String
+  createdAt TimestamptzString @default(now())
+
+  creator User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+// PLAN-018 M-001: bounded live demo manager (template → clone → install →
+// start → TTL → destroy; sandbox security boundaries, no arbitrary network).
+enum DemoSessionStatus {
+  STARTING
+  RUNNING
+  EXPIRING
+  DESTROYED
+  FAILED
+}
+
+model DemoSession {
+  id             String            @id @default(uuid())
+  resourceId     String
+  versionId      String?
+  requestedById  String
+  status         DemoSessionStatus @default(STARTING)
+  sandboxRef     String?
+  ttlSeconds     Int               @default(1800)
+  connectionInfo Json?
+  startedAt      TimestamptzString @default(now())
+  expiresAt      TimestamptzString
+  destroyedAt    TimestamptzString?
+  failureReason  String?
+
+  resource Resource         @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  version  ResourceVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  requester User            @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+
+  @@index([resourceId, status])
+  @@index([status, expiresAt])
+}
+
+// PLAN-018 O-001/O-004: leak radar foundation — stable artifact fingerprints
+// and admin-investigated cases. Low-confidence matches are never treated as
+// proof of misconduct.
+model ArtifactFingerprint {
+  id            String  @id @default(uuid())
+  artifactHash  String  @unique // sha256 of the released artifact
+  family        String?
+  sizeBytes     Int?
+  entryNames    Json?
+  fromVersionId String?
+  createdAt     TimestamptzString @default(now())
+
+  @@index([family])
+}
+
+enum LeakCaseStatus {
+  OPEN
+  CONFIRMED
+  DISMISSED
+  FALSE_POSITIVE
+  RESOLVED
+}
+
+model LeakCase {
+  id             String          @id @default(uuid())
+  fingerprintId  String
+  status         LeakCaseStatus  @default(OPEN)
+  confidence     Float           @default(0)
+  evidenceCount  Int             @default(0)
+  evidence       Json?
+  notes          String?
+  openedById     String
+  createdAt      TimestamptzString @default(now())
+  resolvedAt     TimestamptzString?
+  resolutionNote String?
+
+  @@index([status, createdAt])
+}
+
+// PLAN-018 S-005: controlled beta feedback (category/severity/route, triaged
+// by admins — never an uncontrolled issue dump).
+enum FeedbackCategory {
+  BUG
+  UX
+  BILLING
+  CONTENT
+  OTHER
+}
+
+enum FeedbackSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FeedbackStatus {
+  NEW
+  TRIAGED
+  RESOLVED
+  DISMISSED
+}
+
+model FeedbackReport {
+  id             String            @id @default(uuid())
+  userId         String
+  category       FeedbackCategory
+  severity       FeedbackSeverity  @default(MEDIUM)
+  description    String
+  route          String?
+  screenshotUrl  String?
+  status         FeedbackStatus    @default(NEW)
+  handledById    String?
+  resolutionNote String?
+  createdAt      TimestamptzString @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
 }

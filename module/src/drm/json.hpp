@@ -6,7 +6,7 @@
 // escaping, and the top-level "signature" member removed. The C++ client
 // must reproduce those exact bytes to verify lease signatures, so the
 // canonical dumper here mirrors the server implementation in
-// mta-market-site (apps/server/src/lib/artifact/crypto.ts):
+// site/server/src/lib/artifact/crypto.ts:
 //   1. drop the "signature" member of the root object;
 //   2. sort object keys by byte order (all protocol keys are ASCII, which
 //      matches the server's UTF-16 code-unit sort);

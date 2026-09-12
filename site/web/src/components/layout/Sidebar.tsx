@@ -22,6 +22,7 @@ import {
   ReceiptText,
   BarChart3,
   ShieldCheck,
+  Star,
   PanelLeftClose,
   PanelLeftOpen,
   X,
@@ -29,6 +30,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { fetchSellerProfile, fetchNotifications } from "@/lib/api-ext";
+import { notificationsKeys, sellerProfileKey } from "@/lib/queries";
 import { useFocusTrap, rememberTrigger, restoreTrigger } from "@/components/ui/focusTrap";
 import { cn } from "@/lib/utils";
 
@@ -76,7 +78,7 @@ export function SidebarNav({ collapsed, onNavigate }: SidebarNavProps) {
 
   // Creator-секция только для реальных продавцов (PLAN-015 §6).
   const { data: sellerProfile } = useQuery({
-    queryKey: ["seller", "profile", "sidebar"],
+    queryKey: sellerProfileKey(),
     queryFn: fetchSellerProfile,
     enabled: authed,
     staleTime: 5 * 60_000,
@@ -86,7 +88,7 @@ export function SidebarNav({ collapsed, onNavigate }: SidebarNavProps) {
 
   // Unread badge для «Уведомления» в сайдбаре.
   const { data: notifData } = useQuery({
-    queryKey: ["notifications", "badge"],
+    queryKey: notificationsKeys.badgeKey(),
     queryFn: () => fetchNotifications("unread"),
     enabled: authed,
     staleTime: 60_000,
@@ -99,6 +101,7 @@ export function SidebarNav({ collapsed, onNavigate }: SidebarNavProps) {
 
   const secondaryItems: NavItem[] = [
     { href: "/me/following", label: "Подписки", icon: UserPlus },
+    { href: "/me/favorites", label: "Избранное", icon: Star }, // PLAN-018 Wave-6
     { href: "/notifications", label: "Уведомления", icon: Bell, exact: true },
   ];
 
@@ -254,7 +257,7 @@ export function SidebarDrawer({ open, onClose }: { open: boolean; onClose: () =>
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-overlay/50" onClick={onClose} aria-hidden />
       <div
         ref={drawerRef}
         className="mta-anim-fade absolute inset-y-0 left-0 w-72 max-w-full overflow-y-auto border-r border-line bg-surface-raised p-4 shadow-raised"

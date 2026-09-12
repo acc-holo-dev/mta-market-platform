@@ -1,40 +1,56 @@
 # TESTING — архитектура тестирования
 
-Область: централизованное дерево `tests/` (правило PLAN-010: тесты живут
-только в корневом `tests/`, не в компонентах).
-Статусные числа: [CURRENT](../development/CURRENT.md).
+Область: централизованное дерево `tests/` (тесты живут только в корневом
+`tests/`, не в компонентах). Тесты описывают **поведение продукта**, а не
+исторические планы разработки; имена файлов и describe — доменные
+(PLAN-017 §26).
+
+Единая точка входа — `python startup.py test <tier>`; нижеприведённые
+прямые команды — алиасы для отладки.
+
+## Уровни (tier model, L0–L4)
+
+| Уровень | Что запускает | Когда | Вес |
+|---------|---------------|-------|-----|
+| **L0 fast** | `startup.py test unit` — чистые unit (серверная логика без БД) | на каждый чих при разработке; самые дешёвые | ~4 c |
+| **L1 normal** | `startup.py test integration` — unit + integration + concurrency на изолированной тест-БД (уничтожается после прогона) | перед коммитом | ~1 мин |
+| **L2 affected** | `startup.py test affected` — vitest `--changed <ref>`: только сьюты, затронутые изменениями | на ветке с крупным диффом | пропорционально диффу |
+| **L3 full** | `pnpm exec vitest run` + `startup.py test e2e` — весь vitest + браузерные E2E на живых dev-серверах | перед PR / слиянием | ~5–15 мин |
+| **L4 release** | `startup.py test release` — build + локальный production-like стек + smoke | перед релизом/тегом | ~10–20 мин |
 
 ## Дерево `tests/`
 
 ```
 tests/
-├── unit/site/           # чистые юнит-тесты серверного кода (vitest)
-│   ├── jwt.test.ts, drm-crypto.test.ts, artifact-crypto.test.ts,
-│   ├── artifact-manifest.test.ts, sandbox-static.test.ts, startup-policy.test.ts
-├── integration/api/     # HTTP-интеграционные (supertest против createApp)
-│   ├── auth-flow, identity, commerce, payments-webhook, ledger-refunds,
-│   ├── drm-v2, drm-g6, download-auth, moderation, publication-pipeline,
-│   ├── reconciliation, services, app-security, block3-observability,
-│   ├── block7, n-block8, o-block8,
-│   └── plan005-community/news/reviews/servers, plan006-activity,
-│       plan007-content, plan008-follows, plan009-thread-follow,
-│       plan010-analytics, plan001-e2e, identity-providers,
-│       payments-tbank, payments-crypto, auth-plan016
-├── e2e/                 # Playwright: браузер против живых dev-серверов
-│   ├── authentication/plan001.spec.ts
-│   ├── marketplace/plan003.spec.ts, plan010.spec.ts
-│   ├── servers/plan005.spec.ts
-│   ├── content/plan006.spec.ts, plan007.spec.ts
-│   ├── community/plan008.spec.ts, plan009.spec.ts
-│   └── plan016/shell.spec.ts (shell/темы/поиск/checkout/identities)
-├── module/              # тесты модуля (см. ниже)
-├── fixtures/            # общие фикстуры (сейчас пуст)
-├── tools/
-│   ├── helpers/db-reset.ts, zip.ts
-│   └── playwright/helpers.ts
-└── concurrency/        # exactly-once фундамент (PLAN-011 §12):
-                          commerce/parallel-checkout, ledger/parallel-settlement,
-                          payment/duplicate-webhook — 5 тестов, все проходят)
+├── unit/site/            # чистые юнит-тесты серверного кода (vitest)
+│   ├── jwt, drm-crypto, artifact-crypto, artifact-manifest,
+│   ├── sandbox-static, startup-policy, token-crypto
+├── integration/api/      # HTTP-интеграционные (supertest против createApp)
+│   ├── auth/             # login-session, providers-discovery, identity-link,
+│   │                     # identity-providers
+│   ├── commerce/         # checkout, purchase-journey, free-flow-authz,
+│   │                     # ledger-refunds, reconciliation, services-adjacent,
+│   │                     # payments-webhook-{yookassa,tbank,crypto}
+│   ├── community/        # forum, server-reviews, creator-follow, thread-follow
+│   ├── content/          # articles, server-news
+│   ├── licenses/         # drm-v2, drm-hardening, download-auth
+│   ├── marketplace/      # publication-pipeline, compatibility
+│   ├── moderation/       # moderation
+│   ├── platform/         # activity, analytics, app-security, contracts,
+│   │                     # observability
+│   ├── servers/          # management
+│   └── services/         # orders
+├── e2e/                  # Playwright: браузер против живых dev-серверов
+│   ├── auth/journey, marketplace/{catalog,analytics-privacy},
+│   ├── servers/discovery, content/{dashboard-activity,articles},
+│   ├── community/{creator-follow,thread-follow}, platform/shell
+├── concurrency/          # exactly-once фундамент: checkout/settlement races,
+│                         # duplicate webhook, parallel refunds, dispute CAS
+├── module/               # тесты нативного модуля (ctest/make/unittest)
+└── tools/
+    ├── helpers/          # db-reset (FK-safe сброс), payments-harness,
+    │                     # oauth-harness, purchase-journey, zip
+    └── playwright/       # helpers, fixtures, cleanup, global-teardown
 ```
 
 ## Раннеры
@@ -44,91 +60,85 @@ tests/
 - include: `tests/unit/**`, `tests/integration/**`, `tests/concurrency/**`;
   `fileParallelism: false` (интеграционные сьюты делят один PostgreSQL и
   уничтожили бы фикстуры друг друга), таймауты 30 c.
-- Alias'ы: `@server` → `site/server/src`, `@tests` → `tests` — серверные
-  модули импортируются без относительных цепочек.
+- Alias'ы: `@server` → `site/server/src`, `@tests` → `tests`.
 - env: `DATABASE_URL` = `TEST_DATABASE_URL` (по умолчанию
   `postgresql://postgres:postgres@127.0.0.1:5433/postgres?schema=public`),
   тестовый `JWT_SECRET`, `NODE_ENV=test`, `REDIS_URL` (6379, мгновенный отказ
   — rate limiter fail-open), `EMAIL_ENABLED/YOOKASSA_ENABLED/S3_ENABLED=false`,
   `CORS_ORIGINS=http://localhost:3000`, лимиты `*_RATE_LIMIT_MAX=10000`
   (пер-аккаунтный `userRateLimit` отключён при `NODE_ENV=test`).
-- Команды: `pnpm test` (run), `pnpm test:watch`, `pnpm test:concurrency`.
+- Команды: `pnpm test` (полный run), `pnpm exec vitest run tests/unit` (L0),
+  `pnpm exec vitest run --changed HEAD` (L2), `pnpm test:watch`,
+  `pnpm test:concurrency`.
 
 ### Playwright (корневой `playwright.config.ts`)
 
 - `testDir: tests/e2e`, `workers: 1`, `fullyParallel: false`, `retries: 0`,
   таймаут теста 120 c / expect 15 c; `baseURL` = `E2E_BASE_URL` (по умолчанию
   `http://localhost:3000`); headless Chromium; screenshot only-on-failure,
-  trace retain-on-failure. Команда: `pnpm test:e2e`.
-- Локальный запуск Chromium требует системных библиотек (libnspr4 и др.);
-  при установке без root — `playwright install-deps` либо LD_LIBRARY_PATH на
-  заранее распакованные библиотеки.
-- Тесты прогоняют **продуктовые сценарии в браузере** на живых dev-серверах —
-  acceptance-уровень (не только HTTP).
+  trace retain-on-failure; `globalTeardown` — канальная очистка
+  `e2e_*`-пользователей и `e2e-*`-сущностей (см. «Гигиена данных»).
+- Команда: `python startup.py test e2e` (поднимет стек, просеет admin) или
+  вручную `pnpm test:e2e` на уже запущенных dev-серверах.
 
 ### CTest + standalone (модуль)
 
 - `ctest --preset <platform>`: `sdk_tests` (embedded Lua harness против
   `tests/module/runtime/scripts/010…096*.lua`), `module_config_parse`,
-  `module_config_rejects_garbage` (парсер `module.toml`).
-- Standalone DRM: `make -f module/src/drm/Makefile test`
-  (`tests/module/drm/main.cpp`): канонический JSON (байт-матч с сервером),
-  Ed25519, AEAD, key store, HTTP client, lease-верификация.
-- Интеграционные Lua-ресурсы: `tests/module/integration/` (на живом MTA-сервере,
-  процедура в [INTEGRATION](../module/INTEGRATION.md)).
+  `module_config_rejects_garbage`.
+- Standalone DRM: `make -f module/src/drm/Makefile test` — канонический JSON,
+  Ed25519, AEAD, key store, lease-верификация.
+- Команда: `python startup.py module` (Linux); Windows — не поддерживается
+  (MODULE.md), честно сообщается doctor'ом.
 
 ## Подключение БД
 
-1. Поднять тестовый PostgreSQL:
-   `docker compose -f infrastructure/docker/compose/tests.yml up -d`
-   (контейнер `mta-market-postgres-test`, **порт 5433**, postgres/postgres;
-   Redis тесты переиспользуют dev-инстанс 6379 — `TEST_REDIS_URL`).
-2. Схема применяется из контракта: `pnpm db:emit` (генерация клиента) +
-   `prisma db update` против тестовой БД (quick-path допустим для тестов).
-3. Сброс состояния между сьютами: `resetTestEntities()`
-   (`tests/tools/helpers/db-reset.ts`) — удаляет сущности фиксированного
-   диапазона тестовых user id (`550e8400-e29b-41d4-a716-44665544…`) в
-   FK-безопасном порядке; каждая операция идемпотентна и устойчива к
-   упавшим прогонам.
+- L0 — БД не нужна. L1/L3 — `startup.py test integration` поднимает
+  изолированный тест-стек (`infrastructure/docker/compose/tests.yml`,
+  проект `mta-market-tests`, порт по умолчанию 5433, переопределяется
+  `TEST_DB_HOST_PORT`) и **уничтожает его после прогона** (тома одноразовые;
+  `--keep` сохраняет для отладки). Постоянный занятый 5433 не требуется.
+- Схема применяется из контракта: `prisma contract emit` + `db update`
+  против тестовой БД (quick-path допустим только для тестов/dev).
+- Сброс состояния между сьютами: `resetTestEntities()`
+  (`tests/tools/helpers/db-reset.ts`) — FK-безопасный порядок удалений,
+  идемпотентен. Dev/test изоляция: отдельные имена контейнеров, томов,
+  сети и портов; dev-БД (5432) тестами никогда не перезаписывается.
 
-## Предпосылки E2E
+## Гигиена E2E-данных
 
-1. **Dev-серверы запущены**: web :3000 и API :3001 (`pnpm dev`) + postgres
-   (dev-compose :5432) и redis (:6379).
-2. **ADMIN-аккаунт**: `pnpm test:e2e:admin` →
-   `site/server/scripts/dev-admin.ts --email e2e-admin@mtamarket.local …`
-   (создаёт или повышает пользователя до ADMIN; в production отказывается
-   работать без `ALLOW_ADMIN_BOOTSTRAP=true`).
-3. **Seed-данные** (по необходимости): `site/server/scripts/seed-plan003.ts`
-   (маркетплейс), `site/server/scripts/seed-plan005.ts` (10 серверов,
-   12 пользователей, 7 категорий, новости/обновления/отзывы; пароль seed-пользователей
-   `seed-password-123`), `scripts/dev-heartbeat.ts` (держит серверы онлайн —
-   должен быть запущен и успеть протикаться **до** старта спеков, проверяющих
-   онлайн-агрегаты, например plan006).
-4. **Mojibake-политика**: исходники должны быть чисты от двойного
-   кодирования; проверка — `node scripts/development/repair-cyrillic.cjs
-   --check` (exit 1 при остатках; сам кодемод описан в
-   [DEPENDENCY-POLICY](../architecture/DEPENDENCY-POLICY.md) и истории
-   коммитов PLAN-014).
-4. Приложение считает лимиты по открытым env'ам — в dev установлены
-   ослабленные значения; E2E идут с дефолтными dev-лимитами.
+- Все спеки создают пользователей с префиксом `e2e_` (RUN-суффикс от
+  `Date.now()` исключает коллизии параллельных прогонов) и чистят за собой
+  через канальный `cleanupEntities` (`tests/tools/playwright/cleanup.ts`):
+  FK-безопасный порядок (финансы → заказы → покупки → ресурсы → серверы →
+  пользователи), `e2e-admin` защищён от удаления.
+- `globalTeardown` подчищает остатки по префиксам (`e2e_*`, `e2e-%`) даже
+  после упавшего прогона — накопления тестовых сущностей быть не должно.
 
-## Текущие объёмы (PLAN-016, 2026-09-12)
+## Предпосылки E2E (ручной запуск)
 
-- Backend-тесты (vitest: unit + integration): **427/427**; файлов: 8 unit +
-  35 integration (включая PLAN-016: identity-providers, payments-tbank,
-  payments-crypto, auth-plan016, token-crypto, startup-policy).
-- Playwright browser E2E: **59 прежних + 9 plan016** (D-013: спеки plan001/
-  plan016 теперь чистят созданные в ране сущности); накопительный ряд:
-  12 → 25 → 37 → 42 → 47 → 52 → 56 → 59 → 68.
-- Инкременты планов и миграционные пакеты — [CURRENT](../development/CURRENT.md).
+1. Dev-серверы: `python startup.py dev` (web :3000, API :3001, PG, Redis).
+2. Admin-аккаунт: `pnpm test:e2e:admin` (e2e-admin@mtamarket.local; в
+   production отказывается работать без `ALLOW_ADMIN_BOOTSTRAP=true`).
+3. Seed-данные по необходимости: `python startup.py db seed` (маркетплейс,
+   серверы, услуги) + `--heartbeat` (симулятор «живого» онлайна — запустить
+   заранее для спеков с онлайн-агрегатами).
+4. Mojibake-политика: исходники чисты от двойного кодирования —
+   `node scripts/development/repair-cyrillic.cjs --check` (CI-гейт).
+
+## Изоляция повторных прогонов
+
+Требование: два прогона подряд дают одинаковое состояние. Обеспечивают:
+одноразовые тест-тома (L1), фиксированный диапазон тест-UUID + FK-сброс
+(vitest), RUN-суффиксы + afterAll-очистка + globalTeardown (E2E). Проверка
+— финальная матрица прогоняет полный suite дважды (CURRENT.md).
 
 ## CI-гейты
 
-Workflow-каталог `.github/workflows` наполнен с PLAN-011 (ci, tests, e2e,
-validate, contracts, site, module, security, release). Описания гейтов (CI job
-`test` с
-`contract emit && prisma db update` на чистой БД, `ci.yml` без `|| true`,
-production-путь миграций по факту пакета в PR) —
-[PLAN-004](../development/completed/PLAN-004.md) и
-[DATABASE-MIGRATIONS](../operations/DATABASE-MIGRATIONS.md).
+`ci.yml` — единственная точка входа push/PR; повторно используемые воркфлоу:
+`validate` (структура репо), `contracts` (синтаксис contracts/),
+`security` (gitleaks + audit), `tests` (vitest на GH-services),
+`module` (ctest + make + unittest; Windows best-effort), `site` (lint +
+type-check + сборки + runtime smoke), `e2e` (браузер). Публикация образов —
+только после всех гейтов; release-тег перегоняет гейт как защиту перед
+публикацией релиза.

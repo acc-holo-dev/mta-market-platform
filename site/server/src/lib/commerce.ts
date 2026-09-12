@@ -1,4 +1,4 @@
-﻿// PLAN C-003, C-008, C-010, C-012: commerce checkout aggregate.
+// PLAN C-003, C-008, C-010, C-012: commerce checkout aggregate.
 //
 // Order     = checkout intent (C-012); OrderItem = immutable priced line
 // (C-006); Purchase = completed RESOURCE purchase (kept compatible: payment
@@ -25,6 +25,8 @@ import { settlePurchaseRevenue } from "./ledger.js";
 import { withKeyLock } from "./keyLock.js";
 import { logger } from "./logger.js";
 import { isUniqueViolation } from "./dbErrors.js";
+// PLAN-019 H-002: domain events ride the transactional outbox (lib/events).
+import { emitOutbox } from "./events.js";
 
 const PLATFORM_FEE_RATE = 0.1; // 10% of the FINAL price (A-011 parity)
 
@@ -581,6 +583,18 @@ export async function completeResourceOrderItem(orderItemId: string): Promise<Co
     await tx.orm.public.Order.where({ id: item.orderId }).update({
       status: "COMPLETED",
       completedAt: new Date().toISOString(),
+    });
+
+    // PLAN-019 H-002: the PAYMENT_SUCCEEDED event is committed or rolled
+    // back together with the completion itself (outbox insert in the SAME
+    // transaction; idempotent retries land on the `alreadyCompleted` branch
+    // above and never emit twice).
+    await emitOutbox(tx, "PAYMENT_SUCCEEDED", {
+      purchaseId: purchase.id,
+      resourceId: purchase.resourceId,
+      buyerId: purchase.buyerId,
+      orderItemId: item.id,
+      finalPrice: purchase.finalPrice,
     });
 
     return { alreadyCompleted: false as const, licenseId: license.id };

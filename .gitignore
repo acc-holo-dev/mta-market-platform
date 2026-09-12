@@ -38,9 +38,15 @@ npm-debug.log*
 pnpm-debug.log*
 
 # --- Runtime / transient state --------------------------------------------------
+# Disposable runtime/build/test/generated data lives under temp/ (PLAN-017 §2).
+# The tree itself is tracked via .gitkeep placeholders; every real artifact
+# inside temp/ is ignored. Persistent audit/security logs belong in logs/,
+# never in temp/. Operational PID state lives in temp/runtime/pids.
+/temp/**
+!/temp/**/
+!/temp/**/.gitkeep
 /runtime/
 tmp/
-temp/
 cache/
 .cache/
 .turbo/

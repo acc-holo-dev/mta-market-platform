@@ -26,7 +26,10 @@ import { Tabs } from "@/components/ui/Tabs";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/States";
 import { DisputeDialog } from "@/components/disputes/DisputeDialog";
+import { SessionsCard } from "@/components/account/SessionsCard";
+import { UpdateCenterSection, TransactionsSection } from "@/components/market/UpdateCenter";
 import { typeLabel, formatDate } from "@/lib/domain";
+import { identitiesKey, meFollowsKey, myPurchasesKey } from "@/lib/queries";
 import { Scale, Wallet, Pencil, Check, X, Link2, ShoppingBag, User, KeyRound } from "lucide-react";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -36,7 +39,7 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Администратор",
 };
 
-type AccountTab = "overview" | "profile" | "connections" | "balance" | "purchases";
+type AccountTab = "overview" | "profile" | "connections" | "balance" | "purchases" | "licenses";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -69,13 +72,13 @@ export default function AccountPage() {
     error: purchasesError,
     refetch: refetchPurchases,
   } = useQuery({
-    queryKey: ["purchases", "my", "account"],
+    queryKey: myPurchasesKey("account"),
     queryFn: fetchMyPurchases,
     enabled: accessToken !== null,
   });
 
   const { data: identities } = useQuery({
-    queryKey: ["identities"],
+    queryKey: identitiesKey(),
     queryFn: fetchIdentities,
     enabled: accessToken !== null,
     retry: false,
@@ -117,8 +120,17 @@ export default function AccountPage() {
           ["connections", "Подключения"],
           ["balance", "Баланс"],
           ["purchases", "Покупки"],
+          ["licenses", "Лицензии"],
         ]}
       />
+
+      {/* PLAN-018 Wave-6 D-005+A-005: лицензии и обновления + транзакции */}
+      {tab === "licenses" ? (
+        <div className="space-y-6">
+          <UpdateCenterSection />
+          <TransactionsSection />
+        </div>
+      ) : null}
 
       {tab === "overview" ? (
         <div className="space-y-6">
@@ -239,6 +251,12 @@ export default function AccountPage() {
             </Link>
           </CardContent>
         </Card>
+      ) : null}
+
+      {tab === "connections" ? (
+        <div className="max-w-2xl">
+          <SessionsCard />
+        </div>
       ) : null}
 
       {tab === "balance" ? (
@@ -409,7 +427,9 @@ function ProfileEditForm({ displayName, avatar }: { displayName: string; avatar:
       const me = await fetchMe();
       setUser(me);
       setOpen(false);
+      // O-003: profile update also feeds the follow lists (display name/avatar).
       qc.invalidateQueries({ queryKey: ["me"] });
+      qc.invalidateQueries({ queryKey: meFollowsKey() });
     },
     onError: (e) => setError(getErrorMessage(e, "Не удалось сохранить профиль")),
   });

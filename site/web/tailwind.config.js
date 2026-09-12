@@ -32,6 +32,10 @@ module.exports = {
         "on-accent": "hsl(var(--on-accent))",
         // PLAN-015 §43: цвет звёзд рейтинга — единственный тёплый семантический.
         star: "hsl(var(--star))",
+        // PLAN-017 §60: медиа-оверлеи — фиксированные в обеих темах значения
+        // (тёмный скрим + светлый текст поверх изображений).
+        overlay: "hsl(var(--overlay))",
+        "on-media": "hsl(var(--on-media))",
         ok: {
           DEFAULT: "hsl(var(--success))",
           soft: "hsl(var(--success-soft))",

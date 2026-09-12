@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "generator": "site/server/scripts/generate-drm-vectors.ts (node:crypto + lib/drm/crypto)",
+  "note": "Deterministic shared vectors for site + module DRM tests (PLAN-019 S-003). Ed25519 base64 (raw 32-byte public key, PKCS8 DER private key).",
+  "keys": {
+    "seedHex": "3141592653589793238462643383279502884197169399375105820974944592",
+    "privateKeyPkcs8DerB64": "MC4CAQAwBQYDK2VwBCIEIDFBWSZTWJeTI4RiZDODJ5UCiEGXFpOZN1EFggl0lEWS",
+    "publicKeySpkiDerB64": "MCowBQYDK2VwAyEAFnjM+QA9Od9Wwq4gHNbtfHw8fOGJOrm33GFCM7fCVhs=",
+    "publicKeyRawB64": "FnjM+QA9Od9Wwq4gHNbtfHw8fOGJOrm33GFCM7fCVhs="
+  },
+  "challenge": {
+    "challengeB64": "QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkI=",
+    "validSignatureB64": "wgVTh1rXFiSHUa82fUEHY5DP4Nz78FzOSil8hu3AjYduPZRan0QJnEOoWT/psa/V/oItmm+Abz7HthSMqE6SDw==",
+    "tamperedSignatureB64": "wgVTh1rXFiSHUa82fUEHY5DP4Nz78FzOSil8hu3AjYduPZRan0QJnEOoWT/psa/V/oItmm+Abz7HthSMqE6S8A==",
+    "nodeCrossCheckSignatureB64": "wgVTh1rXFiSHUa82fUEHY5DP4Nz78FzOSil8hu3AjYduPZRan0QJnEOoWT/psa/V/oItmm+Abz7HthSMqE6SDw==",
+    "wrongKeySignatureB64": "QfDM6/upwNIJtMbkMwKU1b5ei1Oh8ykFVqE5i8iqDTmMRpuJUxqPfqKSjSGCbRPEo1wCy3r/RrrOj/ccgwFYAA=="
+  },
+  "lease": {
+    "payload": {
+      "protocolVersion": 2,
+      "licenseId": "11111111-2222-4333-8444-555555555555",
+      "installationId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+      "resourceId": "22222222-3333-4444-8555-666666666666",
+      "resourceVersionId": "33333333-4444-4555-8666-777777777777",
+      "artifactHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "issuedAt": "2026-01-01T00:00:00.000Z",
+      "expiresAt": "2026-01-08T00:00:00.000Z",
+      "nonce": "abababababababababababababababababababababababababababababababab",
+      "serverKeyId": "test-key-1",
+      "capabilities": [
+        "run"
+      ]
+    },
+    "validSignatureB64": "ZRAqTQGf/dD4+Q0czHgVJu251fPEKmYDLXbIw9Df4HLi77Ibhu7JuGr0zD3NIT7mFQ8sKfCl91JDqcuGTMIRBQ==",
+    "expired": {
+      "payload": {
+        "protocolVersion": 2,
+        "licenseId": "11111111-2222-4333-8444-555555555555",
+        "installationId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+        "resourceId": "22222222-3333-4444-8555-666666666666",
+        "resourceVersionId": "33333333-4444-4555-8666-777777777777",
+        "artifactHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "issuedAt": "2020-01-01T00:00:00.000Z",
+        "expiresAt": "2020-01-08T00:00:00.000Z",
+        "nonce": "abababababababababababababababababababababababababababababababab",
+        "serverKeyId": "test-key-1",
+        "capabilities": [
+          "run"
+        ]
+      },
+      "signatureB64": "YL5pqSyYSl40VryizDvBWB58I40thXJ/SJ2LM2U1Mebieu/CyrnlbJOLaU8T4BXRR2p8ToQZUoRiQ545kIjoBA==",
+      "expectedExpired": true
+    }
+  }
+}

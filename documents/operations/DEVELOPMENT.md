@@ -1,123 +1,146 @@
 status: current
-version: 1.0
-last_verified: 2026-09-11
+version: 2.0
+last_verified: 2026-09-12
 
 # DEVELOPMENT — воспроизведение среды разработки
 
-Процедура развёртывания dev-среды monorepo `mta-market-platform` (обновление
-раздела «Воспроизведение среды разработки и проверки» из
-[development/README.md](../development/README.md) под новые пути).
-Требования: Node ≥ 20, pnpm ≥ 9, Python ≥ 3.10 (утилиты запуска), Docker
-Engine + compose plugin, CMake 3.27+ / Ninja / компилятор C++20 (модуль),
-OpenSSL 3.x.
+Единая точка входа для локальной работы — `startup.py` (PLAN-017 §13):
+один сценарий валидирует окружение, поднимает инфраструктуру, применяет
+схему БД, запускает сервисы и печатает адреса. Низкоуровневые команды
+существуют для отладки, но рабочий процесс — только через `startup.py`.
 
-## 1. Инфраструктурные сервисы
+Требования: Node 22 LTS, pnpm 9.15, Python ≥ 3.10 (утилита запуска), Docker
+Engine + compose plugin, CMake 3.27+ / Ninja / компилятор C++20 (модуль,
+Linux; Windows-сборка модуля пока не поддерживается —
+[MODULE.md](../architecture/MODULE.md)), OpenSSL 3.x (модуль).
 
-```sh
-docker compose -f infrastructure/docker/compose/development.yml up -d
-# postgres :5432 (mtamarket/dev_password), redis :6379
-```
-
-Приложение в dev работает на хосте, не в контейнерах: API — `site/server`
-(:3001), frontend — `site/web` (:3000). Контейнеризуется только stateful
-инфраструктура (см. комментарий в `infrastructure/docker/compose/development.yml`).
-
-## 2. БД: применить контракт-схему
+Диагностика окружения:
 
 ```sh
-cd site/server
-# DATABASE_URL берётся из site/server/.env (скопируйте из .env.example)
-npx prisma contract emit && npx prisma db update --confirm mtamarket
+python startup.py doctor
 ```
 
-Схема — единственный источник `site/server/src/prisma/contract.prisma`;
-миграции и formal path для staging/production —
-[DATABASE-MIGRATIONS.md](DATABASE-MIGRATIONS.md). `db update` (quick path)
-разрешён **только** на локальной dev-БД.
+Возвращает только actionable-проверки: инструменты, зависимости, порты,
+записываемость temp/ и logs/, валидность config/.
 
-## 3. Запуск dev-серверов
+## 1. Полная среда разработки одной командой
 
 ```sh
-# из корня репозитория
-pnpm dev              # turbo: server :3001 + web :3000
-# либо раздельно:
-pnpm dev:server       # Express API  :3001
-pnpm dev:web          # Next.js web  :3000
+python startup.py            # = dev
+# или по этапам:
+python startup.py dev infra    # только postgres + redis (compose)
+python startup.py dev schema   # применить контракт-схему к dev-БД
+python startup.py dev backend  # API :3001 (tsx watch)
+python startup.py dev web      # web :3000 (next dev)
 ```
 
-`python3 startup.py dev` — единый dev-раннер (корень репозитория):
-infra → schema → backend → web → URL-ы; `startup.py doctor` — проверка
-окружения. Проверен на этой машине (doctor PASS, dev стартует).
-`pnpm dev` / раздельные фильтры — эквивалент по-компонентно.
+`dev` без аргументов делает всё по порядку: валидация инструментов →
+загрузка config/environments/development.yaml → Docker-инфраструктура →
+схема БД → backend → web → печать адресов. Второй терминал не нужен.
 
-## 4. Тесты
+Адреса: API http://localhost:3001 (health: /health /live /ready /metrics),
+WEB http://localhost:3000, PG localhost:5432 (mtamarket), Redis :6379.
+Логи процессов: logs/development/{backend,web}.log, PID-файлы:
+temp/runtime/pids/.
+
+Сид-данные (админ + демо-контент):
 
 ```sh
-# тестовая БД :5433 (изолированный compose-проект)
-docker compose -f infrastructure/docker/compose/tests.yml up -d
-
-# прогон из корня (централизованное дерево tests/ — PLAN-010 Rule 002)
-pnpm test             # vitest: tests/unit + tests/integration
+python startup.py db seed                # admin + plan003 + plan005 + services
+python startup.py db seed admin          # только e2e/dev-админ
+python startup.py db seed services       # каталог услуг
 ```
 
-`vitest.config.ts` по умолчанию ждёт PostgreSQL на
-`127.0.0.1:5433` (postgres/postgres) — переопределяется `TEST_DATABASE_URL`;
-Redis для тестов — dev-инстанс :6379 (override `TEST_REDIS_URL`). Локальные
-зеркала наборов с относительными импортами лежат в `site/server/tests/`.
-
-Качество:
+Схема БД (dev quick path; формальный путь для staging/production —
+[DATABASE-MIGRATIONS.md](DATABASE-MIGRATIONS.md)):
 
 ```sh
-pnpm type-check       # turbo + tsconfig.test.json
-pnpm format:check
-pnpm --filter @mta-market/web build   # production build web
+python startup.py db apply
+python startup.py db reset               # только re-apply (безопасно)
+python startup.py db reset --destructive # пересоздать тома dev-БД (DELETE)
 ```
 
-## 5. Модуль (module/)
+## 2. Тесты
 
 ```sh
-cd module
-cmake --preset linux-gcc          # configure (build/module/linux-gcc)
-cmake --build --preset linux-gcc  # сборка модуля
+python startup.py test unit          # L0: быстрые unit (БД не нужна)
+python startup.py test integration   # L1: integration + concurrency
+                                     #     (тест-БД, уничтожается после прогона)
+python startup.py test affected      # L2: изменённые области (vitest --changed)
+python startup.py test e2e           # браузерные сценарии Playwright
+python startup.py test smoke         # runtime-пробы /health /live /ready /metrics
+python startup.py test release       # L4: build + release-стек + smoke
 ```
 
-DRM-подсистема без MTA SDK (быстрая проверка):
+Полная матрица, изоляция запусков и ожидаемые веса —
+[TESTING.md](../architecture/TESTING.md).
+
+## 3. Локальный production-like прогон
 
 ```sh
-make -f module/src/drm/Makefile test   # из корня; ожидается ALL TESTS PASSED
+python startup.py release
 ```
 
-Linux x64 — верифицированная платформа; Windows-сборка модуля остаётся
-отдельной задачей (blocker PLAN-004, унаследован в PLAN-005).
+Собирает образы (те же Dockerfile, что и CI), поднимает production-топологию
+(nginx :8080 → frontend → /api → backend → postgres/redis), проверяет
+/ready, БД, Redis и завершает smoke-пробами. Недостающие секреты
+генерируются как ЭФЕМЕРНЫЕ (файл temp/runtime/release.env) — это локальная
+репетиция, не деплой: реальные боевые секреты сюда не попадают никогда.
+Стоп — `python startup.py stop`.
 
-## 6. E2E (браузер, Playwright)
-
-Пререквизиты: запущенные API :3001 + web :3000 + Postgres/Redis (п.1–3).
+## 4. Сборка и нативный модуль
 
 ```sh
-# admin-аккаунт для разработки/админ-E2E
-pnpm test:e2e:admin
-# dev-админ по желанию (отказ в NODE_ENV=production):
-pnpm --filter @mta-market/server exec tsx scripts/dev-admin.ts \
-  --email admin@dev.local --username admin --password 'dev-password-123'
-
-# dev-датасет сообщества/серверов + «живой онлайн» (симулятор интеграции)
-pnpm --filter @mta-market/server exec tsx scripts/seed-plan005.ts
-pnpm --filter @mta-market/server exec tsx scripts/dev-heartbeat.ts
-
-# прогон
-pnpm e2e                 # playwright: tests/e2e (Chromium, 1 worker)
+python startup.py build          # site (turbo) + module
+python startup.py module         # configure + build + ctest
+python startup.py build site     # только site
+python startup.py build module   # только module
 ```
 
-Платежи в dev: `YOOKASSA_*` опциональны — иначе используется
-dev-completion `POST /payments/:id/simulate`.
+На Windows команда `module` честно сообщает об отсутствии поддерживаемого
+тулчейна (POSIX-only DRM-клиент; см. MODULE.md) и не блокирует site-сборку.
 
-## 7. Переменные окружения
+## 5. Статус, логи, остановка, очистка
 
-- Матрица — корневой [.env.example](../../.env.example) (DEVELOPMENT /
-  STAGING / PRODUCTION, пометки `PROD: REQUIRED`).
-- Компонентные примеры: `site/server/.env.example` (обязательны
-  `DATABASE_URL`, `JWT_SECRET`; DRM: `DRM_SERVER_PRIVATE_KEY`,
-  `DRM_MASTER_KEY`, `ARTIFACT_SIGNING_PRIVATE_KEY`), `site/web/.env.example`.
-- Реальные `.env`/`.env.local` **не трекаются git'ом** — коммитятся только
-  `*.env.example` (корневой `.gitignore`).
+```sh
+python startup.py status    # таблица WEB/API/WORKER/POSTGRES/REDIS/MODULE/TEST ENV
+python startup.py logs      # хвосты logs/development/*.log (--follow)
+python startup.py stop      # процессы + контейнеры; тома сохраняются
+python startup.py clean     # temp/, .next/, dist/, coverage, отчёты Playwright
+python startup.py clean --destructive --yes  # + тома dev/test-БД и uploads/
+```
+
+`clean` никогда не трогает боевые данные (тома прод-БД, uploads, секреты)
+без `--destructive` и явного подтверждения (`DELETE`).
+
+## 6. Низкоуровневые команды (только для отладки)
+
+Турбо-скрипты корневого package.json (`pnpm dev`, `pnpm build`,
+`pnpm type-check`, `pnpm test`, `pnpm test:e2e`) остаются алиасами для CI и
+отладки. Обходной путь нужен только при дебаге отдельного слоя (например,
+`pnpm --filter @mta-market/server dev` — API без shell).
+
+## 7. Переменные окружения и конфигурация
+
+- Некритичная конфигурация — config/ (config/environments/*.yaml +
+  config/application/*.yaml): порты, URL, лимиты, feature-флаги, логирование.
+  `startup.py` загружает их и экспортирует производные переменные окружения
+  запускаемым сервисам — один источник значений (PLAN-017 §6–§12).
+- Секреты — только .env (site/server/.env; корневой .env для compose):
+  JWT_SECRET, DRM_* ключи, OAuth-провайдеры, платёжные провайдеры, S3.
+  Матрица — корневой [.env.example](../../.env.example) с пометками
+  `PROD: REQUIRED`.
+- Реальные .env **не трекаются git'ом** — коммитятся только `*.env.example`.
+
+## 8. E2E (браузер, Playwright)
+
+Пререквизиты и сиды делает сам раннер:
+
+```sh
+python startup.py test e2e
+```
+
+Ручной вариант (отладка): dev-стек запущен (п.1), затем
+`pnpm test:e2e:admin` (сид admin-аккаунта) и `pnpm test:e2e`.
+Платежи в dev: `YOOKASSA_*` опциональны — иначе используется dev-completion
+`POST /payments/:id/simulate`.

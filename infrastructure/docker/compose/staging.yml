@@ -1,10 +1,10 @@
-# Staging compose — same topology as production.yml with staging-unique
+﻿# Staging compose вЂ” same topology as production.yml with staging-unique
 # container names and ports so a staging stack can coexist with a local
 # production rehearsal on one host.
 #
 # Staging consumes the same ghcr images as production (image tag supplied by
 # the release pipeline) and reads .env.staging (never reuse production
-# secrets — see config/ and documents/operations/STAGING.md).
+# secrets вЂ” see config/ and documents/operations/STAGING.md).
 #
 # Usage:
 #   cp .env.example .env.staging   # then fill STAGING values
@@ -89,7 +89,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3001/ready', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
       interval: 30s
       timeout: 10s
       retries: 3

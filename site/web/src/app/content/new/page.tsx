@@ -25,6 +25,7 @@ import { getErrorMessage } from "@/lib/api-ext";
 import { ARTICLE_CATEGORY_LABELS } from "@/lib/domain";
 import { useAuthStore } from "@/store/auth";
 import { bootstrapSession } from "@/lib/api";
+import { myPurchasesKey } from "@/lib/queries";
 import { PenLine, Upload, X } from "lucide-react";
 
 const CATEGORIES = Object.keys(ARTICLE_CATEGORY_LABELS);
@@ -79,7 +80,9 @@ export default function NewArticlePage() {
     enabled: isAuthenticated(),
   });
   const { data: purchases } = useQuery({
-    queryKey: ["purchases", "mine", "article-links"],
+    // PLAN-019: was ["purchases", "mine", "article-links"] — normalized to the
+    // canonical ["purchases","my",…] family via the key factory.
+    queryKey: myPurchasesKey("article-links"),
     queryFn: fetchMyPurchases,
     enabled: isAuthenticated(),
   });

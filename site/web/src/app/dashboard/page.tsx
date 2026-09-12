@@ -16,6 +16,7 @@ import { DashboardNow } from "@/components/dashboard/NowSummary";
 import Link from "next/link";
 import { Store, ShoppingBag, Server, Users, MessageSquare, Bell, Newspaper, RefreshCcw } from "lucide-react";
 import { typeLabel, formatDate } from "@/lib/domain";
+import { myPurchasesKey } from "@/lib/queries";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -42,7 +43,7 @@ export default function DashboardPage() {
     error,
     refetch,
   } = useQuery({
-    queryKey: ["purchases", "my", "dashboard"],
+    queryKey: myPurchasesKey("dashboard"),
     queryFn: fetchMyPurchases,
     enabled: isAuthenticated(),
   });

@@ -1,0 +1,23 @@
+# Test environment wiring (vitest + integration compose + Playwright E2E).
+# The test database is isolated and disposable: the compose project
+# mta-market-tests uses its own container/volume namespace and is destroyed
+# after integration runs (PLAN-017 §23/§24).
+api:
+  port: 3001
+web:
+  port: 3000
+database:
+  test:
+    url: postgresql://postgres:postgres@127.0.0.1:5433/postgres?schema=public
+    composeFile: infrastructure/docker/compose/tests.yml
+    hostPort: 5433
+redis:
+  # Integration tests reuse the development Redis instance.
+  url: redis://127.0.0.1:6379
+vitest:
+  fileParallelism: false
+  testTimeoutMs: 30000
+e2e:
+  baseURL: http://localhost:3000
+  apiUrl: http://localhost:3001
+  adminEmail: e2e-admin@mtamarket.local

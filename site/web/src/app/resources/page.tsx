@@ -191,7 +191,7 @@ function ResourcesPageContent() {
               aria-pressed={type === value}
               className={`rounded-pill border px-3 py-1.5 text-sm font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                 type === value
-                  ? "border-accent bg-accent text-white"
+                  ? "border-accent bg-accent text-on-accent"
                   : "border-line text-content-secondary hover:border-line-strong hover:bg-surface-hover hover:text-content"
               }`}
             >
@@ -218,7 +218,7 @@ function ResourcesPageContent() {
               aria-pressed={price === value}
               className={`px-4 py-2 text-sm font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent ${
                 price === value
-                  ? "bg-accent text-white"
+                  ? "bg-accent text-on-accent"
                   : "text-content-secondary hover:bg-surface-hover hover:text-content"
               }`}
             >

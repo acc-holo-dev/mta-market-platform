@@ -11,8 +11,10 @@ rollback'ом. Политики унаследованы от PLAN-004 (K-003/K-
 ## 1. CI: сборка образов
 
 - Пайплайн собирает и публикует в ghcr два образа:
-  `ghcr.io/<org>/<repo>/backend` (из `site/server/Dockerfile`) и
-  `ghcr.io/<org>/<repo>/frontend` (из `site/web/Dockerfile`).
+  `ghcr.io/<org>/<repo>/backend` (из
+  `infrastructure/docker/site/server.Dockerfile`) и
+  `ghcr.io/<org>/<repo>/frontend` (из
+  `infrastructure/docker/site/web.Dockerfile`).
 - Теги (metadata-action): **полный SHA коммита** (`type=sha,format=long` —
   однозначная коммит→образ провенанс, K-003), ветка, semver, `latest`
   только с default-ветки.
@@ -33,7 +35,8 @@ rollback'ом. Политики унаследованы от PLAN-004 (K-003/K-
 backup  →  migrate  →  pull  →  up -d --wait  →  health gate  →  (success | rollback)
 ```
 
-1. **Backup** (`scripts/backup.sh`) перед любой миграцией; провал бэкапа
+1. **Backup** (`scripts/database/backup.sh`) перед любой миграцией; провал
+   бэкапа
    прерывает деплой («нет бэкапа — нет миграции»).
 2. **Migrate**: `npx prisma db migrate` внутри backend-образа против живой
    БД (formal path, пакеты `site/server/migrations/app/`); провал миграции
@@ -47,11 +50,12 @@ backup  →  migrate  →  pull  →  up -d --wait  →  health gate  →  (succ
    (`up -d --wait` 120 s). Предыдущий тег читается из labels текущего
    контейнера до замены (K-004/K-005); dangling-образы чистятся только
    старше 7 дней — окно rollback сохраняется.
-6. Предыдущие версии: `./deploy.sh production <previous-tag>` — откат
-   одной командой.
+6. Предыдущие версии: `./scripts/deployments/deploy.sh production
+   <previous-tag>` — откат одной командой.
 
-Использование: `./deploy.sh production sha-<commit>` (иммутабельный
-CI-тег). Требования: `.env` на месте, SSL-сертификаты установлены.
+Использование: `./scripts/deployments/deploy.sh production sha-<commit>`
+(иммутабельный CI-тег). Требования: `.env` на месте, SSL-сертификаты
+установлены.
 
 ## 3. IMAGE_TAG policy
 
@@ -106,7 +110,7 @@ CI-тег). Требования: `.env` на месте, SSL-сертифика
 ## 6. Rollback
 
 ```sh
-./deploy.sh production <previous-tag>     # предыдущий тег печатался при деплое
+./scripts/deployments/deploy.sh production <previous-tag>  # предыдущий тег печатался при деплое
 curl -s https://<domain>/api/ready | jq .checks   # DB ok
 ```
 

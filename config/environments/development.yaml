@@ -1,0 +1,42 @@
+# Development environment — canonical local values (PLAN-017 §6/§7).
+# Source of truth for local orchestration: startup.py loads this file and
+# exports the derived environment variables for spawned services. Server and
+# web keep their env-var contracts (production semantics unchanged).
+# Secrets live ONLY in .env files; this file references env-var NAMES, never
+# secret values.
+api:
+  port: 3001
+  baseUrl: http://localhost:3001
+  frontendUrl: http://localhost:3000
+  corsOrigins: [http://localhost:3000]
+  cookieSameSite: lax
+  trustProxy: true
+  nodeEnv: development
+web:
+  port: 3000
+  publicApiUrl: http://localhost:3001
+database:
+  # dev credentials are intentionally non-secret (local containers only);
+  # the password itself comes from POSTGRES_PASSWORD in the environment.
+  host: 127.0.0.1
+  port: 5432
+  db: mtamarket
+  user: mtamarket
+  passwordEnv: POSTGRES_PASSWORD
+redis:
+  url: redis://127.0.0.1:6379
+storage:
+  s3Enabled: false
+  uploadDir: ./uploads
+module:
+  build:
+    # Native module build preset (module/CMakePresets.json). Windows hosts
+    # have no supported module build yet — `startup.py doctor` reports the
+    # limitation honestly (see documents/architecture/MODULE.md).
+    preset: linux-gcc
+  drm:
+    marketApiBase: http://localhost:3001
+    keyStoreHome: ~/.mta-market
+jobs:
+  reconciliationEnabled: true
+  serverMonitoringEnabled: true

@@ -2,11 +2,11 @@
 
 import { Suspense, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import axios from "axios";
 import { useAuthStore } from "@/store/auth";
-import api, { bootstrapSession } from "@/lib/api";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+// E-003: the raw axios refresh exchange was migrated onto the canonical
+// fetch client — refreshAccessToken() performs the same cookie-based
+// /auth/refresh POST (credentials: "include"), single-flight shared.
+import api, { bootstrapSession, refreshAccessToken } from "@/lib/api";
 
 function AuthCallbackContent() {
   const searchParams = useSearchParams();
@@ -26,12 +26,10 @@ function AuthCallbackContent() {
 
       try {
         // Exchange the refresh cookie for an access token (memory only).
-        const { data } = await axios.post<{ accessToken: string }>(
-          `${API_BASE_URL}/auth/refresh`,
-          null,
-          { withCredentials: true }
-        );
-        const accessToken = data.accessToken;
+        const accessToken = await refreshAccessToken();
+        if (!accessToken) {
+          throw new Error("refresh exchange failed");
+        }
 
         // Load the profile with the fresh access token.
         const { data: user } = await api.get("/auth/me", {

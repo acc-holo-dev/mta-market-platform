@@ -833,6 +833,87 @@ router.post(
   })
 );
 
+// GET /payments/transactions/mine — buyer transaction history (PLAN-018 A-005).
+// Unified, honest view of the buyer's own money movements: payment attempts
+// (amount, provider, status, createdAt), refunds (independent lifecycle) and
+// purchase references they belong to. Bounded to the 50 most recent of each
+// surface; no pagination beyond that by design (history is queried in the
+// dashboard, this endpoint is the API surface for it).
+router.get(
+  "/transactions/mine",
+  authenticate,
+  standardRateLimit,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const buyerId = req.user!.userId;
+      const BOUND = 50;
+
+      // Purchases reference what was bought (resource + state); payments and
+      // refunds hang off them (service purchases are out of scope here: their
+      // Payment rows carry orderItemId, not purchaseId, and the buyer service
+      // history lives on the service surface).
+      const purchases = await db.orm.public.Purchase
+        .where({ buyerId })
+        .orderBy((m) => m.createdAt.desc())
+        .limit(BOUND)
+        .all();
+      const purchaseIds = purchases.map((p: { id: string }) => p.id);
+
+      const payments = purchaseIds.length
+        ? await db.orm.public.Payment
+            .where((p: any) => p.purchaseId.in(purchaseIds))
+            .orderBy((m) => m.createdAt.desc())
+            .limit(BOUND)
+            .all()
+        : [];
+      const paymentIds = payments.map((p: { id: string }) => p.id);
+
+      const refunds = paymentIds.length
+        ? await db.orm.public.Refund
+            .where((r: any) => r.paymentId.in(paymentIds))
+            .orderBy((m) => m.createdAt.desc())
+            .limit(BOUND)
+            .all()
+        : [];
+
+      res.json({
+        payments: payments.map((p: any) => ({
+          id: p.id,
+          purchaseId: p.purchaseId,
+          provider: p.provider,
+          amount: p.amount,
+          currency: p.currency,
+          status: p.status,
+          createdAt: p.createdAt,
+          succeededAt: p.succeededAt,
+        })),
+        refunds: refunds.map((r: any) => ({
+          id: r.id,
+          paymentId: r.paymentId,
+          amount: r.amount,
+          currency: r.currency,
+          status: r.status,
+          reason: r.reason,
+          createdAt: r.createdAt,
+          processedAt: r.processedAt,
+        })),
+        purchases: purchases.map((p: any) => ({
+          id: p.id,
+          resourceId: p.resourceId,
+          status: p.status,
+          finalPrice: p.finalPrice,
+          createdAt: p.createdAt,
+          completedAt: p.completedAt,
+        })),
+        totals: { payments: payments.length, refunds: refunds.length, purchases: purchases.length },
+      });
+    } catch (error) {
+      reqLog(req).error("buyer_transactions_fetch_failed", { error });
+      res.status(500).json({ error: "Failed to fetch transactions" });
+    }
+  }
+);
+
 // GET /payments/:paymentId/refunds - list refunds for a payment (ADMIN only)
 router.get(
   "/:paymentId/refunds",

@@ -1,17 +1,18 @@
-// PLAN-015 §7/§33: AccountMenu — профиль + баланс в одном контроле.
-// Меню: баланс (честный из /auth/me), Покупки, Подписки, Кабинет продавца,
-// Профиль, Админ (только роль), Выход. Гостям — Войти + Регистрация.
-// Имена «Выход»/«Войти» стабильны для Playwright E2E (tests/e2e).
+// PLAN-015 §7/§33: AccountMenu — аккаунт-действия в одном контроле.
+// План разделения (PLAN-017 §53): навигация живёт в Sidebar, здесь — только
+// аккаунт: баланс, Покупки, Профиль, Выход. Имена «Выход»/«Войти» стабильны
+// для Playwright E2E (tests/e2e).
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Wallet, Package, UserPlus, Store, User, LogOut, ShieldCheck, ChevronDown, Coins } from "lucide-react";
+import { Wallet, Package, User, LogOut, ChevronDown, Coins, Flag } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { fetchMe, formatRub } from "@/lib/api-ext";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 import { useDropdownDismiss } from "@/components/ui/focusTrap";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,8 @@ interface MenuRow {
 export function AccountMenu() {
   const { user, accessToken } = useAuthStore();
   const [open, setOpen] = useState(false);
+  // PLAN-018 S-005: единственная точка входа в бета-диалог обратной связи.
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const menuContainerRef = useRef<HTMLDivElement>(null);
 
   // PLAN-016 D-004: Esc закрывает меню (фокус — на триггер), Tab-out
@@ -66,13 +69,12 @@ export function AccountMenu() {
     );
   }
 
-  const isAdmin = user.role === "ADMIN" || user.role === "MODERATOR";
   const name = user.displayName || user.username;
 
+  // Только аккаунт-действия: навигация (подписки, кабинет продавца,
+  // админ-панель) живёт в Sidebar — по одному месту на действие (§53).
   const rows: MenuRow[] = [
     { href: "/dashboard", label: "Покупки", icon: Package },
-    { href: "/me/following", label: "Подписки", icon: UserPlus },
-    { href: "/seller", label: "Кабинет продавца", icon: Store },
     { href: "/account", label: "Профиль", icon: User },
   ];
 
@@ -143,17 +145,19 @@ export function AccountMenu() {
             </Link>
           ))}
 
-          {isAdmin ? (
-            <Link
-              href="/admin"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-content-secondary transition-colors duration-fast hover:bg-surface-hover hover:text-content"
-            >
-              <ShieldCheck className="h-4 w-4" aria-hidden />
-              Админ-панель
-            </Link>
-          ) : null}
+          {/* PLAN-018 S-005: бета-обратная связь — одна точка вызова (§53). */}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              setFeedbackOpen(true);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-content-secondary transition-colors duration-fast hover:bg-surface-hover hover:text-content"
+          >
+            <Flag className="h-4 w-4" aria-hidden />
+            Сообщить о проблеме
+          </button>
 
           <div className="my-1 border-t border-line" aria-hidden />
           <button
@@ -167,6 +171,9 @@ export function AccountMenu() {
           </button>
         </div>
       ) : null}
+
+      {/* Диалог обратной связи живёт вне dropdown-разметки (fixed-overlay). */}
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 }

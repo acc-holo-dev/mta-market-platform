@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         Перейти к содержимому
       </a>
 
-      <Topbar onToggleSidebar={toggle} />
+      <Topbar />
 
       <div className="flex flex-1">
         <Sidebar collapsed={collapsed} onToggle={toggle} />

@@ -1,8 +1,23 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { ThemeProvider } from "@/components/layout/theme";
 import { AppShell } from "@/components/layout/AppShell";
+
+/*
+ * PLAN-017 §55: Inter — финальный производственный шрифт платформы.
+ * next/font скачивает файлы на этапе сборки и раздаёт их self-hosted
+ * (без внешних CDN-запросов в рантайме), variable-шрифт покрывает все
+ * нужные насыщенности одним файлом; display: swap убирает блокировку
+ * первой отрисовки. Один источник истины для шрифта: CSS-переменная
+ * --font-inter, подключаемая в globals.css (body).
+ */
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "MTA Market — экосистема MTA:SA",
@@ -18,7 +33,7 @@ const themeInitScript = `(function(){try{var t=localStorage.getItem("mta-theme")
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang="ru" suppressHydrationWarning className={inter.variable}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>

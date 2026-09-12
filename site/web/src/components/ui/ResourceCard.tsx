@@ -12,9 +12,17 @@ import { ResourceCover } from "@/components/ui/ResourceCover";
 import { TrustBadges } from "@/components/trust/TrustBadges";
 import { typeLabel } from "@/lib/domain";
 
-export function ResourceCard({ resource }: { resource: Resource }) {
+export function ResourceCard({
+  resource,
+  discount,
+}: {
+  resource: Resource;
+  /** PLAN-018 Wave-6: активная кампания скидки — originalPrice = цена до
+   * скидки (сервер кладёт в `price` уже итоговую цену и возвращает
+   * оригинал здесь). Опционально: без кампании карточка не меняется. */
+  discount?: { originalPrice: number } | null;
+}) {
   const sellerName = resource.seller?.displayName || resource.seller?.username || null;
-  const sellerUsername = resource.seller?.username || null;
   // PUBLISHED в каталоге — уже знак модерации; подсвечиваем trust-меткой.
   const moderated = resource.status === "PUBLISHED";
   const free = resource.price === 0;
@@ -32,14 +40,17 @@ export function ResourceCard({ resource }: { resource: Resource }) {
         className="aspect-video border-b border-line"
       />
 
-      <div className="flex flex-1 flex-col gap-2.5 p-4">
+      <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold leading-snug text-content group-hover:text-accent-strong transition-colors duration-fast">
+          <h3 className="line-clamp-2 min-h-[2.5rem] font-semibold leading-snug text-content group-hover:text-accent-strong transition-colors duration-fast">
             {resource.title}
           </h3>
-          <span className="flex-shrink-0 rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-strong">
-            {typeLabel(resource.type)}
-          </span>
+          {/* У избранного subject приходит без type — пустая метка не рисуется. */}
+          {typeLabel(resource.type) ? (
+            <span className="flex-shrink-0 rounded-pill bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent-strong">
+              {typeLabel(resource.type)}
+            </span>
+          ) : null}
         </div>
 
         {/* Creator — вторая строка иерархии (§17) */}
@@ -54,8 +65,15 @@ export function ResourceCard({ resource }: { resource: Resource }) {
 
         <p className="text-sm text-content-secondary line-clamp-2">{resource.description}</p>
 
-        <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-          <Price kopecks={resource.price} size="md" />
+        {/* §57: фиксированная высота ценовой строки — цены/CTA-зона выровнены
+            на всех карточках независимо от метаданных выше. PLAN-018 Wave-6:
+            явный prop имеет приоритет; иначе — аддитивное поле ответа. */}
+        <div className="mt-auto flex h-7 items-center justify-between gap-2">
+          <Price
+            kopecks={resource.price}
+            originalKopecks={discount?.originalPrice ?? resource.discount?.originalPrice ?? null}
+            size="md"
+          />
           <Rating value={resource.rating ?? null} count={resource.reviewCount ?? null} />
         </div>
       </div>

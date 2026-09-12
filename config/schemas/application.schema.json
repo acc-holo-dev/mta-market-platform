@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mta-market.local/schemas/application.schema.json",
+  "title": "MTA Market application config (config/application/*.yaml)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "features": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" }
+    },
+    "overrides": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "boolean" }
+      }
+    },
+    "rateLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auth": { "$ref": "#/$defs/envColumn" },
+        "standard": { "$ref": "#/$defs/envColumn" },
+        "strict": { "$ref": "#/$defs/envColumn" },
+        "login": { "$ref": "#/$defs/envColumn" },
+        "refresh": { "$ref": "#/$defs/envColumn" }
+      }
+    },
+    "windowsMs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auth": { "type": "integer", "minimum": 1000 },
+        "standard": { "type": "integer", "minimum": 1000 },
+        "strict": { "type": "integer", "minimum": 1000 },
+        "login": { "type": "integer", "minimum": 1000 },
+        "refresh": { "type": "integer", "minimum": 1000 }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": { "$ref": "#/$defs/stringColumn" },
+        "level": { "$ref": "#/$defs/stringColumn" }
+      }
+    }
+  },
+  "$defs": {
+    "envColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "development": { "type": "integer" },
+        "test": { "type": "integer" },
+        "staging": { "type": "integer" },
+        "production": { "type": "integer" }
+      }
+    },
+    "stringColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "development": { "type": "string" },
+        "test": { "type": "string" },
+        "staging": { "type": "string" },
+        "production": { "type": "string" }
+      }
+    }
+  }
+}

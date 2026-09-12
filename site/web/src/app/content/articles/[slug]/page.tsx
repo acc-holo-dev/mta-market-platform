@@ -192,7 +192,7 @@ export default function ArticlePage() {
         {article.thread ? (
           <Link
             href={`/community/forum/thread/${article.thread.id}`}
-            className="mt-3 inline-flex items-center gap-2 rounded-pill border border-accent/30 bg-accent-soft px-4 py-2 text-sm font-medium text-accent-strong transition-colors duration-fast hover:bg-accent hover:text-white"
+            className="mt-3 inline-flex items-center gap-2 rounded-pill border border-accent/30 bg-accent-soft px-4 py-2 text-sm font-medium text-accent-strong transition-colors duration-fast hover:bg-accent hover:text-on-accent"
           >
             <MessageSquare className="h-4 w-4" aria-hidden />
             {article.thread.replyCount} {article.thread.replyCount === 1 ? "ответ" : "ответов"} — открыть тред

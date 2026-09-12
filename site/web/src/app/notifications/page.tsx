@@ -30,6 +30,7 @@ import {
 } from "@/lib/api-ext";
 import { bootstrapSession } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
+import { notificationsKeys } from "@/lib/queries";
 
 const TYPE_META: Record<
   string,
@@ -139,7 +140,7 @@ export default function NotificationsPage() {
 
   const qc = useQueryClient();
   const query = useQuery({
-    queryKey: ["notifications", filter],
+    queryKey: notificationsKeys.listKey(filter),
     queryFn: () => fetchNotifications(filter),
     enabled: booted && accessToken !== null,
   });
@@ -148,8 +149,8 @@ export default function NotificationsPage() {
     mutationFn: markNotificationRead,
     onSuccess: () => {
       setError(null);
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-      qc.invalidateQueries({ queryKey: ["notifications", "badge"] });
+      qc.invalidateQueries({ queryKey: notificationsKeys.all() });
+      qc.invalidateQueries({ queryKey: notificationsKeys.badgeKey() });
     },
     onError: (e) => setError(getErrorMessage(e)),
   });
@@ -158,8 +159,8 @@ export default function NotificationsPage() {
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
       setError(null);
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-      qc.invalidateQueries({ queryKey: ["notifications", "badge"] });
+      qc.invalidateQueries({ queryKey: notificationsKeys.all() });
+      qc.invalidateQueries({ queryKey: notificationsKeys.badgeKey() });
     },
     onError: (e) => setError(getErrorMessage(e)),
   });

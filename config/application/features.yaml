@@ -1,0 +1,18 @@
+# Typed feature flags (PLAN-017 §9). One source of truth; served to the web
+# by GET /config/features and consumed via useFeatureFlags(). Disabled future
+# features must not expose broken UI — they start disabled and only ship
+# together with their real domain.
+features:
+  creator: true              # creator cabinet and publishing
+  services: true             # services marketplace
+  advertising: true          # advertising campaigns/placements control center
+  premium: true              # premium plans and entitlements
+  live_demo: false           # bounded live demo sessions (sandbox runner is
+                             # a mock — no reachable demo endpoint yet; flag
+                             # flips when real sandbox hosting lands)
+  "3d": false                # 3D asset studio preview (parser landed; no
+                             # preview surface yet)
+  advanced_analytics: false  # advanced creator/server analytics
+
+# Optional per-environment overrides (environment name → flag → bool).
+overrides: {}

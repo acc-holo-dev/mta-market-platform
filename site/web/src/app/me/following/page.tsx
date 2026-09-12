@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LoadingSpinner, ErrorState } from "@/components/ui/States";
 import { Avatar } from "@/components/ui/Avatar";
 import { useAuthStore } from "@/store/auth";
+import { meFollowsKey } from "@/lib/queries";
 import { UserPlus, Package, MessagesSquare } from "lucide-react";
 
 export default function FollowingPage() {
@@ -39,17 +40,17 @@ export default function FollowingPage() {
 
   const authed = isAuthenticated();
   const creators = useQuery({
-    queryKey: ["me", "follows", "creators"],
+    queryKey: meFollowsKey("creators"),
     queryFn: fetchMyCreatorFollows,
     enabled: authed,
   });
   const resources = useQuery({
-    queryKey: ["me", "follows", "resources"],
+    queryKey: meFollowsKey("resources"),
     queryFn: fetchMyResourceFollows,
     enabled: authed,
   });
   const threads = useQuery({
-    queryKey: ["me", "follows", "threads"],
+    queryKey: meFollowsKey("threads"),
     queryFn: fetchMyThreadFollows,
     enabled: authed,
   });

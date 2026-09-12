@@ -1,6 +1,0 @@
-# Staging — module points at the staging API; keys via MTA_MARKET key store.
-module:
-  name: base
-drm:
-  marketApiBase: https://staging.example.com
-  keyStoreHome: ~/.mta-market

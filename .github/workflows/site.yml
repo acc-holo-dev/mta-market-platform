@@ -1,12 +1,10 @@
 name: Site
 
-# Site build gate. Publishing is intentionally owned by the unified Platform CI
-# workflow and is allowed only after every platform gate passes.
+# Site build gate (lint, type-check, builds, runtime smoke). Reusable only:
+# Platform CI (ci.yml) is the single push/PR entry point, so this gate never
+# runs twice for the same change.
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
   workflow_call:
 
 permissions:
@@ -14,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build (server + web) & lint
+    name: Lint, type-check, build & runtime smoke
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -25,6 +23,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm lint
+      - name: Type check (workspaces + tests)
+        run: pnpm type-check
       - name: Build server (tsc)
         run: pnpm --filter @mta-market/server build
       - name: Production runtime smoke (node dist/)
