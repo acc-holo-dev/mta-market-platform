@@ -48,7 +48,7 @@ export function DashboardNow() {
 
   if (isLoading) {
     return (
-      <Card className="mb-10 border-l-2 border-l-accent">
+      <Card className="border-l-2 border-l-accent">
         <CardContent className="p-6 text-sm text-content-muted animate-pulse">
           Загрузка сводки…
         </CardContent>
@@ -107,7 +107,7 @@ export function DashboardNow() {
       href: first?.resource ? `/resources/${first.resource.slug}` : "/dashboard",
       icon: <ShoppingBag className="h-4 w-4 text-accent" />,
       label: `Покупки: ${data.purchasedUpdates.count} ${
-        data.purchasedUpdates.count === 1 ? "новый update" : "новых updates"
+        data.purchasedUpdates.count === 1 ? "новое обновление" : "новых обновлений"
       }`,
       detail: first?.resource ? `${first.resource.title} — ${first.version}` : undefined,
     });
@@ -152,7 +152,7 @@ export function DashboardNow() {
   }
 
   return (
-    <Card className="mb-10 border-l-2 border-l-accent shadow-card">
+    <Card className="border-l-2 border-l-accent shadow-card">
       <CardHeader>
         <CardTitle>Сейчас</CardTitle>
         <CardDescription>

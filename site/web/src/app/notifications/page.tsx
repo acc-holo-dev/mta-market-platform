@@ -1,8 +1,9 @@
-// PLAN-005 M-003/M-004: notification center. Unread / recent / all with
-// mark-read and mark-all-read. Every notification links to its object.
+// PLAN-005 M-003/M-004 → PLAN-015 §32: notification center.
+// Группировка «Сегодня» / «Ранее», типовые иконки (реальные типы бэкенда),
+// mark-read / mark-all-read, каждое уведомление — deep link на объект.
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,7 +18,6 @@ import {
   PackageOpen,
   FileText,
 } from "lucide-react";
-// PLAN-008 icons for the new notification types
 import { Button } from "@/components/ui/Button";
 import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
 import { Tabs } from "@/components/ui/Tabs";
@@ -87,6 +87,16 @@ function formatDateTime(value: string): string {
   });
 }
 
+function isToday(value: string): boolean {
+  const date = new Date(value);
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
+}
+
 /** Resolves a notification to its in-platform target (actionable, M model). */
 function targetHref(n: NotificationItem): string | null {
   switch (n.entityType) {
@@ -154,10 +164,75 @@ export default function NotificationsPage() {
     onError: (e) => setError(getErrorMessage(e)),
   });
 
+  // PLAN-015 §32: группировка Сегодня / Ранее (по локальной дате создания).
+  const { today, earlier } = useMemo(() => {
+    const items = query.data?.data ?? [];
+    return {
+      today: items.filter((n) => isToday(n.createdAt)),
+      earlier: items.filter((n) => !isToday(n.createdAt)),
+    };
+  }, [query.data]);
+
   if (!booted || !isAuthenticated()) return null;
 
+  const renderItem = (n: NotificationItem) => {
+    const href = targetHref(n);
+    const meta = TYPE_META[n.type] ?? {
+      label: n.type,
+      icon: Bell,
+      tone: "bg-surface-hover text-content-secondary",
+    };
+    const Icon = meta.icon;
+    return (
+      <button
+        key={n.id}
+        type="button"
+        onClick={() => {
+          if (!n.readAt) markRead.mutate(n.id);
+          if (href) router.push(href);
+        }}
+        className={`block w-full rounded-card border p-4 text-left transition-colors duration-fast ${
+          n.readAt
+            ? "border-line bg-surface hover:bg-surface-hover"
+            : "border-accent/30 bg-accent-soft/40 hover:bg-accent-soft/60"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${meta.tone}`}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="truncate font-medium">{n.title}</p>
+              {!n.readAt ? (
+                <span
+                  className="h-2 w-2 flex-shrink-0 rounded-full bg-accent"
+                  aria-label="Непрочитано"
+                />
+              ) : null}
+            </div>
+            {n.body ? (
+              <p className="mt-0.5 line-clamp-2 text-sm text-content-secondary">{n.body}</p>
+            ) : null}
+            <p className="mt-1 text-xs text-content-muted">
+              {meta.label} · {formatDateTime(n.createdAt)}
+            </p>
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  const groupHeader = (label: string, count: number) => (
+    <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-content-muted">
+      {label} <span className="tabular-nums">· {count}</span>
+    </p>
+  );
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Уведомления</h1>
@@ -171,7 +246,7 @@ export default function NotificationsPage() {
           onClick={() => markAll.mutate()}
           disabled={markAll.isPending || (query.data?.unreadCount ?? 0) === 0}
         >
-          <CheckCheck className="mr-2 h-4 w-4" />
+          <CheckCheck className="mr-2 h-4 w-4" aria-hidden />
           Прочитать всё
         </Button>
       </div>
@@ -203,75 +278,19 @@ export default function NotificationsPage() {
           description="Подпишитесь на серверы и участвуйте в обсуждениях — здесь появятся события."
         />
       ) : (
-        <div className="space-y-2">
-          {query.data!.data.map((n) => {
-            const href = targetHref(n);
-            const meta = TYPE_META[n.type] ?? {
-              label: n.type,
-              icon: Bell,
-              tone: "bg-surface-hover text-content-secondary",
-            };
-            const Icon = meta.icon;
-            return (
-              <button
-                key={n.id}
-                type="button"
-                onClick={() => {
-                  if (!n.readAt) markRead.mutate(n.id);
-                  if (href) router.push(href);
-                }}
-                className={`block w-full rounded-card border p-4 text-left transition-colors duration-fast ${
-                  n.readAt
-                    ? "border-line bg-surface hover:bg-surface-hover"
-                    : "border-accent/30 bg-accent-soft/40 hover:bg-accent-soft/60"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${meta.tone}`}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{n.title}</p>
-                      {!n.readAt ? (
-                        <span
-                          className="h-2 w-2 flex-shrink-0 rounded-full bg-accent"
-                          aria-label="Непрочитано"
-                        />
-                      ) : null}
-                    </div>
-                    {n.body ? (
-                      <p className="mt-0.5 line-clamp-2 text-sm text-content-secondary">{n.body}</p>
-                    ) : null}
-                    <p className="mt-1 text-xs text-content-muted">
-                      {meta.label} · {formatDateTime(n.createdAt)}
-                    </p>
-                  </div>
-                  {!n.readAt ? (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markRead.mutate(n.id);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.stopPropagation();
-                          markRead.mutate(n.id);
-                        }
-                      }}
-                      className="flex-shrink-0 rounded-md px-2 py-1 text-xs text-content-secondary transition-colors duration-fast hover:bg-surface-hover hover:text-content"
-                    >
-                      Прочитать
-                    </span>
-                  ) : null}
-                </div>
-              </button>
-            );
-          })}
+        <div className="space-y-4">
+          {today.length > 0 ? (
+            <section aria-label="Сегодня">
+              {groupHeader("Сегодня", today.length)}
+              <div className="space-y-2">{today.map(renderItem)}</div>
+            </section>
+          ) : null}
+          {earlier.length > 0 ? (
+            <section aria-label="Ранее">
+              {groupHeader("Ранее", earlier.length)}
+              <div className="space-y-2">{earlier.map(renderItem)}</div>
+            </section>
+          ) : null}
         </div>
       )}
     </div>

@@ -54,16 +54,20 @@ export default function DashboardPage() {
   const list = (purchases as Purchase[] | undefined) ?? [];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Покупки</h1>
+        <h1 className="text-3xl font-bold tracking-tight">My MTA</h1>
         <p className="mt-1 text-sm text-content-secondary">
-          Привет, {user.displayName || user.username}! Здесь ваши приобретённые ресурсы и лицензии.
+          Привет, {user.displayName || user.username}! Ваше личное пространство: покупки,
+          подписки, серверы и события с последнего визита.
         </p>
       </div>
 
-      <div className="mb-8 grid gap-4 md:grid-cols-3">
-        <Card className="shadow-card md:col-span-2">
+      {/* PLAN-015 §31: Overview = «Сейчас / С последнего визита» — первичный блок */}
+      <DashboardNow />
+
+      <div className="mt-8 grid gap-4 lg:grid-cols-3">
+        <Card className="shadow-card lg:col-span-2">
           <CardHeader>
             <CardTitle>Мои покупки</CardTitle>
             <CardDescription>Ресурсы, лицензии и загрузки</CardDescription>
@@ -124,27 +128,29 @@ export default function DashboardPage() {
             <CardDescription>Профиль, баланс и лицензии</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/account" className="block">
+            <Link href="/account#balance" className="block">
               <Button variant="outline" className="w-full" size="sm">
-                Профиль и баланс
+                Баланс
+              </Button>
+            </Link>
+            <Link href="/account" className="block">
+              <Button variant="ghost" className="w-full" size="sm">
+                Профиль
               </Button>
             </Link>
             <Link href="/seller" className="block">
               <Button variant="ghost" className="w-full" size="sm">
                 <Store className="mr-2 h-4 w-4" />
-                Мой магазин
+                Кабинет продавца
               </Button>
             </Link>
           </CardContent>
         </Card>
       </div>
 
-      {/* PLAN-006 I: сводка «Сейчас / За ночь» — персональный вход в экосистему */}
-      <DashboardNow />
-
       {/* PLAN-005 N: виджеты «My MTA» — сообщество (серверы, подписки, форум) */}
       <section className="mt-10">
-        <h2 className="text-2xl font-bold tracking-tight">My MTA</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Сообщество</h2>
         <MyMtaWidgets />
       </section>
     </div>
