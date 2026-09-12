@@ -1,12 +1,36 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-12 (PLAN-015 выполнен).
+Обновлено: 2026-09-12 (PLAN-015 выполнен; PLAN-016 зарегистрирован).
 
 ## Активный план
 
-Активного плана нет. **PLAN-015 — MTA Market Experience Architecture & Visual
-System — IMPLEMENTATION COMPLETE** (запись: completed/PLAN-015.md). Следующий
-план не сформирован (см. NEXT-PHASE).
+**PLAN-016 — Identity Expansion, Multi-Provider Payments & Platform Debt
+Closure** — зарегистрирован ([ACTIVE/PLAN-016.md](ACTIVE/PLAN-016.md)),
+выполнение не начато.
+
+Основа плана: аудит документации и кода (2026-09-12) — три опоры:
+1. **Вход**: Google включён (backend готов), VK ID (новый), Telegram
+   Login Widget (direct-mode), discovery `GET /auth/providers`,
+   страница `/account/identities` (сейчас серверный link-callback ведёт
+   в 404), шифрование OAuth-токенов в покое (PLAN-004 §6), смена пароля.
+2. **Платежи**: provider-neutral dispatch (снятие хардкодов `"YUKASSA"`
+   в routes/payments.ts, jobs/reconciliation.ts, db-reset), per-provider
+   webhooks (`/payments/webhook/:provider`, raw-body, HMAC), фиат-адаптер
+   №2 (референс T-Bank EACQ), crypto-адаптер (RUB-locked инвойсы,
+   underpay/overpay политика) — по нейтральному `IPaymentProvider`
+   (комментарий E-010; ideas/MARKETPLACE §6 «несколько платёжных
+   провайдеров»).
+3. **Долг**: plan-015 E2E coverage (§51 коммит test(ui) не создан),
+   мёртвый redirect /account/identities, admin raw-ID формы, EN targetType
+   в спорах, фокус-трапы модалок (DESIGN-SYSTEM §10 обещает, кода нет),
+   search не на react-query, auth-FOUC bootstrap, 7d/30d статистика
+   сервера (API есть, UI нет), error/not-found/loading.tsx, api-ext split
+   + dead exports, footer claims, housekeeping документации
+   (stale-спеки в active/, отсутствующая запись PLAN-013, README без
+   PLAN-011..014, TESTING.md дрейф).
+
+Мультивалютность, top-up, payouts, email/push, password reset, deals,
+subscriptions, bundles — явно вне scope (§15 плана).
 
 ### Что появилось в PLAN-015 (2026-09-12)
 
