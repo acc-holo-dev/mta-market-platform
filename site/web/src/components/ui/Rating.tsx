@@ -34,7 +34,7 @@ export function Rating({
         {[1, 2, 3, 4, 5].map((n) => (
           <Star
             key={n}
-            className={cn(px, n <= rounded ? "text-amber-400 fill-amber-400" : "text-line-strong")}
+            className={cn(px, n <= rounded ? "text-star fill-star" : "text-line-strong")}
           />
         ))}
       </span>

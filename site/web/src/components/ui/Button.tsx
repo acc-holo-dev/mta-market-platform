@@ -14,11 +14,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:pointer-events-none";
 
     const variants = {
-      primary: "bg-accent text-white hover:bg-accent-strong",
+      primary: "bg-accent text-on-accent hover:bg-accent-strong",
       secondary: "bg-surface-raised border border-line text-content hover:bg-surface-hover",
       outline: "border border-line-strong bg-transparent text-content hover:bg-surface-hover",
       ghost: "text-content-secondary hover:bg-surface-hover hover:text-content",
-      danger: "bg-bad text-white hover:brightness-110",
+      danger: "bg-bad text-on-accent hover:brightness-110",
     };
 
     const sizes = {

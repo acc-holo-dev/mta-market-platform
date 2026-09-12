@@ -28,6 +28,10 @@ module.exports = {
           strong: "hsl(var(--primary-strong))",
           soft: "hsl(var(--primary-soft))",
         },
+        // PLAN-015 §43: текст/иконки поверх brand-заливки (токен, не raw white).
+        "on-accent": "hsl(var(--on-accent))",
+        // PLAN-015 §43: цвет звёзд рейтинга — единственный тёплый семантический.
+        star: "hsl(var(--star))",
         ok: {
           DEFAULT: "hsl(var(--success))",
           soft: "hsl(var(--success-soft))",

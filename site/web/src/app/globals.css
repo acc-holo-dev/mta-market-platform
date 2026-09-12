@@ -3,15 +3,76 @@
 @tailwind utilities;
 
 /*
- * MTA Market design tokens — PLAN-013 Visual System (source of truth:
- * documents/architecture/DESIGN-SYSTEM.md).
+ * MTA Market design tokens — PLAN-013 (Visual System) + PLAN-015 (Experience
+ * Architecture). Source of truth: documents/architecture/DESIGN-SYSTEM.md.
  *
- * Единый тёмный premium-язык платформы: глубокий navy background,
- * многоуровневые surfaces, один холодный electric-blue brand accent,
- * семантические статусы. Все значения читаются ТОЛЬКО через токены;
- * сырые палитры Tailwind в компонентах запрещены.
+ * ДВЕ первоклассные темы (§10 PLAN-015): light (нейтральный фон, белые
+ * surfaces, сдержанные линии) и dark (глубокий graphite). Имена токенов
+ * идентичны в обеих темах; сырые палитры Tailwind в компонентах запрещены.
+ *
+ * Формат: HSL-каналы `H S% L%` без alpha; прозрачность через Tailwind `/40`.
  */
 :root {
+  color-scheme: light;
+
+  /* --- backgrounds (layers) ----------------------------------------- */
+  --background: 220 20% 97%;
+  --surface: 0 0% 100%;
+  --surface-hover: 220 18% 95%;
+  --surface-raised: 0 0% 100%;
+  --surface-inset: 220 17% 95%;
+
+  /* lines (borders) --------------------------------------------------- */
+  --line: 220 13% 89%;
+  --line-strong: 220 12% 76%;
+  --line-accent: 217 91% 57%;
+
+  /* text ---------------------------------------------------------------*/
+  --text-primary: 222 32% 12%;
+  --text-secondary: 220 12% 36%;
+  --muted: 220 9% 46%;
+
+  /* brand accent -------------------------------------------------------*/
+  --primary: 217 91% 50%;
+  --primary-strong: 217 91% 42%;
+  --primary-soft: 217 100% 95%;
+  --primary-glow: 217 91% 50% / 0.18;
+  --on-accent: 0 0% 100%;
+
+  /* semantic statuses ---------------------------------------------------*/
+  --success: 152 60% 34%;
+  --success-soft: 152 50% 93%;
+  --warning: 32 92% 40%;
+  --warning-soft: 40 95% 92%;
+  --danger: 0 70% 46%;
+  --danger-soft: 0 80% 95%;
+  --info: 201 90% 38%;
+  --info-soft: 199 85% 93%;
+  --verified: 262 72% 50%;
+  --verified-soft: 262 60% 95%;
+
+  /* rating stars (PLAN-015: единственный тёплый семантический цвет) ------*/
+  --star: 38 92% 44%;
+
+  /* shape ---------------------------------------------------------------*/
+  --radius-card: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-pill: 999px;
+
+  /* elevation -----------------------------------------------------------*/
+  --shadow-card: 0 1px 2px hsl(222 30% 20% / 0.06), 0 2px 8px hsl(222 30% 20% / 0.06);
+  --shadow-raised: 0 4px 12px hsl(222 30% 20% / 0.1), 0 12px 32px hsl(222 30% 20% / 0.12);
+  --shadow-accent: 0 0 0 1px hsl(var(--primary) / 0.25), 0 4px 24px hsl(var(--primary-glow));
+
+  /* hero (светлая версия бренд-градиента) --------------------------------*/
+  --hero-from: 220 30% 94%;
+
+  /* motion ---------------------------------------------------------------*/
+  --motion-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
   color-scheme: dark;
 
   /* --- backgrounds (layers) ----------------------------------------- */
@@ -36,6 +97,7 @@
   --primary-strong: 216 94% 64%;
   --primary-soft: 217 65% 16%;
   --primary-glow: 217 91% 57% / 0.28;
+  --on-accent: 0 0% 100%;
 
   /* semantic statuses ---------------------------------------------------*/
   --success: 152 58% 46%;
@@ -49,29 +111,23 @@
   --verified: 262 83% 66%;
   --verified-soft: 262 70% 16%;
 
-  /* shape ---------------------------------------------------------------*/
-  --radius-card: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-pill: 999px;
+  --star: 38 92% 56%;
 
-  /* elevation -----------------------------------------------------------*/
   --shadow-card: 0 1px 2px hsl(223 45% 2% / 0.6), 0 4px 16px hsl(223 45% 2% / 0.35);
   --shadow-raised: 0 4px 12px hsl(223 45% 2% / 0.7), 0 8px 32px hsl(223 45% 2% / 0.55);
   --shadow-accent: 0 0 0 1px hsl(var(--primary) / 0.25), 0 4px 24px hsl(var(--primary-glow));
 
-  /* motion ---------------------------------------------------------------*/
-  --motion-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --motion-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --hero-from: 222 48% 8%;
 }
 
 /*
- * Hero-фон главной: глубокий синий градиент с тонким brand-glow сверху.
+ * Hero-фон: тонкий brand-glow сверху, тема-зависимый (tokens only).
  * Чистый CSS — без внешних ассетов, без анимаций (PERF-правило).
  */
 .mta-hero-surface {
   background:
-    radial-gradient(1200px 480px at 50% -160px, hsl(var(--primary) / 0.14), transparent 70%),
-    linear-gradient(180deg, hsl(222 48% 8%) 0%, hsl(var(--background)) 78%);
+    radial-gradient(1200px 480px at 50% -160px, hsl(var(--primary) / 0.12), transparent 70%),
+    linear-gradient(180deg, hsl(var(--hero-from)) 0%, hsl(var(--background)) 78%);
 }
 
 .mta-brand-text-gradient {
@@ -99,7 +155,7 @@ body {
   border-radius: 2px;
 }
 
-/* Аккуратный скроллбар в тёмной теме */
+/* Аккуратный скроллбар в обеих темах */
 * {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--line-strong)) transparent;
@@ -113,7 +169,7 @@ body {
   }
 }
 
-/* Декоративные анимации только через эти хелперы (см. DESIGN-SYSTEM §9). */
+/* Декоративные анимации только через эти хелперы (DESIGN-SYSTEM §9). */
 .mta-anim-ping {
   animation: mta-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
@@ -131,4 +187,22 @@ body {
   50% {
     opacity: 0.5;
   }
+}
+
+/*
+ * PLAN-015 §45: сдержанный вход поверхностей (dropdown/sheet/popover).
+ * Уважает prefers-reduced-motion через глобальные media-правила выше.
+ */
+@keyframes mta-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mta-anim-fade {
+  animation: mta-fade-in 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }

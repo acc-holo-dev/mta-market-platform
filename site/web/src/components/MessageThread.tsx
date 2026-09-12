@@ -53,12 +53,12 @@ export function MessageThread({ messageIdPrefix, messages, isLoading, sendFn, cu
               key={m.id}
               className={
                 own
-                  ? "ml-8 rounded-lg bg-accent p-3 text-white shadow-card"
+                  ? "ml-8 rounded-lg bg-accent p-3 text-on-accent shadow-card"
                   : "mr-8 rounded-lg border border-line bg-surface-raised p-3 text-content"
               }
             >
               <p className="break-words text-sm whitespace-pre-wrap">{m.body}</p>
-              <p className={`mt-1 text-xs ${own ? "text-white/70" : "text-content-muted"}`}>
+              <p className={`mt-1 text-xs ${own ? "text-on-accent/70" : "text-content-muted"}`}>
                 {new Date(m.createdAt).toLocaleString("ru-RU")}
               </p>
             </div>
