@@ -3,9 +3,10 @@
 // с keyboard support (Esc, ←/→) и честными alt-текстами.
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { mediaUrl } from "@/lib/api-ext";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { useFocusTrap, rememberTrigger, restoreTrigger } from "@/components/ui/focusTrap";
 import { cn } from "@/lib/utils";
 
 export interface GalleryImage {
@@ -24,6 +25,8 @@ export function Gallery({
   aspect?: string;
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const lightboxRef = useRef<HTMLDivElement>(null);
+  const lightboxOpen = openIndex !== null;
 
   const close = useCallback(() => setOpenIndex(null), []);
   const step = useCallback(
@@ -36,6 +39,18 @@ export function Gallery({
     },
     [images.length]
   );
+
+  // PLAN-016 D-004: Tab-цикл внутри лайтбокса, Esc закрыл — фокус
+  // возвращается на превью, открывшее просмотр. Стрелки ←/→ уже
+  // обрабатываются в обработчике ниже.
+  useEffect(() => {
+    if (lightboxOpen) {
+      rememberTrigger(document.activeElement as HTMLElement | null);
+      return;
+    }
+    restoreTrigger();
+  }, [lightboxOpen]);
+  useFocusTrap(lightboxOpen, lightboxRef, { onEscape: close });
 
   // Keyboard: Esc закрывает, стрелки листают (P-001).
   useEffect(() => {
@@ -101,6 +116,7 @@ export function Gallery({
       {/* Lightbox */}
       {active ? (
         <div
+          ref={lightboxRef}
           role="dialog"
           aria-modal="true"
           aria-label="Просмотр изображения"

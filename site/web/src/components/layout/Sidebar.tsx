@@ -7,7 +7,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Home,
@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { fetchSellerProfile, fetchNotifications } from "@/lib/api-ext";
+import { useFocusTrap, rememberTrigger, restoreTrigger } from "@/components/ui/focusTrap";
 import { cn } from "@/lib/utils";
 
 export const SIDEBAR_COLLAPSED_KEY = "mta-sidebar-collapsed";
@@ -240,11 +241,24 @@ export function Sidebar({
 
 /** Mobile drawer with the same navigation (<lg). */
 export function SidebarDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // PLAN-016 D-004: Esc + фокус-трап; фокус возвращается на бургер-кнопку.
+  const drawerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open) rememberTrigger(document.activeElement as HTMLElement | null);
+  }, [open]);
+  useFocusTrap(open, drawerRef, { onEscape: onClose, autofocus: open });
+  useEffect(() => {
+    if (!open) restoreTrigger();
+  }, [open]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
-      <div className="absolute inset-y-0 left-0 w-72 max-w-full overflow-y-auto border-r border-line bg-surface-raised p-4 shadow-raised">
+      <div
+        ref={drawerRef}
+        className="mta-anim-fade absolute inset-y-0 left-0 w-72 max-w-full overflow-y-auto border-r border-line bg-surface-raised p-4 shadow-raised"
+      >
         <div className="mb-4 flex items-center justify-between">
           <span className="font-bold">Меню</span>
           <button

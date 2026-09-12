@@ -546,10 +546,15 @@ function ResourceRow({ row }: { row: ServerResourceCard }) {
 
 /* ============================== Live ============================== */
 
+const STATS_RANGE_LABELS = { "24h": "24H", "7d": "7D", "30d": "30D" } as const;
+
 function LiveSection({ slug, privacy }: { slug: string; privacy: ServerDetail["privacy"] }) {
+  // PLAN-016 D-007: переключатель окна статистики (API поддерживает
+  // 24h/7d/30d — CURRENT «Следующий шаг»).
+  const [statsRange, setStatsRange] = useState<"24h" | "7d" | "30d">("24h");
   const statsQuery = useQuery({
-    queryKey: ["server-stats", slug, "24h"],
-    queryFn: () => fetchServerStatistics(slug, "24h"),
+    queryKey: ["server-stats", slug, statsRange],
+    queryFn: () => fetchServerStatistics(slug, statsRange),
   });
 
   const payload = statsQuery.data?.data ?? null;
@@ -601,8 +606,29 @@ function LiveSection({ slug, privacy }: { slug: string; privacy: ServerDetail["p
       {privacy.showStats ? (
         <Card>
           <CardHeader>
-            <CardTitle>Онлайн за 24 часа</CardTitle>
+            <CardTitle>Онлайн за {STATS_RANGE_LABELS[statsRange]}</CardTitle>
             <CardDescription>Измерения модуля мониторинга (каждый heartbeat).</CardDescription>
+            <div
+              role="group"
+              aria-label="Окно статистики"
+              className="mt-2 inline-flex rounded-md border border-line-strong p-0.5"
+            >
+              {(Object.keys(STATS_RANGE_LABELS) as Array<keyof typeof STATS_RANGE_LABELS>).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  aria-pressed={statsRange === r}
+                  onClick={() => setStatsRange(r)}
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition-colors duration-fast ${
+                    statsRange === r
+                      ? "bg-accent text-on-accent"
+                      : "text-content-secondary hover:bg-surface-hover hover:text-content"
+                  }`}
+                >
+                  {STATS_RANGE_LABELS[r]}
+                </button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent>
             {statsQuery.isLoading ? (

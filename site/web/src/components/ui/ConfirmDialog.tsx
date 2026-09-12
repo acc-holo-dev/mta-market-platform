@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useFocusTrap, rememberTrigger, restoreTrigger } from "@/components/ui/focusTrap";
 import { Button } from "@/components/ui/Button";
 
 export function ConfirmDialog({
@@ -27,14 +28,15 @@ export function ConfirmDialog({
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // PLAN-016 D-004: Esc + Tab-цикл внутри диалога; фокус возвращается на
+  // триггер после закрытия.
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
+    if (open) rememberTrigger(document.activeElement as HTMLElement | null);
+  }, [open]);
+  useFocusTrap(open, ref, { onEscape: onCancel, autofocus: open });
+  useEffect(() => {
+    if (!open) restoreTrigger();
+  }, [open]);
 
   if (!open) return null;
 

@@ -41,6 +41,7 @@ import {
 } from "@/lib/api-ext";
 import { useAuthStore } from "@/store/auth";
 import { bootstrapSession } from "@/lib/api";
+import { disputeTargetLabel } from "@/lib/disputeLabels";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Select } from "@/components/ui/Input";
@@ -54,6 +55,9 @@ import { typeLabel, formatDate } from "@/lib/domain";
 import { Shield, Gavel, Users, Ban, Inbox, Server, Flag, MessageSquare, FileText } from "lucide-react";
 
 type Tab = "moderation" | "sellers" | "disputes" | "versions" | "servers" | "reports" | "community" | "articles";
+
+// PLAN-016 D-002: UUID v4 validation for pasted moderation IDs.
+const MODERATION_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default function AdminPage() {
   const { user, isAuthenticated } = useAuthStore();
@@ -571,7 +575,7 @@ function DisputesSection() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">
-                    Спор #{d.id.slice(0, 8)} · {d.targetType === "PURCHASE" ? "Покупка" : "Услуга"}
+                    Спор #{d.id.slice(0, 8)} · {disputeTargetLabel(d.targetType)}
                   </p>
                   <p className="text-xs text-content-muted">
                     {new Date(d.createdAt).toLocaleString("ru-RU")}
@@ -668,9 +672,13 @@ function VersionsSection() {
         <Input
           value={versionId}
           onChange={(e) => setVersionId(e.target.value)}
-          placeholder="ID версии"
+          placeholder="ID версии (UUID versionId из деталей ресурса)"
           aria-label="ID версии"
+          aria-invalid={versionId.trim().length > 0 && !MODERATION_ID_REGEX.test(versionId.trim())}
         />
+        <p className="text-xs text-content-muted">
+          ID версии доступен на вкладке «Ресурсы» — детали ресурса, блок версий.
+        </p>
         <Input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
@@ -681,7 +689,7 @@ function VersionsSection() {
           <Button
             variant="danger"
             size="sm"
-            disabled={!versionId.trim() || yank.isPending}
+            disabled={!MODERATION_ID_REGEX.test(versionId.trim()) || yank.isPending}
             onClick={() => yank.mutate()}
           >
             Отозвать версию
@@ -689,7 +697,7 @@ function VersionsSection() {
           <Button
             variant="outline"
             size="sm"
-            disabled={!versionId.trim() || compat.isPending}
+            disabled={!MODERATION_ID_REGEX.test(versionId.trim()) || compat.isPending}
             onClick={() => compat.mutate()}
           >
             Проверить совместимость
@@ -1270,8 +1278,9 @@ function CommunityModerationSection() {
           <Input
             value={reviewId}
             onChange={(e) => setReviewId(e.target.value)}
-            placeholder="ID отзыва"
+            placeholder="ID отзыва (UUID из админ-списка отзывов)"
             aria-label="ID отзыва"
+            aria-invalid={reviewId.trim().length > 0 && !MODERATION_ID_REGEX.test(reviewId.trim())}
           />
           <Input
             value={reviewReason}
@@ -1305,8 +1314,9 @@ function CommunityModerationSection() {
           <Input
             value={threadId}
             onChange={(e) => setThreadId(e.target.value)}
-            placeholder="ID темы"
+            placeholder="ID темы (UUID из списка тем)"
             aria-label="ID темы"
+            aria-invalid={threadId.trim().length > 0 && !MODERATION_ID_REGEX.test(threadId.trim())}
           />
           <div className="max-w-xs">
             <Select
@@ -1343,8 +1353,9 @@ function CommunityModerationSection() {
           <Input
             value={newsId}
             onChange={(e) => setNewsId(e.target.value)}
-            placeholder="ID новости"
+            placeholder="ID новости (UUID из вкладки «Серверы»)"
             aria-label="ID новости"
+            aria-invalid={newsId.trim().length > 0 && !MODERATION_ID_REGEX.test(newsId.trim())}
           />
           <Input
             value={newsReason}

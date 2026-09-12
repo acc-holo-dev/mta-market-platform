@@ -21,7 +21,6 @@ const COLUMNS: Array<{
     links: [
       { href: "/community", label: "Форум" },
       { href: "/content", label: "Статьи" },
-      { href: "/news", label: "Новости и обновления" },
     ],
   },
   {
@@ -79,7 +78,8 @@ export function Footer() {
             © {year} MTA Market — платформа сообщества Multi Theft Auto.
           </p>
           <p className="text-xs text-content-muted">
-            Безопасная оплата · DRM-лицензии · Покупки защищены политикой возвратов
+            Оплата через платёжных провайдеров · DRM-лицензии · Возвраты через
+            споры и модерацию
           </p>
         </div>
       </div>

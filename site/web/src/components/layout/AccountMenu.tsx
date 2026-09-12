@@ -4,7 +4,7 @@
 // Имена «Выход»/«Войти» стабильны для Playwright E2E (tests/e2e).
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Wallet, Package, UserPlus, Store, User, LogOut, ShieldCheck, ChevronDown, Coins } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
@@ -12,6 +12,7 @@ import { fetchMe, formatRub } from "@/lib/api-ext";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { useDropdownDismiss } from "@/components/ui/focusTrap";
 import { cn } from "@/lib/utils";
 
 interface MenuRow {
@@ -23,6 +24,11 @@ interface MenuRow {
 export function AccountMenu() {
   const { user, accessToken } = useAuthStore();
   const [open, setOpen] = useState(false);
+  const menuContainerRef = useRef<HTMLDivElement>(null);
+
+  // PLAN-016 D-004: Esc закрывает меню (фокус — на триггер), Tab-out
+  // закрывает без похищения фокуса.
+  useDropdownDismiss(open, menuContainerRef, () => setOpen(false));
 
   const { data: me } = useQuery({
     queryKey: ["me"],
@@ -76,7 +82,7 @@ export function AccountMenu() {
   };
 
   return (
-    <div className="relative" data-account-menu>
+    <div className="relative" data-account-menu ref={menuContainerRef}>
       <button
         type="button"
         aria-haspopup="menu"

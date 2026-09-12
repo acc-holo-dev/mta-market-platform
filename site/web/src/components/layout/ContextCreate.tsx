@@ -2,12 +2,13 @@
 // Метка меняется по разделу (§9), для гостей скрыто; на Home — меню-выбор.
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Plus, Package, Server, MessagesSquare, FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { useDropdownDismiss } from "@/components/ui/focusTrap";
 
 interface CreateOption {
   href: string;
@@ -45,7 +46,12 @@ export function ContextCreate() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const menuContainerRef = useRef<HTMLDivElement>(null);
   const context = contextFor(pathname);
+
+  // PLAN-016 D-004: Esc закрывает меню (фокус — на триггер), Tab-out
+  // закрывает без похищения фокуса.
+  useDropdownDismiss(open, menuContainerRef, () => setOpen(false));
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +66,7 @@ export function ContextCreate() {
 
   if (context.menu) {
     return (
-      <div className="relative" data-context-create>
+      <div className="relative" data-context-create ref={menuContainerRef}>
         <Button
           variant="secondary"
           size="sm"

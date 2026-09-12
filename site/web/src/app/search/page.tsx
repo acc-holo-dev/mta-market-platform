@@ -2,61 +2,77 @@
 // groups: Resources / Servers / Discussions / Articles. Fixes the PLAN-006
 // hero gap (the search box pushed to /search, but the page itself was never
 // built — honest repair recorded in the PLAN-007 EXECUTION RECORD).
+//
+// PLAN-016 D-005: react-query + URL-sync как на /resources — URL (`?q=`)
+// единственный источник истины; ввод в инпуте уходит в URL с дебаунсом
+// (replace, не пушим историю при наборе); запрос через useQuery с
+// placeholderData, локаторы/тексты E2E (plan007 E-004, pill «Статьи <n>»)
+// сохранены.
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { search, type SearchResults } from "@/lib/api-ext";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { search, getErrorMessage } from "@/lib/api-ext";
 import { LoadingSpinner, EmptyState } from "@/components/ui/States";
 import { categoryLabel } from "@/lib/domain";
 import { Search, FileText } from "lucide-react";
 
 function SearchPageInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const initial = searchParams.get("q") ?? "";
-  const [q, setQ] = useState(initial);
-  const [results, setResults] = useState<SearchResults | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const urlQuery = searchParams.get("q") ?? "";
+
+  // Локальное значение инпута: мгновенный отклик, URL обновляется с
+  // дебаунсом (шаблон /resources).
+  const [searchInput, setSearchInput] = useState(urlQuery);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPushedQuery = useRef<string | null>(null);
+
+  // Синхронизация инпута при навигации назад/вперёд и по ссылкам.
+  useEffect(() => {
+    setSearchInput(urlQuery);
+  }, [urlQuery]);
 
   useEffect(() => {
-    setQ(initial);
-  }, [initial]);
-
-  useEffect(() => {
-    const query = q.trim();
-    if (query.length < 2) {
-      setResults(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    search(query)
-      .then((r) => {
-        if (!cancelled) setResults(r);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.response?.data?.error ?? "Поиск недоступен");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
     return () => {
-      cancelled = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial]);
+  }, []);
 
-  const hasQuery = q.trim().length >= 2;
-  const total =
-    results
-      ? results.resources.count +
-        results.servers.count +
-        results.threads.count +
-        (results.articles?.count ?? 0)
-      : 0;
+  const pushQueryReplace = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value.trim()) params.set("q", value.trim());
+    else params.delete("q");
+    const queryString = params.toString();
+    if (queryString === (lastPushedQuery.current ?? "")) return;
+    lastPushedQuery.current = queryString;
+    router.replace(queryString ? `/search?${queryString}` : "/search", { scroll: false });
+  };
+
+  const onQueryChange = (value: string) => {
+    setSearchInput(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => pushQueryReplace(value), 350);
+  };
+
+  const query = urlQuery.trim();
+  const hasQuery = query.length >= 2;
+
+  const { data: results, isLoading, error, refetch } = useQuery({
+    queryKey: ["search", query],
+    queryFn: () => search(query),
+    enabled: hasQuery,
+    placeholderData: keepPreviousData,
+  });
+
+  const total = results
+    ? results.resources.count +
+      results.servers.count +
+      results.threads.count +
+      (results.articles?.count ?? 0)
+    : 0;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
@@ -66,17 +82,15 @@ function SearchPageInner() {
         role="search"
         onSubmit={(e) => {
           e.preventDefault();
-          const params = new URLSearchParams(window.location.search);
-          if (q.trim()) params.set("q", q.trim());
-          else params.delete("q");
-          window.history.replaceState(null, "", `/search?${params.toString()}`);
-          setQ(q.trim());
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          pushQueryReplace(searchInput);
+          setSearchInput(searchInput.trim());
         }}
       >
         <input
           type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
+          value={searchInput}
+          onChange={(e) => onQueryChange(e.target.value)}
           placeholder="Ресурсы, серверы, обсуждения, статьи…"
           aria-label="Поисковый запрос"
           className="w-full rounded-card border border-line bg-surface px-4 py-2.5 text-sm text-content placeholder:text-content-muted outline-none transition-colors duration-fast focus-visible:ring-2 focus-visible:ring-accent"
@@ -98,11 +112,18 @@ function SearchPageInner() {
             description="Минимум 2 символа. Поиск ищет по ресурсам, серверам, обсуждениям и статьям."
           />
         </div>
-      ) : loading ? (
+      ) : isLoading ? (
         <LoadingSpinner label="Поиск…" className="mt-10" />
       ) : error ? (
         <p className="mt-10 text-sm text-bad" role="alert">
-          {error}
+          {getErrorMessage(error, "Поиск недоступен")}
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="ml-2 rounded-pill border border-line px-2 py-0.5 text-xs text-content-secondary hover:border-accent/40 hover:text-content"
+          >
+            Повторить
+          </button>
         </p>
       ) : results && total === 0 ? (
         <div className="mt-10">
@@ -211,7 +232,7 @@ function SearchPageInner() {
                     className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface p-3 transition-colors duration-fast hover:border-accent/40 hover:bg-surface-hover"
                   >
                     <span className="truncate text-sm font-medium">{t.title}</span>
-                    <span className="flex-shrink-0 text-xs tabular-nums text-content-secondary">
+                    <span className="flex flex-shrink-0 items-center gap-1.5 text-xs tabular-nums text-content-secondary">
                       {t.replyCount} ответов
                     </span>
                   </Link>

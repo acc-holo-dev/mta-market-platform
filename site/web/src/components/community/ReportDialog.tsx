@@ -5,7 +5,7 @@
 // accent-soft иконка; поведение (open/close/submit) не изменено.
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { CheckCircle2, Flag } from "lucide-react";
@@ -13,6 +13,7 @@ import { createReport, getErrorMessage } from "@/lib/api-ext";
 import { useAuthStore } from "@/store/auth";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Input";
+import { useFocusTrap, rememberTrigger, restoreTrigger } from "@/components/ui/focusTrap";
 
 export function ReportDialog({
   targetType,
@@ -31,6 +32,7 @@ export function ReportDialog({
   const [reason, setReason] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const submit = useMutation({
     mutationFn: () => createReport(targetType, targetId, reason.trim()),
@@ -47,18 +49,23 @@ export function ReportDialog({
     onError: (e) => setError(getErrorMessage(e, "Не удалось отправить жалобу")),
   });
 
+  // PLAN-016 D-004: Esc + Tab-цикл внутри диалога; фокус возвращается на
+  // триггер после закрытия.
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !submit.isPending) {
+    if (open) rememberTrigger(document.activeElement as HTMLElement | null);
+  }, [open]);
+  useFocusTrap(open, dialogRef, {
+    onEscape: () => {
+      if (!submit.isPending) {
         setOpen(false);
         setError(null);
       }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, submit.isPending]);
+    },
+    autofocus: open,
+  });
+  useEffect(() => {
+    if (!open) restoreTrigger();
+  }, [open]);
 
   const openDialog = () => {
     if (!isAuthenticated()) {
@@ -86,6 +93,7 @@ export function ReportDialog({
           role="presentation"
         >
           <div
+            ref={dialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Жалоба"

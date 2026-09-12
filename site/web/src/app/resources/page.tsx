@@ -15,6 +15,7 @@ import { ResourceCard } from "@/components/ui/ResourceCard";
 import { ServiceCard } from "@/components/market/ServiceCard";
 import { ResourceCardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/States";
+import { useFocusTrap, rememberTrigger, restoreTrigger } from "@/components/ui/focusTrap";
 import { Store, SearchX, Search, SlidersHorizontal, X, Briefcase } from "lucide-react";
 
 const PAGE_SIZE = 12;
@@ -82,6 +83,17 @@ function ResourcesPageContent() {
   // Локальное значение инпута: мгновенный отклик, URL обновляется с дебаунсом.
   const [searchInput, setSearchInput] = useState(q);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const mobileFiltersRef = useRef<HTMLDivElement>(null);
+
+  // PLAN-016 D-004: Esc + Tab-цикл внутри mobile-листа фильтров, фокус
+  // возвращается на кнопку «Фильтры» после закрытия.
+  useEffect(() => {
+    if (filtersOpen) rememberTrigger(document.activeElement as HTMLElement | null);
+  }, [filtersOpen]);
+  useFocusTrap(filtersOpen, mobileFiltersRef, { onEscape: () => setFiltersOpen(false), autofocus: filtersOpen });
+  useEffect(() => {
+    if (!filtersOpen) restoreTrigger();
+  }, [filtersOpen]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPushedQuery = useRef<string | null>(null);
 
@@ -358,7 +370,7 @@ function ResourcesPageContent() {
 
         {/* Mobile bottom-sheet */}
         {filtersOpen ? (
-          <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Фильтры">
+          <div ref={mobileFiltersRef} className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Фильтры">
             <div
               className="absolute inset-0 bg-background/80 backdrop-blur-sm"
               onClick={() => setFiltersOpen(false)}

@@ -7,7 +7,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { LoadingSpinner, EmptyState, ErrorState } from "@/components/ui/States";
+import { disputeTargetLabel } from "@/lib/disputeLabels";
 import { Gavel } from "lucide-react";
+
 
 export default function DisputesPage() {
   const { data, isLoading, error, refetch } = useQuery({
@@ -52,7 +54,8 @@ export default function DisputesPage() {
                     <div>
                       <CardTitle className="text-base">Спор #{d.id.slice(0, 8)}</CardTitle>
                       <CardDescription className="tabular-nums">
-                        {d.targetType} · {new Date(d.createdAt).toLocaleDateString("ru-RU")}
+                        {disputeTargetLabel(d.targetType)} ·{" "}
+                        {new Date(d.createdAt).toLocaleDateString("ru-RU")}
                       </CardDescription>
                     </div>
                     <StatusBadge status={d.status} />
