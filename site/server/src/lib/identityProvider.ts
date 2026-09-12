@@ -110,6 +110,29 @@ export interface IIdentityProvider {
 }
 
 /**
+ * PLAN-016 A-005: providers that authenticate WITHOUT an authorization-code
+ * redirect (Telegram Login Widget posts a signed payload directly) declare
+ * mode "direct" and implement verifyDirectLogin. They never use the
+ * oauth_state CSRF cookie and may produce no provider tokens at all.
+ */
+export type IdentityProviderMode = "redirect" | "direct";
+
+/**
+ * PLAN-016 A-005: direct-login payload verification contract. The provider
+ * must verify transport authenticity itself (e.g. Telegram data-check-string
+ * HMAC) and freshness/replay protection before returning the user.
+ */
+export interface DirectLoginRequest {
+  payload: Record<string, unknown>;
+  sourceIp: string;
+}
+
+export interface IIdentityProviderWithDirectLogin extends IIdentityProvider {
+  readonly mode: "direct";
+  verifyDirectLogin(request: DirectLoginRequest): Promise<ProviderUser>;
+}
+
+/**
  * Identity Provider Registry
  */
 export class IdentityProviderRegistry {

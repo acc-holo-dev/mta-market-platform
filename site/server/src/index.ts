@@ -1,4 +1,4 @@
-﻿import dotenv from "dotenv";
+import dotenv from "dotenv";
 import { enforceEnvironmentValidation } from "./lib/startupValidation.js";
 import { createApp } from "./app.js";
 import { logger } from "./lib/logger.js";
@@ -9,6 +9,7 @@ import {
 } from "./jobs/serverMonitoring.js";
 import { redis } from "./lib/redis.js";
 import { db } from "./prisma/db.js";
+import { sweepLegacyStoredTokens } from "./lib/tokenCrypto.js";
 
 dotenv.config();
 
@@ -38,6 +39,18 @@ const server = app.listen(PORT, () => {
   // PLAN-005 E: server monitoring sweep (stale heartbeats -> UNKNOWN,
   // expired review tokens). No-op in test env.
   startServerMonitoringScheduler();
+
+  // PLAN-016 A-009: one-time idempotent re-encryption of legacy plaintext
+  // provider tokens (converges to a no-op; failure must not block startup).
+  void sweepLegacyStoredTokens()
+    .then(({ encrypted }) => {
+      if (encrypted > 0) {
+        logger.info("oauth_tokens_reencrypted", { accounts: encrypted });
+      }
+    })
+    .catch((error) => {
+      logger.error("oauth_token_sweep_failed", { error });
+    });
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info("server_shutdown", { signal });

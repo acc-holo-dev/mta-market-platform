@@ -13,6 +13,7 @@ import {
   fetchMe,
   fetchIdentities,
   patchProfile,
+  changePassword,
   formatRub,
   getErrorMessage,
   type Purchase,
@@ -26,7 +27,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { EmptyState, ErrorState, LoadingSpinner } from "@/components/ui/States";
 import { DisputeDialog } from "@/components/disputes/DisputeDialog";
 import { typeLabel, formatDate } from "@/lib/domain";
-import { Scale, Wallet, Pencil, Check, X, Link2, ShoppingBag, User } from "lucide-react";
+import { Scale, Wallet, Pencil, Check, X, Link2, ShoppingBag, User, KeyRound } from "lucide-react";
 
 const ROLE_LABELS: Record<string, string> = {
   USER: "Покупатель",
@@ -182,6 +183,7 @@ export default function AccountPage() {
                   Имя пользователя, email и роль изменить нельзя.
                 </p>
                 <ProfileEditForm displayName={me.displayName ?? ""} avatar={me.avatar ?? ""} />
+                <PasswordChangeForm />
               </div>
             ) : null}
           </CardContent>
@@ -194,9 +196,12 @@ export default function AccountPage() {
             <CardTitle className="flex items-center gap-2">
               <Link2 className="h-5 w-5 text-accent" /> Связанные аккаунты
             </CardTitle>
-            <CardDescription>Внешние провайдеры, привязанные к аккаунту</CardDescription>
+            <CardDescription>
+              Внешние провайдеры, привязанные к аккаунту. Привязка и отвязка —
+              на странице «Подключения» (последний способ входа защищён).
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {identities && identities.length > 0 ? (
               <ul className="space-y-2 text-sm">
                 {identities.map((i) => (
@@ -205,18 +210,33 @@ export default function AccountPage() {
                     className="flex items-center justify-between p-3 border border-line rounded-md"
                   >
                     <span className="font-medium capitalize">{i.provider}</span>
-                    <span className="text-content-muted font-mono text-xs">
-                      {i.providerAccountId.slice(0, 12)}…
+                    <span className="flex items-center gap-3">
+                      <span className="text-content-muted font-mono text-xs">
+                        {i.providerAccountId.slice(0, 12)}…
+                      </span>
+                      <Link
+                        href="/account/identities"
+                        className="text-xs text-content-secondary hover:text-accent-strong"
+                        aria-label={`Управление подключением ${i.provider}`}
+                      >
+                        Отвязать
+                      </Link>
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="text-sm text-content-secondary">
-                Внешние аккаунты не привязаны. Можно войти через Discord — он привяжется
-                автоматически.
+                Внешние аккаунты не привязаны. Привяжите способ входа, чтобы
+                заходить одним нажатием.
               </p>
             )}
+            <Link href="/account/identities">
+              <Button variant="outline" size="sm">
+                <Link2 className="mr-2 h-4 w-4" aria-hidden />
+                Привязать способ входа
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : null}
@@ -466,5 +486,114 @@ function ProfileEditForm({ displayName, avatar }: { displayName: string; avatar:
         </Button>
       </div>
     </div>
+  );
+}
+
+
+// ---------- PLAN-016 A-008: change the local password ----------
+function PasswordChangeForm() {
+  const [open, setOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => changePassword(currentPassword, newPassword),
+    onSuccess: (res) => {
+      setError(null);
+      setSuccess(
+        `${res.message}. Другие сессии завершены: ${res.revokedSessions}.`
+      );
+      setCurrentPassword("");
+      setNewPassword("");
+    },
+    onError: (e) => setError(getErrorMessage(e, "Не удалось изменить пароль")),
+  });
+
+  if (!open) {
+    return (
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+        <KeyRound className="mr-2 h-4 w-4" />
+        Сменить пароль
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      className="rounded-lg border border-line bg-surface-raised p-4 space-y-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setSuccess(null);
+        setError(null);
+        mutation.mutate();
+      }}
+    >
+      <p className="text-sm font-semibold">Смена пароля</p>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="currentPassword"
+          className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+        >
+          Текущий пароль
+        </label>
+        <Input
+          id="currentPassword"
+          type="password"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          disabled={mutation.isPending}
+          required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label
+          htmlFor="newPassword"
+          className="block text-xs font-semibold uppercase tracking-wide text-content-secondary"
+        >
+          Новый пароль (минимум 8 символов)
+        </label>
+        <Input
+          id="newPassword"
+          type="password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          disabled={mutation.isPending}
+          required
+          minLength={8}
+        />
+      </div>
+      {error ? (
+        <p className="text-sm text-bad" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="text-sm text-ok" role="status">
+          {success}
+        </p>
+      ) : null}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={mutation.isPending}>
+          {mutation.isPending ? "Сохранение…" : "Сохранить"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setOpen(false);
+            setError(null);
+            setSuccess(null);
+          }}
+        >
+          Отмена
+        </Button>
+      </div>
+      <p className="text-xs text-content-muted">
+        Другие сессии будут завершены; текущая останется активной.
+      </p>
+    </form>
   );
 }

@@ -8,12 +8,19 @@ endpoints:
   - { method: POST,   path: /auth/logout }
   - { method: GET,    path: /auth/me,      returns: profile + balance }
   - { method: PATCH,  path: /auth/me,      note: displayName/avatar only }
+  - { method: PATCH,  path: /auth/password, note: PLAN-016 A-008 — current password required; revokes other sessions }
+  - { method: GET,    path: /auth/providers,          note: PLAN-016 A-001 discovery of enabled login providers }
   - { method: GET,    path: /auth/identities }
   - { method: DELETE, path: /auth/identities/:id }
-  - { method: GET,    path: /auth/:provider,          note: OAuth start (discord|yandex|google) }
+  - { method: POST,   path: /auth/:provider/link/start, note: PLAN-016 A-006 browser link start (sets link_user cookie) }
+  - { method: GET,    path: /auth/:provider,          note: OAuth start (discord|yandex|google|vk); direct-mode providers answer 404 }
   - { method: GET,    path: /auth/:provider/callback }
+  - { method: POST,   path: /auth/telegram/callback, note: PLAN-016 A-005 direct login (widget payload, HMAC-verified) }
   - { method: GET,    path: /auth/:provider/link,     note: link identity to a session }
 sessions:
   accessTokenTtl: 15m
   refreshTokenTtl: 7d
   storage: HttpOnly cookie (refresh) + memory (access)
+security:
+  oauthStateCookie: oauth_state (HttpOnly, 10m) — redirect providers only
+  oauthTokenEncryption: AES-256-GCM (OAUTH_TOKEN_ENCRYPTION_KEY), format v1:<iv>:<tag>:<ct>

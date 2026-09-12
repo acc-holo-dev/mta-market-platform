@@ -100,6 +100,7 @@ describe("A-012: production secret validation (unit)", () => {
         DISCORD_CLIENT_ID: "id",
         DISCORD_CLIENT_SECRET: "secret",
         DISCORD_REDIRECT_URI: "https://market.example.com/auth/callback",
+        OAUTH_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
         DRM_SERVER_PRIVATE_KEY: "k",
         DRM_MASTER_KEY: Buffer.alloc(32, 7).toString("base64"),
         ARTIFACT_SIGNING_PRIVATE_KEY: "k",
@@ -111,6 +112,103 @@ describe("A-012: production secret validation (unit)", () => {
       async () => {
         const result = await validateAsProduction();
         expect(result.valid).toBe(true);
+      }
+    );
+  });
+
+  // PLAN-016 A-009a: OAuth providers are configuration, not a feature.
+  it("does NOT require any OAuth provider in production (provider without env is disabled)", async () => {
+    await withEnv(
+      {
+        NODE_ENV: "production",
+        JWT_SECRET: "a".repeat(64),
+        DATABASE_URL: "postgresql://test:test@localhost:5433/test",
+        DISCORD_CLIENT_ID: undefined,
+        DISCORD_CLIENT_SECRET: undefined,
+        DRM_SERVER_PRIVATE_KEY: "k",
+        DRM_MASTER_KEY: Buffer.alloc(32, 7).toString("base64"),
+        ARTIFACT_SIGNING_PRIVATE_KEY: "k",
+        S3_ENABLED: "true",
+        S3_BUCKET: "bucket",
+        S3_ACCESS_KEY: "ak",
+        S3_SECRET_KEY: "sk",
+      },
+      async () => {
+        const result = await validateAsProduction();
+        // No OAuth configured → the encryption key is not required either.
+        expect(result.errors).toHaveLength(0);
+      }
+    );
+  });
+
+  it("fails when an OAuth provider is configured without OAUTH_TOKEN_ENCRYPTION_KEY (PLAN-016 A-009)", async () => {
+    await withEnv(
+      {
+        NODE_ENV: "production",
+        JWT_SECRET: "a".repeat(64),
+        DATABASE_URL: "postgresql://test:test@localhost:5433/test",
+        DISCORD_CLIENT_ID: "id",
+        DISCORD_CLIENT_SECRET: "secret",
+        DRM_SERVER_PRIVATE_KEY: "k",
+        DRM_MASTER_KEY: Buffer.alloc(32, 7).toString("base64"),
+        ARTIFACT_SIGNING_PRIVATE_KEY: "k",
+        S3_ENABLED: "true",
+        S3_BUCKET: "bucket",
+        S3_ACCESS_KEY: "ak",
+        S3_SECRET_KEY: "sk",
+      },
+      async () => {
+        const result = await validateAsProduction();
+        expect(result.valid).toBe(false);
+        expect(
+          result.errors.some((e) => e.includes("OAUTH_TOKEN_ENCRYPTION_KEY is required"))
+        ).toBe(true);
+      }
+    );
+  });
+
+  it("fails when OAUTH_TOKEN_ENCRYPTION_KEY is not 32 bytes of base64", async () => {
+    await withEnv(
+      {
+        NODE_ENV: "production",
+        JWT_SECRET: "a".repeat(64),
+        DATABASE_URL: "postgresql://test:test@localhost:5433/test",
+        VK_CLIENT_ID: "id",
+        VK_CLIENT_SECRET: "secret",
+        OAUTH_TOKEN_ENCRYPTION_KEY: "dG9vLXNob3J0",
+        DRM_SERVER_PRIVATE_KEY: "k",
+        DRM_MASTER_KEY: Buffer.alloc(32, 7).toString("base64"),
+        ARTIFACT_SIGNING_PRIVATE_KEY: "k",
+        S3_ENABLED: "true",
+        S3_BUCKET: "bucket",
+        S3_ACCESS_KEY: "ak",
+        S3_SECRET_KEY: "sk",
+      },
+      async () => {
+        const result = await validateAsProduction();
+        expect(result.errors.some((e) => e.includes("OAUTH_TOKEN_ENCRYPTION_KEY must be base64"))).toBe(true);
+      }
+    );
+  });
+
+  it("fails when a payment provider is enabled but not configured (PLAN-016 P-003/P-004)", async () => {
+    await withEnv(
+      {
+        NODE_ENV: "production",
+        JWT_SECRET: "a".repeat(64),
+        DATABASE_URL: "postgresql://test:test@localhost:5433/test",
+        TBANK_ENABLED: "true",
+        DRM_SERVER_PRIVATE_KEY: "k",
+        DRM_MASTER_KEY: Buffer.alloc(32, 7).toString("base64"),
+        ARTIFACT_SIGNING_PRIVATE_KEY: "k",
+        S3_ENABLED: "true",
+        S3_BUCKET: "bucket",
+        S3_ACCESS_KEY: "ak",
+        S3_SECRET_KEY: "sk",
+      },
+      async () => {
+        const result = await validateAsProduction();
+        expect(result.errors.some((e) => e.includes("TBANK_TERMINAL_KEY"))).toBe(true);
       }
     );
   });

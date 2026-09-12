@@ -1,4 +1,4 @@
-﻿// Authentication routes (OAuth2 identity providers + JWT)
+// Authentication routes (OAuth2 identity providers + JWT)
 // PLAN D-002/D-003/D-004: registry-driven OAuth (Discord, Yandex, Google),
 // identity linking/unlinking, oauth_state CSRF cookie.
 import { Router, Request, Response } from "express";
@@ -14,12 +14,16 @@ import { userRateLimit } from "../lib/rateLimit.js";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { reqLog } from "../middleware/requestId.js";
-import { identityProviders } from "../lib/identityProvider.js";
+import { identityProviders, IIdentityProviderWithDirectLogin } from "../lib/identityProvider.js";
+import { encryptProviderToken } from "../lib/tokenCrypto.js";
 
-// Side-effect imports: each provider self-registers into the global registry.
+// PLAN-016: side-effect imports register the new providers as well (VK ID,
+// Telegram direct-login). Registration is idempotent per registry.
 import "../lib/providers/discord.js";
 import "../lib/providers/yandex.js";
 import "../lib/providers/google.js";
+import "../lib/providers/vk.js";
+import "../lib/providers/telegram.js";
 
 const router: Router = Router();
 
@@ -459,6 +463,59 @@ router.patch("/me", authenticate, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// PATCH /auth/password — PLAN-016 A-008: change the local password.
+// Requires the current password; invalidates every OTHER session (the
+// current refresh-cookie session survives so the caller is not logged out).
+// OAuth-only accounts (no passwordHash) cannot set a password here — that
+// would silently add a credential without proving ownership.
+router.patch("/password", authenticate, authRateLimit, async (req: AuthRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body ?? {};
+    if (typeof currentPassword !== "string" || typeof newPassword !== "string" || newPassword.length < 8 || newPassword.length > 200) {
+      res.status(400).json({ error: "Invalid password payload" });
+      return;
+    }
+    const user = await db.orm.public.User.where({ id: req.user!.userId }).first();
+    if (!user) {
+      res.status(401).json({ error: "User not found" });
+      return;
+    }
+    if (!user.passwordHash) {
+      res.status(409).json({ error: "Account has no local password" });
+      return;
+    }
+    const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!ok) {
+      // Uniform error with the login contract (anti-enumeration).
+      res.status(401).json({ code: "INVALID_CREDENTIALS" });
+      return;
+    }
+    await db.orm.public.User.where({ id: user.id }).update({
+      passwordHash: bcrypt.hashSync(newPassword, 10),
+    });
+
+    // Invalidate every OTHER session; the current refresh session survives
+    // so the caller keeps their login (plan A-008).
+    const currentHash = hashRefreshToken(req.cookies?.refresh_token ?? "");
+    const sessions = await db.orm.public.Session.where({ userId: user.id }).all();
+    let revokedSessions = 0;
+    for (const session of sessions) {
+      if (session.refreshTokenHash === currentHash) continue;
+      await db.orm.public.Session.where({ id: session.id }).delete();
+      revokedSessions += 1;
+    }
+
+    reqLog(req).info("password_changed", {
+      user_id: user.id,
+      revoked_sessions: revokedSessions,
+    });
+    res.json({ message: "Password updated", revokedSessions });
+  } catch (error) {
+    reqLog(req).error("password_change_failed", { error });
+    res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
 // GET /auth/me - Get current user (authenticated)
 router.get("/me", authenticate, async (req: AuthRequest, res: Response) => {
   try {
@@ -545,8 +602,108 @@ router.delete("/identities/:id", authenticate, async (req: AuthRequest, res: Res
   }
 });
 
+// GET /auth/providers — PLAN-016 A-001: public discovery of ENABLED
+// providers. Without env a provider is simply absent from the list (never
+// "available but broken"). No configuration (redirect URIs) is exposed.
+// Registered BEFORE the generic /:provider routes so "providers" is not
+// swallowed by the parameterized match.
+router.get("/providers", (req: Request, res: Response) => {
+  const providers = identityProviders.getEnabled().map((p) => ({
+    provider: p.name,
+    displayName: p.displayName,
+    mode: (p as { mode?: "redirect" | "direct" }).mode ?? "redirect",
+    // PLAN-016: bot name для Telegram Login Widget (direct-провайдеры).
+    botName: (p as { mode?: string }).mode === "direct"
+      ? (p as unknown as { botName?: string }).botName
+      : undefined,
+  }));
+  res.json({ providers });
+});
+
+// POST /auth/:provider/link/start — PLAN-016 A-006: browser-friendly link
+// mode. The generic GET /auth/:provider/link requires an Authorization
+// header, which a browser navigation cannot carry; this authenticated JSON
+// endpoint sets the link_user cookie and returns the authorize URL for a
+// client-side redirect.
+router.post(
+  "/:provider/link/start",
+  authenticate,
+  authRateLimit,
+  async (req: AuthRequest, res: Response) => {
+    const providerName = String(req.params.provider).toLowerCase();
+    const provider = identityProviders.get(providerName);
+    if (!provider || !provider.isEnabled()) {
+      res.status(404).json({ error: "Provider not available" });
+      return;
+    }
+    try {
+      const user = await db.orm.public.User.where({ id: req.user!.userId }).first();
+      if (!user) {
+        res.status(401).json({ error: "User not found" });
+        return;
+      }
+      const { authorizationUrl } = provider.getAuthorizationUrl({
+        redirectUri: provider.getRedirectUri(),
+      });
+      if (!authorizationUrl) {
+        res.status(500).json({ error: "Provider not configured" });
+        return;
+      }
+      res.cookie(
+        LINK_USER_COOKIE,
+        generateAccessToken({ userId: user.id, email: user.email, role: user.role }),
+        OAUTH_COOKIE_ATTRS
+      );
+      res.json({ authorizationUrl });
+    } catch (error) {
+      reqLog(req).error("identity_link_start_failed", { provider: providerName, error });
+      res.status(500).json({ error: "Failed to start linking" });
+    }
+  }
+);
+
+// POST /auth/telegram/callback — PLAN-016 A-005: direct login via the
+// Telegram Login Widget. The widget posts signed fields (id, first_name,
+// auth_date, hash — HMAC over the data-check-string with SHA256(bot_token));
+// there is no authorization code and no oauth_state cookie. Transport
+// authenticity, freshness and replay protection live in the provider
+// (verifyDirectLogin). Business rules (identity upsert, anti-takeover email
+// matching, session issuing, link mode) are shared with redirect providers.
+router.post("/telegram/callback", authRateLimit, async (req: Request, res: Response) => {
+  const provider = identityProviders.get("telegram") as
+    | import("../lib/identityProvider.js").IIdentityProviderWithDirectLogin
+    | undefined;
+
+  if (!provider || !provider.isEnabled()) {
+    res.status(404).json({ error: "Provider not available" });
+    return;
+  }
+  if (typeof req.body !== "object" || req.body === null) {
+    res.status(400).json({ error: "Invalid Telegram payload" });
+    return;
+  }
+  try {
+    const user = await provider.verifyDirectLogin({
+      payload: req.body as Record<string, unknown>,
+      sourceIp: req.ip || req.socket.remoteAddress || "",
+    });
+
+    const linkToken = req.cookies?.[LINK_USER_COOKIE];
+    if (linkToken) {
+      await handleLinkingCallback(req, res, provider.name, linkToken, user);
+      return;
+    }
+    // Telegram never issues provider tokens — they are stored as null.
+    await handleLoginCallback(req, res, provider.name, null, user);
+  } catch (error) {
+    reqLog(req).warn("telegram_login_failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    res.status(401).json({ error: error instanceof Error ? error.message : "Telegram login failed" });
+  }
+});
+
 // GET /auth/:provider/link - Start the identity LINKING flow (authenticated).
-// Sets the link_user cookie then redirects into the normal authorize route.
 router.get("/:provider/link", authenticate, authRateLimit, async (req: AuthRequest, res: Response) => {
   const providerName = String(req.params.provider).toLowerCase();
   const provider = identityProviders.get(providerName);
@@ -592,6 +749,12 @@ router.get("/:provider", authRateLimit, async (req: Request, res: Response) => {
     res.status(404).json({ error: "Provider not available" });
     return;
   }
+  // PLAN-016 A-005: direct-login providers (Telegram widget) have no
+  // authorization URL — the browser flow is POST /auth/:provider/callback.
+  if ((provider as { mode?: string }).mode === "direct") {
+    res.status(404).json({ error: "Direct login provider: use POST /auth/:provider/callback" });
+    return;
+  }
 
   try {
     const { authorizationUrl, state } = provider.getAuthorizationUrl({
@@ -628,6 +791,11 @@ router.get("/:provider/callback", authRateLimit, async (req: Request, res: Respo
 
   if (!provider || !provider.isEnabled()) {
     res.status(404).json({ error: "Provider not available" });
+    return;
+  }
+  // PLAN-016 A-005: direct-login providers authenticate via POST, not here.
+  if ((provider as { mode?: string }).mode === "direct") {
+    res.status(404).json({ error: "Direct login provider: use POST /auth/:provider/callback" });
     return;
   }
 
@@ -730,7 +898,7 @@ async function handleLoginCallback(
   req: Request,
   res: Response,
   providerName: string,
-  tokens: { accessToken: string; refreshToken?: string; expiresIn: number; tokenType?: string; scope?: string },
+  tokens: { accessToken: string; refreshToken?: string; expiresIn: number; tokenType?: string; scope?: string } | null,
   user: {
     providerId: string;
     email?: string;
@@ -743,14 +911,16 @@ async function handleLoginCallback(
   clearOAuthCookies(res);
 
   const providerUpper = providerName.toUpperCase();
-  const epochExpiresAt = Math.floor(Date.now() / 1000) + tokens.expiresIn;
+  const epochExpiresAt = tokens ? Math.floor(Date.now() / 1000) + tokens.expiresIn : 0;
 
+  // PLAN-016 A-009: provider tokens are encrypted at rest (AES-256-GCM);
+  // direct-login providers (Telegram) store nulls.
   const accountTokenFields = {
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken || null,
+    accessToken: encryptProviderToken(tokens?.accessToken ?? null),
+    refreshToken: encryptProviderToken(tokens?.refreshToken ?? null),
     expiresAt: epochExpiresAt,
-    tokenType: tokens.tokenType || null,
-    scope: tokens.scope || null,
+    tokenType: tokens?.tokenType || null,
+    scope: tokens?.scope || null,
   };
 
   let account = await db.orm.public.Account.where({
