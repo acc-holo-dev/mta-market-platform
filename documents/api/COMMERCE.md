@@ -1,10 +1,14 @@
 # COMMERCE — покупки, платежи, споры, услуги, скидки, ledger
 
 Область: `site/server/src/routes/{purchases,payments,disputes,services}.ts`,
-`site/server/src/lib/{commerce,paymentStateMachine,ledger,discount,refunds,paymentProvider}.ts`.
-Общие условия: [README](README.md). Все суммы — копейки RUB.
-Платёжный провайдер — YooKassa (`lib/providers/payment-yookassa.ts`),
-регистрируется side-effect-импортом в нейтральный реестр `IPaymentProvider`.
+`site/server/src/lib/{commerce,paymentStateMachine,ledger,discount,refunds,paymentProvider,tbank,cryptoinvoice}.ts`.
+Общие условия: [README](README.md). Все суммы — копейки RUB (мультивалютности
+нет; крипто-провайдер — RUB-locked инвойсы, конверсия на стороне провайдера).
+Платежи — нейтральный реестр `IPaymentProvider` (`lib/paymentProvider.ts`):
+адаптеры `lib/providers/payment-{yookassa,tbank,crypto,test}.ts`
+саморегистрируются side-effect-импортами в `routes/payments.ts`; маршруты
+никогда не обращаются к SDK провайдера напрямую (E-002). Провайдер без env —
+честно выключен и отсутствует в discovery (A-010).
 
 ## Checkout (`routes/purchases.ts`, `lib/commerce.ts`)
 
@@ -49,9 +53,9 @@ UUID-валидация): полная строка покупки + resource + 
 ### Замечание о прямом завершении
 
 `POST /purchases/:id/complete` **удалён** из соображений безопасности:
-завершение покупки — только через верифицированный webhook YooKassa или
-аттестованные dev-пути (simulate). Комментарий зафиксирован в
-`routes/purchases.ts`.
+завершение покупки — только через верифицированный webhook включённого
+платёжного провайдера (`/payments/webhook/:provider`) или аттестованные
+dev-пути (simulate). Комментарий зафиксирован в `routes/purchases.ts`.
 
 ## Платежи (`routes/payments.ts`)
 
@@ -67,37 +71,84 @@ FAILED/CANCELED/REFUNDED — терминальные
 ```
 
 Каждая мутация `Payment` идёт через `assertTransition`; нелегальный переход —
-ошибка программирования (500). Маппинг нативных статусов YooKassa —
-`fromYooKassaStatus` (`succeeded/canceled/pending/waiting_for_capture`).
+ошибка программирования (500). Нативные статусы маппятся **в файле
+провайдера** (PLAN-016 P-003; нейтральный `paymentStateMachine.ts` хранит
+только нейтральный словарь): `fromYooKassaStatus`
+(`succeeded/canceled/pending/waiting_for_capture` — `lib/providers/payment-yookassa.ts`),
+`fromTBankStatus`, `fromCryptoStatus` (консервативно: неизвестный статус —
+PENDING, терминальным никогда не угадывается).
+
+### GET /payments/providers — discovery (PLAN-016)
+
+Публичный список **включённых** платёжных провайдеров:
+
+```json
+{"providers":[{"provider":"YUKASSA","displayName":"ЮKassa","confirmation":"redirect"},
+              {"provider":"CRYPTO","displayName":"Криптовалюта","confirmation":"crypto_invoice"}]}
+```
+
+`confirmation` выводится из capability `payment.poll`: провайдеры с
+`payment.poll` — инвойсные (`crypto_invoice`), остальные — redirect PSP.
+Выключенный провайдер в списке отсутствует; никакой конфигурации endpoint не
+отдаёт.
 
 ### POST /payments/create (`authenticate`)
 
-Тело `{purchaseId}` (ресурсная линия) **или** `{servicePurchaseId}` (услуги).
-Проверки: существование, владелец, статус PENDING (иначе 400). При
-настроенном провайдере создаётся платёж YooKassa (сумма — FINAL total после
-скидок, TASK A-011) и строка `Payment(PENDING, providerPaymentId)`; ответ
-`{paymentUrl, paymentId}`. Провайдер отключён:
+Тело `{purchaseId}` (ресурсная линия) **или** `{servicePurchaseId}` (услуги),
+опционально `provider` (PLAN-016 P-001 — выбор способа оплаты в checkout).
+Проверки: существование, владелец, статус PENDING (иначе 400).
 
-- для услуг — `{message:"YooKassa disabled - service order awaits manual payment setup", servicePurchaseId}`;
-- для ресурсов — `{message:"YooKassa disabled - use /payments/:id/simulate for testing", purchaseId}`.
+- **Выбор провайдера**: явное имя побеждает (регистр не важен); иначе
+  `PAYMENTS_DEFAULT_PROVIDER` → единственный включённый → legacy-фолбэк на
+  YooKassa (канонический провайдер). Ничего не сконфигурировано → endpoint
+  честно выключен (см. ниже).
+- `provider` неизвестен → `400 {"error":"Unknown payment provider: X"}`;
+  известен, но выключен (или без `payment.create`) →
+  `409 {"error":"Payment provider X is disabled"}` — без тихого fallback.
+- Провайдер создаёт платёж (сумма — FINAL total после скидок, TASK A-011) и
+  строка `Payment(PENDING, providerPaymentId)`; ответ
+  `{paymentUrl?, paymentId, provider, confirmation}` — `paymentUrl` для
+  redirect-подтверждения, `confirmation` (`ProviderConfirmation`) —
+  структурированное описание (`redirect` / `crypto_invoice` с
+  `payUrl/address?/memo/expiresAt`), `null` для классического redirect.
+- Провайдер отключён (без явного выбора):
+  для услуг — `503 {"error":"Payment provider is not configured", servicePurchaseId}`;
+  для ресурсов — `{message:"Payment provider disabled - use /payments/:id/simulate for testing", purchaseId}`.
 
-### POST /payments/webhook (публичный, транспортно-верифицируемый)
+### POST /payments/webhook/:provider — per-provider dispatch (PLAN-016 P-002)
 
-Idempotency и верификация (по порядку):
+`POST /payments/webhook/:provider` — публичный, транспортно-верифицируемый
+вход для каждого провайдера. `POST /payments/webhook` остаётся
+обратно-совместимым алиасом на **дефолтного** провайдера (та же
+резолюция, что у create; YooKassa-настройки живут дальше) —
+провайдер не сконфигурирован → `503`.
+
+Транспортная подлинность — `provider.verifyWebhook` (E-006), причины отказа
+маппятся точно: `"ip"` → `403`, `"auth"` → `401`, `"signature"` → `400`.
+Сырые байты запроса: `express.json({verify})` в `app.ts` кладёт тело в
+`req.rawBody` и передаёт провайдеру (крипто-адаптер переразбирает raw bytes
+для подписи); `payloadHash` события = SHA-256 от raw bytes (fallback —
+сериализованный parsed body). Формат провайдера нормализуется
+`provider.parseWebhook` → нейтральное событие
+`{providerEventId, eventType, providerPaymentId, orderRef?}`; нераспознанный
+payload → 400. Дальше общий конвейер **не изменён** (по порядку):
 
 1. Провайдер не сконфигурирован → `503` (endpoint закрыт, не открыт).
-2. Транспортная подлинность: IP-allowlist + HTTP Basic
-   (`provider.verifyWebhook`, E-006); ошибки — 403 (IP) / 401 (auth).
+2. Транспортная подлинность (выше).
 3. Событие сохраняется **до** бизнес-эффектов в `PaymentProviderEvent`
-   (`payloadHash` = SHA-256 тела; `attempts`++ при повторе). Уже
+   (`payloadHash` = SHA-256 raw-байтов тела; `attempts`++ при повторе;
+   DB-уникальность `[provider, providerEventId, eventType]` — у T-Bank
+   `providerEventId` = `PaymentId:Status`, у крипто — uuid инвойса). Уже
    `PROCESSED` → `200 {"message":"Event already processed"}` (безопасный
    повтор). События кроме `payment.succeeded|payment.canceled`
    ack-аются и закрываются как PROCESSED.
 4. `payment.canceled`: локальный PENDING `Payment` → CANCELED; покупка
-   (по `object.metadata.order_id`) из PENDING → FAILED (у Purchase нет
+   (по `parsed.orderRef` — `metadata.order_id` YooKassa / `OrderId` T-Bank /
+   `order_id` крипто) из PENDING → FAILED (у Purchase нет
    CANCELED — FAILED терминален «без права»).
 5. `payment.succeeded`: **повторная сверка с провайдером** (не доверяем телу):
-   re-fetch `getPayment(object.id)`, требование `state=SUCCEEDED && paid`,
+   re-fetch `getPayment(parsed.providerPaymentId)`, требование
+   `state=SUCCEEDED && paid`,
    совпадения суммы/валюты (RUB) и привязки провайдер-платежа к этому заказу;
    нарушение — quarantine: `PaymentProviderEvent.status=FAILED`, `409`.
    Дополнительно чинится out-of-order (canceled-then-succeeded): `Payment`/
@@ -110,10 +161,59 @@ Idempotency и верификация (по порядку):
 Ответы: `200 {"message":"Webhook processed successfully"}` / диагностические
 400/404/409/503.
 
+### Адаптеры провайдеров (`lib/providers/payment-*.ts`)
+
+| Провайдер | Подтверждение | Capabilities | Верификация webhook |
+|---|---|---|---|
+| `YUKASSA` (канонический) | `redirect` | create/verification/cancel/refund/poll | IP-allowlist + HTTP Basic (E-006) |
+| `TBANK` | `redirect` (PaymentURL) | create/verification/cancel/refund/poll | SHA-256 `Token` (ниже) + владение `TerminalKey` |
+| `CRYPTO` | `crypto_invoice` | create/verification/poll (**без** cancel/refund) | `sign` крипто-провайдера по raw-байтам (ниже) |
+| `TEST` (dev-only) | `crypto_invoice`-заглушка | create/verification/poll | webhook-канала нет — любой delivery отклоняется (`reason:"ip"`) |
+
+**T-Bank EACQ** (`lib/tbank.ts` + `payment-tbank.ts`, env `TBANK_ENABLED=true`,
+`TBANK_TERMINAL_KEY`, `TBANK_PASSWORD`): `/v2/Init` → redirect `PaymentURL`;
+статусы `AUTHORIZED/CONFIRMED → SUCCEEDED`, `REJECTED/DEADLINE_EXPIRED →
+FAILED`, `CANCELED/REVERSED → CANCELED`, `REFUNDED`/`PARTIALLY_REFUNDED`
+маппятся напрямую, остальное — консервативно PENDING. Notification-`Token` —
+SHA-256 по полям уведомления (ключи отсортированы, пары `${key}${value}`,
+`Password` в конце), timing-safe; GetState/Cancel/Refund подписываются
+отдельным request-token'ом (значения отсортированных параметров + Password).
+Refund синхронный (сразу `SUCCEEDED`); у T-Bank нет Idempotence-Key-заголовка
+— параметр нейтрального слоя принимается, но не отправляется. Тело
+уведомления — JSON (токен считается по разобранным значениям, сырые байты
+не требуются).
+
+**Crypto (Cryptomus-класс)** (`lib/cryptoinvoice.ts` +
+`payment-crypto.ts`, env `CRYPTO_ENABLED/CRYPTO_MERCHANT_ID/CRYPTO_API_KEY`):
+RUB-locked инвойсы — инвойс создаётся на RUB-сумму FINAL total, конверсия на
+стороне провайдера; сверка `currency === "RUB"` сохранена (схема БД на
+мультивалютность не менялась). Подтверждение — `crypto_invoice`
+(`payUrl`, `memo` = внутренний order id, `expiresAt` = TTL
+`CRYPTO_INVOICE_TTL_SEC`, дефолт 1 ч) + capability `payment.poll` (re-fetch
+`GET /v1/payment/{uuid}`) — cancel/refund вне API провайдера, capability-гейт
+это скрывает. TTL инвойса/`expired` → CANCELED. Политика расхождений:
+недоплата (статусы `underpaid`/`wrong_amount` или paid_amount ниже порога
+`required*(1−CRYPTO_UNDERPAY_TOLERANCE_PCT%)`, дефолт 0) → invoice FAILED —
+«частично завершённая покупка» невозможна; переплата ≥ порога → принимается
+полная услуга, разница — вопрос оператора, вне платформы; funded-статусы
+(`paid/paid_over/confirming/confirmed`) проходят amount-гейт, прежде чем
+маппиться в `SUCCEEDED`. Callback-подпись — формула крипто-провайдера
+(`sign` = md5(base64(JSON без поля sign) + api key), сравнение timing-safe);
+сырые байты переразбираются, когда доступны.
+
+**TEST** (`payment-test.ts`, P-007): только при
+`PAYMENTS_TEST_ENABLED=true` и `NODE_ENV !== "production"`; заглушка
+`crypto_invoice` (`memo:"DEV-TEST"`, TTL `PAYMENTS_TEST_TTL_SEC`, дефолт
+600 с), провайдер-статус всегда PENDING — покупку завершает dev-путь
+`POST /payments/:id/simulate` (см. ниже). В production не регистрируется.
+
 ### POST /payments/cancel (`authenticate`)
 
-Отмена PENDING-платежа у провайдера (`{paymentId}`); только платящий или
-ADMIN. Не-PENDING → `409`. Ответ `{status:"CANCELED"}`.
+Отмена PENDING-платежа **у его собственного провайдера** (`{paymentId}` —
+провайдер берётся из строки `Payment`, не дефолт; PLAN-016 P-001); только
+платящий или ADMIN. Capability-гейт: у провайдера без `payment.cancel`
+(крипто, TEST) → `503 {"error":"Provider cancellation is not available"}`.
+Не-PENDING → `409`. Ответ `{status:"CANCELED"}`.
 
 ### Возвраты (ADMIN)
 
@@ -127,9 +227,12 @@ ADMIN. Не-PENDING → `409`. Ответ `{status:"CANCELED"}`.
 Маршрут компилируется только при `NODE_ENV !== "production"`; в production
 build его нет и запрос уходит в глобальный 404-обработчик (`404 {"error":
 "Not found"}`) — т.е. в prod поведение 404, а не 403. Дополнительные условия
-в dev: провайдер активен → 403; покупка не владельца → 403; не PENDING → 400;
-нет order item → 409. Завершение — тот же атомарный `completeResourceOrderItem`
-(лицензия, скидка, ledger). Ответ `{message, purchaseId, licenseId}`.
+в dev (PLAN-016 P-007): активен любой **не-TEST** провайдер → 403
+(`"Cannot simulate in production"`); TEST-провайдер боевым не считается —
+его инвойсы завершаются именно simulate; покупка не владельца → 403; не
+PENDING → 400; нет order item → 409. Завершение — тот же атомарный
+`completeResourceOrderItem` (лицензия, скидка, ledger). Ответ
+`{message, purchaseId, licenseId}`. Honors `Idempotency-Key` (PLAN-012 §5).
 
 ## Скидки (`lib/discount.ts`)
 
@@ -240,9 +343,29 @@ PARTIAL_REFUND → CLOSED;  RESOLVED_* / CLOSED — терминальные
 пока без публичного чтения через API (управляется settlement/рефонами и
 реконсиляцией `site/server/src/lib/reconciliation/`).
 
+## Реконсиляция (`lib/reconciliation/`, `jobs/reconciliation.ts`)
+
+- **Провайдер-агностична** (PLAN-016 P-006): платёжный/возвратный/payout-циклы
+  выполняются по каждому **включённому** провайдеру реестра, не по
+  хардкоду; результаты агрегируются per-provider. Провайдер без реализованной
+  provider-side выгрузки (реально re-fetch реализован у YooKassa) честно
+  отдаёт `internalCount` с `providerCount=0` и `available=false` — без
+  фиктивных mismatch'ей.
+- Backfill `runReconciliationForDateRange(start, end, provider?)`: без явного
+  провайдера покрывает все включённые (тот же контракт, что у цикла).
+- Шаги цикла (ежедневно, `RECONCILIATION_INTERVAL_MS`): payment/refund/payout
+  reconciliation per provider → `checkProviderEventMismatches`
+  (`PaymentProviderEvent` vs `Payment`) → внутренняя ledger-сверка
+  (`reconcileAllPurchases`). Падение шага не ломает остальные;
+  результаты — `ReconciliationReport` + structured logs.
+
 ## Персистентные журналы
 
-- `Payment` — нейтральные статусы машины; `PaymentProviderEvent` — идемпотентный
-  лог webhook-доставок (`PROCESSING/PROCESSED/FAILED`, `attempts`, `lastError`).
+- `Payment` — нейтральные статусы машины; `provider` — enum `PaymentProvider`
+  (`YUKASSA|STRIPE|TEST|TBANK|CRYPTO`; расширение TBANK/CRYPTO — миграция
+  `site/server/migrations/app/20260912T0456_plan016_payment_providers/`).
+- `PaymentProviderEvent` — идемпотентный лог webhook-доставок
+  (`PROCESSING/PROCESSED/FAILED`, `attempts`, `lastError`, `payloadHash`;
+  DB-уникальность `[provider, providerEventId, eventType]`).
 - `Refund` — независимый lifecycle возвратов (INV-013).
 - Модельный контекст: [DATA](../architecture/DATA.md).

@@ -31,7 +31,12 @@
   (обязательны в git). Актуальные пакеты: `baseline`, `migration`,
   `plan005_community_server`, `plan006_daily_experience`,
   `plan007_content_foundation`, `plan008_follow_expansion`,
-  `plan009_thread_follow`, `plan010_creator_analytics` (сентябрь 2026).
+  `plan009_thread_follow`, `plan010_creator_analytics`,
+  `plan012_idempotency_invariants`,
+  `20260912T0456_plan016_payment_providers` (сентябрь 2026). Последний
+  расширяет enum `PaymentProvider` значениями `TBANK` и `CRYPTO`
+  (check-constraints `payment`/`paymentProviderEvent`); мультивалютных полей
+  нет — деньги остаются целыми копейками RUB.
 - Рабочий цикл изменения схемы: правка `contract.prisma` →
   `prisma contract emit` → `prisma migration plan` → (заполнить
   `migration.ts` при placeholder) → коммит схемы + пакета; применение на

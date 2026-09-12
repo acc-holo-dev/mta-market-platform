@@ -14,8 +14,56 @@
 | Ротация | каждый refresh создаёт новую Session (новый токен, тот же `tokenFamily`) и помечает старую `reuseDetected` |
 | Детекция реюза | refresh использованным токеном → ревокация **всей tokenFamily** + очистка cookie + 401 (`routes/auth.ts`) |
 | Разграничение типов | refresh не принимается как access и наоборот (`lib/jwt.ts`) |
-| Anti-enumeration | единая ошибка `INVALID_CREDENTIALS` для «нет пользователя» и «неверный пароль»; логи разделены (`login_failed_unknown_identity` / `login_failed_bad_password`) |
-| OAuth | CSRF-cookie `oauth_state` (10 мин) с проверкой на callback; email-матч только для `verified` провайдер-имейлов; синтетические `.local`-email не могут захватить аккаунт |
+| Anti-enumeration | единая ошибка `INVALID_CREDENTIALS` для «нет пользователя» и «неверный пароль»; логи разделены (`login_failed_unknown_identity` / `login_failed_bad_password`); тот же uniform-контракт в `PATCH /auth/password` |
+| Смена пароля | `bcrypt`-проверка текущего пароля обязательна; после смены ревоцируются **все прочие** сессии (текущая refresh-сессия выживает — `routes/auth.ts`, A-008); OAuth-only аккаунты (без `passwordHash`) получают 409 — пароль не добавляется без доказательства владения |
+| OAuth redirect | CSRF-cookie `oauth_state` (10 мин) с проверкой на callback; email-матч только для `verified` провайдер-имейлов (у VK ID — флаг `email_verified`); синтетические `.local`-email не могут захватить аккаунт |
+| OAuth direct (Telegram) | подпись Login Widget — единственный транспортный факт: HMAC-SHA256 data-check-string, ключ `SHA256(TELEGRAM_BOT_TOKEN)`; `oauth_state` не используется; свежесть ±24 ч; replay dedup `(id, auth_date)` |
+| Link-режим | `POST /auth/:provider/link/start` и `GET /auth/:provider/link` — только `authenticate` (cookie `link_user` ставится проверенному пользователю; Bearer-путь `GET /auth/:provider` тоже проверяет токен) |
+
+## Telegram direct-login (PLAN-016 A-005)
+
+`POST /auth/telegram/callback` (`lib/providers/telegram.ts`) — публичный
+маршрут; transport-аутентичность виджета и есть вся защита:
+
+- **HMAC**: data-check-string (все поля payload кроме `hash`, отсортированы,
+  пары `key=value` через `\n`) подписывается HMAC-SHA256 с ключом
+  `SHA256(bot_token)`; сравнение `crypto.timingSafeEqual` (length-guarded).
+- **Свежесть**: `auth_date` в пределах ±24 ч от серверных часов (и будущее
+  время тоже отклоняется — `Math.abs`).
+- **Replay dedup**: пара `(id, auth_date)` — ключ module-level кэша (TTL
+  24 ч, капа 10 000 записей, свип при вставке); повтор того же payload →
+  401. Кэш in-memory — per-instance; при multi-instance доставке той же пары
+  на другой экземпляр окно атаки остаётся ограниченным 24-часовой свежестью.
+- **Rate limit**: `authRateLimit` (fail-closed группа, M-002) на маршруте.
+- Нет `oauth_state`, нет провайдер-токенов, нет email (`verified: false` →
+  синтетический `<providerId>@telegram.local`) — захват аккаунта через
+  email-матч физически невозможен.
+
+## Шифрование OAuth-токенов провайдеров (PLAN-016 A-009)
+
+`lib/tokenCrypto.ts` — `Account.accessToken/refreshToken/idToken` шифруются
+AES-256-GCM ключом `OAUTH_TOKEN_ENCRYPTION_KEY` (base64 32 байта), конверт
+`v1:<iv>:<tag>:<ct>`; plaintext никогда не логируется. Расшифровка — только
+`decryptProviderToken` (зарезервирована под будущий provider-refresh flow,
+сейчас не вызывается). Startup sweep `sweepLegacyStoredTokens` идемпотентно
+перешифрует legacy-plaintext строки (только при наличии ключа, ошибка не
+блокирует старт). Production: ключ **обязателен**, когда сконфигурирован
+хотя бы один OAuth-провайдер (включая `TELEGRAM_BOT_TOKEN`), иначе сервер
+не стартует (`lib/startupValidation.ts`).
+
+Компрометация ключа = утечка всех сохранённых провайдер-токенов. Процедура
+ротации:
+
+1. сгенерировать новый ключ (`openssl rand -base64 32`), положить в env;
+2. инвалидировать все провайдер-токены: сессии/привязки продолжают работать,
+   но сохранённые access/refresh провайдера считаются скомпрометированными —
+   старые шифротексты под новым ключом не расшифровываются
+   (`decryptProviderToken` → `null`, fail-closed), пользователи
+   перелогиниваются через провайдеров, и при первом же login/link callback
+   токены перезаписываются под новым ключом;
+3. перезапустить сервер (sweep перешифрует то, что осталось legacy-plaintext);
+4. скомпрометированный ключ вывести из оборота везде, где он мог храниться
+   (env-файлы, секрет-менеджер, CI).
 
 ## Авторизация
 
@@ -111,19 +159,41 @@
   `server_tokens off`, `X-Frame-Options: DENY`; HTTP→HTTPS redirect с
   защитой от Host-header injection (444 на неизвестный Host).
 
-## Платёжный webhook
+## Платёжные webhook'и (per-provider, PLAN-016 P-002)
 
-`/payments/webhook` — публичный, но: провайдер не сконфигурирован → 503;
-транспортная подлинность — IP-allowlist + HTTP Basic (E-006); бизнес-проверки
-— re-fetch платежа у провайдера, сверка суммы/валюты/привязки, quarantine
-события при несовпадении (`routes/payments.ts`); идемпотентность через
-`PaymentProviderEvent` (см. [COMMERCE](../api/COMMERCE.md)).
+`POST /payments/webhook/:provider` (+ legacy-алиас `/payments/webhook` на
+дефолтного провайдера) — публичные, но: провайдер не сконфигурирован/не
+включён → `503`; транспортная подлинность — `provider.verifyWebhook` (E-006):
+
+| Провайдер | Верификация |
+|---|---|
+| YooKassa | IP-allowlist (`403`) + HTTP Basic (`401`) |
+| T-Bank | notification-`Token` = SHA-256 по полям уведомления (ключи отсортированы, пары `${key}${value}`, terminal Password в конце), timing-safe + владение `TerminalKey` (`401`); IP/Basic нет — токен и есть проверка |
+| Crypto (Cryptomus-класс) | `sign` = md5(base64(JSON без поля sign) + api key), timing-safe; любой отказ → `400` (`reason:"signature"`) |
+| TEST (dev) | webhook-канала нет — delivery отклоняется на транспорте |
+
+- **Raw-body**: `express.json({verify})` (`app.ts`) кладёт сырые байты в
+  `req.rawBody` — маршрут отдаёт их в `verifyWebhook`/`parseWebhook`
+  (крипто-адаптер переразбирает raw bytes для `sign`; T-Bank хэширует
+  разобранные значения, сырые байты не требуются), `payloadHash` события —
+  SHA-256 от raw-байтов.
+- **Бизнес-проверки неизменны для всех провайдеров**: событие персистится
+  до эффектов (`PaymentProviderEvent`), затем обязательный re-fetch платежа
+  у провайдера, сверка суммы/валюты (RUB)/привязки провайдер-платежа к
+  заказу; любое нарушение — quarantine (`PaymentProviderEvent.status=FAILED`,
+  409) без выдачи entitlement (`routes/payments.ts`). Идемпотентность через
+  `PaymentProviderEvent` (см. [COMMERCE](../api/COMMERCE.md)).
 
 ## Секреты и окружение
 
 - Все секреты — только env: `JWT_SECRET` (обязателен, валидируется на старте
   — `lib/startupValidation.ts`), `DRM_*`, `YOOKASSA_*`, `SMTP_*`,
-  `S3_*`, OAuth client secret'ы. Список — `.env.example` (без значений).
+  `S3_*`, OAuth client secret'ы, `TELEGRAM_BOT_TOKEN`,
+  `OAUTH_TOKEN_ENCRYPTION_KEY`, `TBANK_*`, `CRYPTO_*`. Список —
+  `.env.example` (без значений).
+- `OAUTH_TOKEN_ENCRYPTION_KEY` — production-требование при любом
+  сконфигурированном OAuth-провайдере (base64 ровно 32 байта); процедура при
+  утечке — выше, § «Шифрование OAuth-токенов провайдеров».
 - `.env*` в `.gitignore` (кроме `!.env.example`); каталог `secrets/` игнорируется.
 - `server_tokens off`; `POST /payments/:id/simulate` не компилируется в
   production; `dev-admin.ts` отказывается работать при

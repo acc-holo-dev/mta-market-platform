@@ -41,13 +41,18 @@ Development Plan — это не просто список задач.
 | [PLAN-008](COMPLETED/PLAN-008.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Follow Expansion (Creator + Resource): подписки на создателя и ресурс (§16 до шага Resource), уведомления CREATOR_RESOURCE / CREATOR_ARTICLE / RESOURCE_UPDATE, покупатель уведомляется об обновлении купленного (§26), Market Loop починен на шаге Update (версия → re-moderation → release), агрегаты без раскрытия социального графа (§42). |
 | [PLAN-009](COMPLETED/PLAN-009.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Thread Follow: шаг Follow в Community Loop (§10) — подписка на любое обсуждение, FORUM_REPLY доставляется подписчикам (dedup с автором и участниками), агрегат «N следят» на странице темы, ряд «Отслеживаемые обсуждения» в сводке; Community-follow отложен до появления сущности «сообщество». |
 | [PLAN-010](COMPLETED/PLAN-010.md) | IMPLEMENTATION COMPLETE (2026-09-11) | Creator Analytics Foundation: честный счётчик просмотров страниц ресурсов (агрегат ресурс×день, без идентичностей зрителей), блок «Аналитика» в кабинете продавца (просмотры/покупки/конверсия за 30 дней); просмотры — приватные данные продавца. |
+| [PLAN-011](COMPLETED/PLAN-011.md) | COMPLETED (2026-09-11) | Production Readiness (see record). |
+| [PLAN-012](COMPLETED/PLAN-012.md) | IMPLEMENTATION COMPLETE (2026-09-12) | Transactional correctness core: DB-инварианты (checkout exactly-once, atomic ledger, Idempotency-Key, CAS dispute transitions) + спецификация PLAN-012-spec.md. |
+| PLAN-013 | IMPLEMENTATION COMPLETE (2026-09-11) | Visual System & UX Redesign: токены, ui-kit, все поверхности (см. DESIGN-SYSTEM.md; запись восстановлена пост-хок в PLAN-016; спека: PLAN-013-spec.md). |
+| PLAN-014 | IMPLEMENTATION COMPLETE (2026-09-12) | Dependency/toolchain modernization (см. completed/PLAN-014.md; спека: PLAN-014-spec.md). |
 | [PLAN-015](COMPLETED/PLAN-015.md) | IMPLEMENTATION COMPLETE (2026-09-12) | Experience Architecture & Visual System: единый AppShell (Sidebar expanded/collapsed + Topbar), две первоклассные темы (light/dark) с одним переключателем, глобальный поиск-дропдаун над /search, context-aware create, trust-бейджи, placement-архитектура, Home как Discover-поверхность, Маркет с вкладками Ресурсы/Услуги, My MTA + /me/following, кабинет продавца с ?tab=. E2E 59/59, unit 392/392. |
+| PLAN-016 | IMPLEMENTATION COMPLETE (2026-09-12) | Identity Expansion, Multi-Provider Payments & Platform Debt Closure: вход через VK/Google/Yandex/Telegram (discovery + динамические кнопки), /account/identities, шифрование OAuth-токенов, смена пароля; provider-neutral платежи (dispatch, webhook/:provider, T-Bank, crypto RUB-locked, checkout UI, dev-заглушка TEST); долг D-002..D-014 (фокус-трапы, search react-query, admin-валидация, error-страницы, 7d/30d, api-ext модули, E2E-гигиена). E2E 68/68, unit 440/440 (см. completed/PLAN-016.md; спека: PLAN-016-spec.md). |
 
 ## Правила работы с планами
 
 1. Новый цикл разработки = новый план (`PLAN-002`, ...). Один активный план за раз.
 2. План фиксирует переход состояний, а не список желаемых фич: «из состояния A в состояние B».
-3. Всё, что не требуется для цели плана, уходит в [IDEAS](../IDEAS/IDEAS.md), а не в план.
+3. Всё, что не требуется для цели плана, уходит в [IDEAS](../ideas/README.md), а не в план.
 4. План считается завершённым только после проверки пользовательского/продуктового
    результата (для продуктовых фич — реальный browser flow, а не только компиляция и
    модульные тесты).

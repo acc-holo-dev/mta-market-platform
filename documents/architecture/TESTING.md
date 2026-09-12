@@ -18,13 +18,15 @@ tests/
 │   ├── block7, n-block8, o-block8,
 │   └── plan005-community/news/reviews/servers, plan006-activity,
 │       plan007-content, plan008-follows, plan009-thread-follow,
-│       plan010-analytics, plan001-e2e
+│       plan010-analytics, plan001-e2e, identity-providers,
+│       payments-tbank, payments-crypto, auth-plan016
 ├── e2e/                 # Playwright: браузер против живых dev-серверов
 │   ├── authentication/plan001.spec.ts
 │   ├── marketplace/plan003.spec.ts, plan010.spec.ts
 │   ├── servers/plan005.spec.ts
 │   ├── content/plan006.spec.ts, plan007.spec.ts
-│   └── community/plan008.spec.ts, plan009.spec.ts
+│   ├── community/plan008.spec.ts, plan009.spec.ts
+│   └── plan016/shell.spec.ts (shell/темы/поиск/checkout/identities)
 ├── module/              # тесты модуля (см. ниже)
 ├── fixtures/            # общие фикстуры (сейчас пуст)
 ├── tools/
@@ -111,19 +113,21 @@ tests/
 4. Приложение считает лимиты по открытым env'ам — в dev установлены
    ослабленные значения; E2E идут с дефолтными dev-лимитами.
 
-## Текущие объёмы (PLAN-010, 2026-09-11)
+## Текущие объёмы (PLAN-016, 2026-09-12)
 
-- Backend-тесты (vitest: unit + integration): **378/378** (372 + 6 analytics);
-  файлов: 6 unit + 27 integration.
-- Playwright browser E2E: **59/59** (12 auth + 16 marketplace + 12 servers +
-  10 content + 9 community); накопительный ряд: 12 → 25 → 37 → 42 → 47 →
-  52 → 56 → 59.
+- Backend-тесты (vitest: unit + integration): **427/427**; файлов: 8 unit +
+  35 integration (включая PLAN-016: identity-providers, payments-tbank,
+  payments-crypto, auth-plan016, token-crypto, startup-policy).
+- Playwright browser E2E: **59 прежних + 9 plan016** (D-013: спеки plan001/
+  plan016 теперь чистят созданные в ране сущности); накопительный ряд:
+  12 → 25 → 37 → 42 → 47 → 52 → 56 → 59 → 68.
 - Инкременты планов и миграционные пакеты — [CURRENT](../development/CURRENT.md).
 
 ## CI-гейты
 
-Каталог `.github/workflows` в этом чекауте **пуст** — workflow-файлы не
-перенесены из legacy-репозитория. Описания гейтов (CI job `test` с
+Workflow-каталог `.github/workflows` наполнен с PLAN-011 (ci, tests, e2e,
+validate, contracts, site, module, security, release). Описания гейтов (CI job
+`test` с
 `contract emit && prisma db update` на чистой БД, `ci.yml` без `|| true`,
 production-путь миграций по факту пакета в PR) —
 [PLAN-004](../development/completed/PLAN-004.md) и

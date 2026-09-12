@@ -1,12 +1,25 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-12 (PLAN-015 выполнен; PLAN-016 зарегистрирован).
+Обновлено: 2026-09-12 (PLAN-016 выполнен).
 
 ## Активный план
 
-**PLAN-016 — Identity Expansion, Multi-Provider Payments & Platform Debt
-Closure** — зарегистрирован ([ACTIVE/PLAN-016.md](ACTIVE/PLAN-016.md)),
-выполнение не начато.
+Нет активного плана. **PLAN-016 — Identity Expansion, Multi-Provider
+Payments & Platform Debt Closure** выполнен (см.
+[COMPLETED/PLAN-016.md](COMPLETED/PLAN-016.md); спека:
+PLAN-016-spec.md): вход через VK/Google/Yandex/Telegram + discovery,
+страница `/account/identities`, шифрование OAuth-токенов (AES-256-GCM),
+смена пароля; provider-neutral платежи — dispatch без хардкодов,
+`POST /payments/webhook/:provider` (raw-body + signature), T-Bank и
+crypto-адаптеры (RUB-locked), checkout UI (выбор способа + invoice-блок
+с TTL и polling), dev-заглушка TEST; закрыт долг D-002..D-014 (фокус-трапы,
+search react-query, admin-валидация, error-страницы, footer claims, 7d/30d
+статистика, api-ext доменные модули, housekeeping документации, E2E-гигиена).
+Приёмка: type-check ✓, lint 0 errors ✓, web build ✓, unit **440/440**,
+E2E **68/68**, браузерная верификация (login/checkout/identities, light+dark).
+Открыто (честно): OAuth token refresh, QR crypto-инвойса (зависимость —
+решение владельца), admin-выбор из списков (validation-минимум сделан),
+боевые env провайдеров — CURRENT Blockers.
 
 Основа плана: аудит документации и кода (2026-09-12) — три опоры:
 1. **Вход**: Google включён (backend готов), VK ID (новый), Telegram
@@ -57,8 +70,6 @@ subscriptions, bundles — явно вне scope (§15 плана).
   Аналитика), действие «Опубликовать».
 - Приёмка: type-check чист, web build ✓, unit **392/392**, E2E **59/59**,
   браузерная верификация 1440/1920 light+dark.
-
-### Что появилось в PLAN-014 (2026-09-12)
 
 ### Что появилось в PLAN-014 (2026-09-12)
 
@@ -121,7 +132,8 @@ subscriptions, bundles — явно вне scope (§15 плана).
 
 ## Состояние продукта
 
-MTA Market — marketplace + community + server platform (см. [PROJECT.md](../PROJECT.md)).
+MTA Market — marketplace + community + server platform (см.
+[PROJECT.md](../product/PROJECT.md)).
 После PLAN-005 платформа больше не только про commerce: у неё есть живая
 социальная поверхность вокруг сущности SERVER.
 
@@ -228,25 +240,30 @@ MTA Market — marketplace + community + server platform (см. [PROJECT.md](../
 
 ## Blockers
 
-Нет блокеров кода. Ограничения/что осталось (в рамках PLAN-005 не было
-обязательным):
+Нет блокеров кода. Ограничения (унаследованные, после PLAN-016):
 
 1. **Windows-сборка модуля** (унаследовано из PLAN-004): POSIX-сокеты в
    http_client.cpp + отсутствие OpenSSL-линковки в CMake. market_client
    следует за существующей архитектурой и наследует это ограничение.
-2. **Production verification** (как и после PLAN-004): live domain, real
-   payments, restore drill.
+2. **Production verification** (как и после PLAN-004): live domain, боевые
+   ключи провайдеров (OAuth/платежи), restore drill. Новые в PLAN-016
+   провайдеры включаются владельческими env и в E2E не гоняются.
 3. **Почтовые уведомления**: in-app уведомления готовы; email-канал —
-   будущий план (нужен digest/анти-спам дизайн).
+   будущий план (нужен digest/анти-спам дизайн). Password reset по email
+   остаётся вне scope до боевого SMTP.
+4. **OAuth token refresh**: токены провайдеров хранятся зашифрованными, но
+   путь refresh'а провайдерских токенов ещё не реализован (decrypt-хелпер
+   зарезервирован под него, AUTH.md).
 
 Известные осознанные ограничения (кандидаты в следующие планы):
 
 - Rate-limit счётчики подписок/новостей используют userRateLimit (in-memory
   Redis) — при росте аудитории пересмотреть.
-- Feed /news не имеет сортировок/фильтров по серверу (минимум по плану).
 - Поиск — ILIKE по name/description/title (pg_trgm — кандидат из PLAN-004
   blockers, теперь и для servers/threads).
 - Нет email-уведомлений; нет push.
+- QR-код для crypto-инвойса не отрисован (нужна новая рантайм-зависимость —
+  владельческое решение по DEPENDENCY-POLICY; инвойс доступен по payUrl).
 
 ## Следующий шаг
 

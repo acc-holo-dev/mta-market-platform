@@ -1,10 +1,10 @@
 # PROJECT — MTA Market
 
-Обновлено: 2026-09-11 (после выполнения PLAN-010).
+Обновлено: 2026-09-12 (после выполнения PLAN-015; PLAN-016 в выполнении).
 
 Этот документ описывает текущее состояние MTA Market с точки зрения продукта.
 Это не roadmap и не task list — развитие проекта ведётся через
-[Development Plan system](DEVELOPMENT/README.md).
+[Development Plan system](../development/README.md).
 
 ---
 
@@ -206,8 +206,8 @@ MTA Market — единая цифровая площадка сообществ
 8. DRM-жизненный цикл: entitlement → installation → challenge → activate → lease.
 
 Текущая приёмка (счётчики тестов и сборок) — в
-[DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md); детальные записи — в
-[DEVELOPMENT/COMPLETED/](DEVELOPMENT/COMPLETED/).
+[DEVELOPMENT/CURRENT.md](../development/CURRENT.md); детальные записи — в
+[DEVELOPMENT/COMPLETED/](../development/completed/).
 
 ## Что ещё НЕ реализовано (целевое состояние из VISION)
 
@@ -217,8 +217,14 @@ MTA Market — единая цифровая площадка сообществ
   расширенная аналитика (источники, воронки).
 - Гарантии/deals, trust hub, blacklist, расширенная репутация.
 - Пополнение баланса и выплаты продавцам.
-- Email/push канал уведомлений (in-app есть).
-- Продакшн-верификация (домен, боевые платежи, restore drill).
+- Email/push канал уведомлений (in-app есть); password reset по email.
+- OAuth token refresh (токены провайдеров хранятся зашифрованными, путь
+  refresh'а не реализован — AUTH.md).
+- Продакшн-верификация (домен, боевые ключи провайдеров, restore drill);
+  вход через VK/Google/Yandex/Telegram и платежи через T-Bank/крипту
+  реализованы и тестируются моками/dev-заглушкой, но боевые env не
+  сконфигурированы.
 
-Эти пункты — кандидаты в будущие планы (см. [DEVELOPMENT/CURRENT.md](DEVELOPMENT/CURRENT.md)
-и [IDEAS/](IDEAS/README.md)); наличие здесь не создаёт обязательства.
+Эти пункты — кандидаты в будущие планы (см.
+[DEVELOPMENT/CURRENT.md](../development/CURRENT.md)
+и [IDEAS/](../ideas/README.md)); наличие здесь не создаёт обязательства.

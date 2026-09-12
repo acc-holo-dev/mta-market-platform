@@ -1,7 +1,8 @@
 # AUTH — аутентификация и сессии
 
-Область: `site/server/src/routes/auth.ts`, `site/server/src/lib/{jwt,cookies,tokenSecurity,identityProvider}.ts`,
-провайдеры `site/server/src/lib/providers/{discord,yandex,google}.ts`.
+Область: `site/server/src/routes/auth.ts`,
+`site/server/src/lib/{jwt,cookies,tokenSecurity,tokenCrypto,identityProvider}.ts`,
+провайдеры `site/server/src/lib/providers/{discord,yandex,google,vk,telegram}.ts`.
 Общие условия (envelope ошибок, лимиты, middleware): [README](README.md).
 
 ## Токены и сессии
@@ -97,19 +98,77 @@ RUB — PLAN-001 C-002). Ответ одновременно логинит (с�
 status, email, username) отклоняются. Пустой набор —
 `400 {code:"NOTHING_TO_UPDATE", message:…, rejectedFields:[…]}`.
 
-## OAuth-провайдеры (Discord / Yandex / Google)
+### PATCH /auth/password (`authenticate`, PLAN-016 A-008)
+
+Смена локального пароля. Тело `{"currentPassword": "…", "newPassword": "…"}`:
+
+- `newPassword` ≥8 и ≤200 символов, иначе `400 {"error":"Invalid password payload"}`;
+- аккаунт без локального пароля (OAuth-only, `passwordHash = null`) →
+  `409 {"error":"Account has no local password"}` — установка пароля здесь
+  намеренно не добавляет credential без доказательства владения;
+- `bcrypt.compare(currentPassword)` не совпал → единая
+  `401 {code:"INVALID_CREDENTIALS"}` (тот же контракт, что у login —
+  anti-enumeration);
+- успех: пароль перехэширован bcrypt (cost 10), **все прочие сессии
+  ревоцированы** (каждая `Session` пользователя удаляется, кроме сессии
+  текущего refresh-cookie — вызывающий остаётся залогиненным); ответ
+  `200 {"message":"Password updated","revokedSessions":N}`.
+- Смена пароля по email (password reset) не реализована — вне скоупа
+  PLAN-016 (см. §15 плана: боевой SMTP — решение владельца).
+
+## OAuth-провайдеры (Discord / Yandex / Google / VK ID) + Telegram direct-login
 
 Реестр-паттерн: интерфейс `IIdentityProvider`
 (`lib/identityProvider.ts`), реализации саморегистрируются side-effect
-импортами в `routes/auth.ts` из `lib/providers/{discord,yandex,google}.ts`.
-Провайдер недоступен без env (client id/secret + redirect) — маршруты отвечают
-`404 {"error":"Provider not available"}`.
+импортами в `routes/auth.ts` из
+`lib/providers/{discord,yandex,google,vk,telegram}.ts`. Провайдер недоступен
+без env (client id/secret + redirect; у Telegram — `TELEGRAM_BOT_TOKEN`) —
+маршруты отвечают `404 {"error":"Provider not available"}`.
+
+Два режима (PLAN-016 A-005):
+
+- **redirect** — Discord, Yandex, Google, VK ID: authorization-code flow,
+  CSRF-cookie `oauth_state`, провайдер-токены сохраняются (шифрованно, см.
+  [ниже](#шифрование-oauth-токенов-провайдеров-plan-016-a-009));
+- **direct** — Telegram Login Widget: подписанный payload постится прямо в
+  бэкенд (`POST /auth/telegram/callback`), без authorization code, без
+  `oauth_state` и без провайдер-токенов.
+
+VK ID (`lib/providers/vk.ts`) — OAuth 2.0 против `id.vk.com`
+(`/authorize` → JSON-обмен кода на `id.vk.com/oauth2/auth` →
+`/oauth2/user_info`); email-флаг `email_verified` маппится в `verified` —
+аккаунт по email-матчу соперничает только при верифицированном email, иначе
+создаётся синтетический `<providerId>@vk.local` (anti-takeover сохранён).
+Env: `VK_CLIENT_ID` / `VK_CLIENT_SECRET` / `VK_REDIRECT_URI`.
+
+### GET /auth/providers — discovery включённых провайдеров (PLAN-016 A-001)
+
+Публичный (без `authenticate`); зарегистрирован **до** generic `/:provider`
+маршрутов, чтобы не быть съеденным параметризованным матчем. Ответ:
+
+```json
+{"providers":[{"provider":"discord","displayName":"Discord","mode":"redirect"},
+              {"provider":"telegram","displayName":"Telegram","mode":"direct","botName":"<TELEGRAM_BOT_NAME>"}]}
+```
+
+- список — только `isEnabled()`-провайдеры; без env провайдер просто
+  отсутствует в списке (честное отсутствие, A-010 — никогда «available but
+  broken»);
+- `mode` — `"redirect" | "direct"`; `botName` отдаётся только direct-провайдеру
+  (для монтирования Telegram Login Widget, `data-telegram-login`);
+- никакой конфигурации не утекает: redirect URI, client id/secret и прочие
+  env не включаются в ответ.
+
+### Маршруты провайдеров
 
 | Маршрут | Назначение |
 |---|---|
-| `GET /auth/:provider` | редирект на authorize URL; ставит CSRF-cookie `oauth_state` (HttpOnly, 10 мин); при Bearer-заголовке дополнительно ставит `link_user` (link-режим) |
+| `GET /auth/providers` | discovery (см. выше) |
+| `GET /auth/:provider` | редирект на authorize URL; ставит CSRF-cookie `oauth_state` (HttpOnly, 10 мин); при Bearer-заголовке дополнительно ставит `link_user` (link-режим). direct-провайдер → `404 {"error":"Direct login provider: use POST /auth/:provider/callback"}` |
 | `GET /auth/:provider/link` (`authenticate`) | явный link-режим: cookie `link_user` = свежий access-токен |
-| `GET /auth/:provider/callback` | обмен `code` на токены; проверка `state` против cookie (`400 {"error":"Invalid state"}` при несовпадении, cookies очищаются) |
+| `POST /auth/:provider/link/start` (`authenticate`) | браузерный запуск link-режима (PLAN-016 A-006): ставит `link_user` cookie и возвращает `{"authorizationUrl"}` для клиентского перехода (навигация браузера не может нести `Authorization`-заголовок) |
+| `GET /auth/:provider/callback` | обмен `code` на токены; проверка `state` против cookie (`400 {"error":"Invalid state"}` при несовпадении, cookies очищаются). direct-провайдер → 404 (см. выше) |
+| `POST /auth/telegram/callback` | direct-login Telegram (см. ниже) |
 
 Callback, **login-режим**:
 
@@ -121,6 +180,8 @@ Callback, **login-режим**:
   санитизированный + суффикс hex при коллизии), `emailVerified` ставится при
   verified-email, welcome-письмо отправляется на реальный email (best-effort).
 - Сессия: refresh-токен в HttpOnly cookie, БД — хэш, новый `tokenFamily`.
+  Провайдер-токены сохраняются только в зашифрованном виде (см.
+  [Шифрование OAuth-токенов](#шифрование-oauth-токенов-провайдеров-plan-016-a-009)).
 - Ответ: редирект `${FRONTEND_URL}/auth/callback`.
 
 Callback, **link-режим** (есть cookie `link_user`):
@@ -128,6 +189,43 @@ Callback, **link-режим** (есть cookie `link_user`):
 - `409 {"error":"Identity already linked to another account"}` — идентичность
   занята другим пользователем; повторный link идемпотентен (редирект
   `/account/identities?linked=1`); иначе создаётся `Account` и редирект туда же.
+
+### POST /auth/telegram/callback — direct-login (PLAN-016 A-005)
+
+Публичный, лимит `authRateLimit`. Тело — подписанный payload Telegram Login
+Widget (`id`, `first_name`, `auth_date`, `hash`, …); авторизация-кода нет,
+`oauth_state` не используется. Верификация целиком в провайдере
+(`lib/providers/telegram.ts`, `verifyTelegramLoginPayload`/`verifyDirectLogin`):
+
+- **Подпись**: data-check-string (все поля кроме `hash`, отсортированные,
+  пары `key=value` через `\n`), HMAC-SHA256 с ключом
+  `SHA256(TELEGRAM_BOT_TOKEN)`; сравнение `crypto.timingSafeEqual`.
+- **Свежесть**: `auth_date` в пределах ±24 ч от часов сервера.
+- **Replay dedup**: пара `(id, auth_date)` — ключ in-memory кэша (TTL 24 ч,
+  капа 10 000 записей); повтор того же payload → `401`.
+- **Rate limit**: `authRateLimit` (fail-closed группа) на маршруте.
+- Email Telegram боту не отдаётся → синтетический `<providerId>@telegram.local`.
+- Провайдер-токенов нет — в `Account` пишутся `null` (шифрование неприменимо).
+- Link-режим работает так же: тот же POST с cookie `link_user` →
+  `handleLinkingCallback` (редирект `/account/identities?linked=1`).
+- Любая ошибка верификации (подпись/свежесть/replay) → `401 {"error": …}`;
+  выключенный провайдер → `404 {"error":"Provider not available"}`.
+- `GET /auth/telegram` и `GET /auth/telegram/callback` отвечают 404 с
+  подсказкой «use POST /auth/:provider/callback» — direct-провайдер не имеет
+  authorize URL.
+
+Подпись виджета — единственный транспортный факт: ни IP-allowlist, ни cookie,
+ни провайдер-токены в этой схеме не участвуют (подробности —
+[SECURITY](../architecture/SECURITY.md)).
+
+## Внешние идентичности (link/unlink) и страница `/account/identities`
+
+Привязка/отвязка внешних идентичностей — через link-режим выше
+(`POST /auth/:provider/link/start` → authorize-переход → callback с cookie
+`link_user`; для Telegram — тот же `POST /auth/telegram/callback` с cookie) и
+endpoints ниже. Страница `/account/identities` использует `GET /auth/providers`
++ эти endpoints; серверный link-callback всегда возвращает на
+`/account/identities?linked=1` (мёртвый redirect закрыт, PLAN-016 A-006).
 
 ### GET /auth/identities (`authenticate`)
 
@@ -140,12 +238,48 @@ Callback, **link-режим** (есть cookie `link_user`):
 `409 {"error":"Cannot unlink the only login method"}`; чужая/несуществующая
 — 404.
 
+## Шифрование OAuth-токенов провайдеров (PLAN-016 A-009)
+
+`lib/tokenCrypto.ts` — access/refresh/id-токены провайдеров в `Account`
+шифруются at rest:
+
+- **Алгоритм**: AES-256-GCM; ключ — env `OAUTH_TOKEN_ENCRYPTION_KEY`
+  (base64 ровно 32 байта, `openssl rand -base64 32`). Конверт
+  `v1:<ivB64>:<tagB64>:<ctB64>` (IV 12 байт); plaintext никогда не логируется.
+- **Запись**: `encryptProviderToken` при каждом login/link callback
+  (`Account.accessToken` / `refreshToken`); direct-провайдер (Telegram)
+  хранит `null`. В dev без ключа plaintext сохраняется как есть (честность
+  dev-режима).
+- **Чтение**: `decryptProviderToken` — единственный путь расшифровки.
+  Зарезервирован под будущий provider-refresh flow; **refresh токенов
+  провайдера пока не реализован** — функция в рабочих маршрутах не
+  вызывается. Legacy-plaintext (строки без префикса `v1:`) читается как есть.
+- **Startup sweep**: `sweepLegacyStoredTokens` — идемпотентная разовая
+  перешифровка legacy-plaintext строк `Account` (accessToken/refreshToken/
+  idToken) при старте сервера (`index.ts`); выполняется только при наличии
+  ключа, чистое развёртывание сходится к no-op; ошибка не блокирует старт
+  (логи `oauth_tokens_reencrypted` / `oauth_token_sweep_failed`).
+- **Production**: startup validation (`lib/startupValidation.ts`) требует
+  ключ, когда сконфигурирован хотя бы один OAuth-провайдер (client id любого
+  из Discord/Yandex/Google/VK или `TELEGRAM_BOT_TOKEN`); ключ не base64-32
+  байта → ошибка старта. Частично сконфигурированный провайдер — warning,
+  провайдер остаётся честно выключенным.
+- **Компрометация ключа**: сменить ключ **и** инвалидировать все
+  провайдер-токены (пользователи перелогиниваются через провайдеров; старые
+  шифротексты под новым ключом не расшифровываются — `decryptProviderToken`
+  возвращает `null`, а не «открывается»). Процедура —
+  [SECURITY](../architecture/SECURITY.md), § «Секреты и окружение».
+
 ## Дизайнерские заметки (реальное состояние)
 
 - Uniform-ошибка логина и bcrypt — anti-enumeration; email-матч без verified
   запрещён (PREVENT account takeover через непроверенный email провайдера).
-- Провайдеры Telegram/Apple/Sber упомянуты в интерфейсе `IIdentityProvider`
-  как возможные, но **не реализованы** — зарегистрированы только 3 провайдера
-  выше.
+  Для VK ID флаг `email_verified` — тот же инвариант.
+- Зарегистрированные провайдеры: Discord, Yandex, Google, VK ID (redirect) и
+  Telegram (direct-login). Apple/Sber остаются примерами в интерфейсе
+  `IIdentityProvider`, но **не реализованы**.
+- Refresh токенов провайдера не реализован (интерфейсный `refreshToken?` не
+  используется); провайдер-токены перезаписываются только новым логином/link.
 - Список сессий устройства/«выйти со всех устройств» не реализован (сессии
-  управляются только refresh/logout/реюзом).
+  управляются только refresh/logout/реюзом; смена пароля ревоцирует все
+  прочие сессии).
