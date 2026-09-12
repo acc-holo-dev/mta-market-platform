@@ -8,13 +8,16 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchActivity } from "@/lib/api-ext";
 import { MessageSquare, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ACTIVITY_QUERY_KEY } from "@/components/home/LiveStrip";
 
-export function PopularSection() {
+export function PopularSection({ snapshot }: { snapshot?: import("@/lib/api-ext").ActivitySnapshot }) {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["activity", "popular"],
+    queryKey: ACTIVITY_QUERY_KEY,
     queryFn: fetchActivity,
     select: (snap) => snap.popular,
+    enabled: snapshot === undefined,
   });
+  const popular = snapshot?.popular ?? data;
 
   if (isLoading) {
     return (
@@ -24,10 +27,10 @@ export function PopularSection() {
       </div>
     );
   }
-  if (isError || !data) return null; // hide silently — popular is optional signal
+  if (isError || !popular) return null; // hide silently — popular is optional signal
 
-  const hasServers = data.servers.length > 0;
-  const hasDiscussions = data.discussions.length > 0;
+  const hasServers = popular.servers.length > 0;
+  const hasDiscussions = popular.discussions.length > 0;
   if (!hasServers && !hasDiscussions) return null; // J-001: hide empty blocks
 
   return (
@@ -38,7 +41,7 @@ export function PopularSection() {
             Топ серверов сейчас
           </h3>
           <div className="space-y-2">
-            {data.servers.map((s) => (
+            {popular.servers.map((s) => (
               <Link
                 key={s.slug}
                 href={`/servers/${s.slug}`}
@@ -78,7 +81,7 @@ export function PopularSection() {
             Активные обсуждения
           </h3>
           <div className="space-y-2">
-            {data.discussions.map((d) => (
+            {popular.discussions.map((d) => (
               <Link
                 key={d.id}
                 href={`/community/forum/thread/${d.id}`}
