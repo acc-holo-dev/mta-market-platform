@@ -32,16 +32,14 @@ export default function ServersPage() {
       fallback={
         <div>
           <div className="mta-hero-surface border-b border-line">
-            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-              <div className="mx-auto max-w-7xl">
+            <div className="w-full px-4 py-8 sm:px-6">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="mt-4 h-9 w-72" />
                 <Skeleton className="mt-3 h-4 w-56" />
                 <Skeleton className="mt-6 h-11 w-full max-w-2xl rounded-card" />
-              </div>
             </div>
           </div>
-          <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="w-full px-4 py-8 sm:px-6">
             <div className={GRID_CLS}>
               {Array.from({ length: 6 }).map((_, i) => (
                 <ServerCardSkeleton key={i} />
@@ -126,8 +124,8 @@ function ServersPageContent() {
     <div>
       {/* ---------- Hero-lite: H1 + totals + поиск ---------- */}
       <section className="mta-hero-surface border-b border-line">
-        <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <nav aria-label="Хлебные крошки" className="mb-6 text-sm text-content-muted">
+        <div className="w-full px-4 py-6 sm:px-6">
+          <nav aria-label="Хлебные крошки" className="mb-4 text-sm text-content-muted">
             <Link href="/" className="hover:text-accent-strong">
               Главная
             </Link>
@@ -135,7 +133,7 @@ function ServersPageContent() {
             <span className="text-content-secondary">Серверы</span>
           </nav>
 
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
             Серверы <span className="mta-brand-text-gradient">MTA:SA</span>
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-content-secondary md:text-base">
@@ -211,7 +209,7 @@ function ServersPageContent() {
       </section>
 
       {/* ---------- Каталог ---------- */}
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="w-full px-4 py-8 sm:px-6">
         {isLoading ? (
           <div className={GRID_CLS}>
             {Array.from({ length: 6 }).map((_, i) => (

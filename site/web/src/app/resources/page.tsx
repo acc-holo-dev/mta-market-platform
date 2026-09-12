@@ -8,19 +8,21 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { fetchResources, type Resource, type ResourceQuery } from "@/lib/api-ext";
+import { fetchResources, fetchServices, type Resource, type ResourceQuery } from "@/lib/api-ext";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import { ResourceCard } from "@/components/ui/ResourceCard";
+import { ServiceCard } from "@/components/market/ServiceCard";
 import { ResourceCardSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState, EmptyState } from "@/components/ui/States";
-import { Store, SearchX, Search, SlidersHorizontal, X } from "lucide-react";
+import { Store, SearchX, Search, SlidersHorizontal, X, Briefcase } from "lucide-react";
 
 const PAGE_SIZE = 12;
 
 type TypeFilter = "" | "SCRIPT" | "MAP" | "MODEL" | "TEXTURE" | "SOUND" | "GAMEMODE";
 type PriceFilter = "" | "free" | "paid";
 type SortKey = "" | "popular" | "newest" | "rating" | "price_asc" | "price_desc";
+type CatalogTab = "resources" | "services";
 
 // G-002: категория = реальный domain type; URL отражает выбор (G-003).
 const CATEGORIES: [TypeFilter, string][] = [
@@ -75,6 +77,7 @@ function ResourcesPageContent() {
   const price = (searchParams.get("price") ?? "") as PriceFilter;
   const sort = (searchParams.get("sort") ?? "") as SortKey;
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const tab = (searchParams.get("tab") ?? "resources") as CatalogTab;
 
   // Локальное значение инпута: мгновенный отклик, URL обновляется с дебаунсом.
   const [searchInput, setSearchInput] = useState(q);
@@ -242,7 +245,7 @@ function ResourcesPageContent() {
   );
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12">
+    <div className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-6">
       {/* Breadcrumbs (N-001) */}
       <nav aria-label="Хлебные крошки" className="mb-4 text-sm text-content-muted">
         <Link href="/" className="hover:text-accent-strong">
@@ -252,16 +255,56 @@ function ResourcesPageContent() {
         <span className="text-content-secondary">Маркетплейс</span>
       </nav>
 
-      <div className="mb-8">
-        {/* H1 typography (§3): text-3xl font-bold tracking-tight */}
-        <h1 className="text-3xl font-bold tracking-tight">Маркетплейс</h1>
-        <p className="mt-1 text-sm text-content-secondary tabular-nums">
-          {pagination
-            ? `${pagination.total} ресурсов · страница ${pagination.page} из ${pagination.pages || 1}`
-            : "Ресурсы для MTA:SA, прошедшие модерацию"}
-        </p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          {/* H1 typography (§3): text-3xl font-bold tracking-tight */}
+          <h1 className="text-3xl font-bold tracking-tight">Маркетплейс</h1>
+          <p className="mt-1 text-sm text-content-secondary tabular-nums">
+            {tab === "services"
+              ? "Услуги разработчиков для ваших проектов"
+              : pagination
+                ? `${pagination.total} ресурсов · страница ${pagination.page} из ${pagination.pages || 1}`
+                : "Ресурсы для MTA:SA, прошедшие модерацию"}
+          </p>
+        </div>
+        {/* PLAN-015 §16: Ресурсы | Услуги — реальные поверхности каталога */}
+        <div
+          role="group"
+          aria-label="Разделы маркетплейса"
+          className="inline-flex rounded-md border border-line-strong p-0.5"
+        >
+          {(
+            [
+              ["resources", "Ресурсы"],
+              ["services", "Услуги"],
+            ] as [CatalogTab, string][]
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={tab === value}
+              onClick={() => {
+                const params = new URLSearchParams(searchParams.toString());
+                if (value === "resources") params.delete("tab");
+                else params.set("tab", value);
+                params.delete("page");
+                const qs = params.toString();
+                router.push(qs ? `/resources?${qs}` : "/resources", { scroll: false });
+              }}
+              className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                tab === value ? "bg-accent text-on-accent" : "text-content-secondary hover:bg-surface-hover hover:text-content"
+              }`}
+            >
+              {label_of(value)}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {tab === "services" ? (
+        <ServicesCatalog query={q} />
+      ) : (
+      <>
       {/* Search (F-003/F-004): сохраняется в URL, shareable */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -391,8 +434,63 @@ function ResourcesPageContent() {
           ) : null}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
+}
+
+// PLAN-015 §25: реальный каталог услуг (GET /services), компактная сетка.
+function ServicesCatalog({ query }: { query: string }) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["services", "catalog"],
+    queryFn: fetchServices,
+    staleTime: 60_000,
+  });
+
+  const services = (data ?? []).filter((s) =>
+    query ? s.title.toLowerCase().includes(query.toLowerCase()) : true
+  );
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-40 animate-pulse rounded-card border border-line bg-surface" />
+        ))}
+      </div>
+    );
+  }
+  if (error) {
+    return <ErrorState error={error} onRetry={() => refetch()} />;
+  }
+  if (!services.length) {
+    return (
+      <EmptyState
+        icon={<Briefcase className="h-12 w-12 text-content-muted mx-auto mb-4" aria-hidden />}
+        title="Услуг пока нет"
+        description="Услуги появляются здесь после проверки модератором. Предложите свою — станьте продавцом."
+        action={
+          <Link href="/seller">
+            <Button variant="outline" size="sm">
+              Стать продавцом
+            </Button>
+          </Link>
+        }
+      />
+    );
+  }
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {services.map((s) => (
+        <ServiceCard key={s.id} service={s} />
+      ))}
+    </div>
+  );
+}
+
+function label_of(tab: CatalogTab): string {
+  return tab === "services" ? "Услуги" : "Ресурсы";
 }
 
 // F-005: пусто по конкретному запросу — предлагаем сброс (единый EmptyState).
