@@ -2,8 +2,8 @@
 // ресурсами с наглядными состояниями, услуги и заказы.
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/auth";
 import api, { bootstrapSession } from "@/lib/api";
@@ -22,7 +22,6 @@ import {
   type Resource,
   type Purchase,
   fetchSellerAnalytics,
-  type SellerAnalytics,
 } from "@/lib/api-ext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -37,6 +36,14 @@ import Link from "next/link";
 import { typeLabel, formatDate } from "@/lib/domain";
 
 export default function SellerPage() {
+  return (
+    <Suspense fallback={<div className="w-full px-4 py-12"><LoadingSpinner label="Загрузка кабинета..." /></div>}>
+      <SellerPageInner />
+    </Suspense>
+  );
+}
+
+function SellerPageInner() {
   const router = useRouter();
   const { accessToken, isAuthenticated } = useAuthStore();
 
@@ -69,7 +76,7 @@ export default function SellerPage() {
 
   if (profileLoading) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-12">
+      <div className="w-full px-4 py-8 sm:px-6">
         <LoadingSpinner label="Загрузка магазина..." />
       </div>
     );
@@ -77,7 +84,7 @@ export default function SellerPage() {
 
   if (profileError) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-12">
+      <div className="w-full px-4 py-8 sm:px-6">
         <ErrorState error={profileError} onRetry={() => refetchProfile()} />
       </div>
     );
@@ -206,6 +213,9 @@ function Notice({ title, text, badge }: { title: string; text: string; badge?: s
 // ---------- Approved seller dashboard (H-002) ----------
 function SellerDashboard() {
   const { user } = useAuthStore();
+  const searchParams = useSearchParams();
+  // PLAN-015 §35: вкладки Creator Studio; ?tab= синхронизирован с сайдбаром.
+  const tab = searchParams.get("tab") ?? "overview";
 
   const { data: myResources } = useQuery({
     queryKey: ["seller-resources"],
@@ -236,41 +246,89 @@ function SellerDashboard() {
   ).length;
   const drafts = resources.filter((r) => r.status === "DRAFT").length;
 
+  const tabs: [string, string][] = [
+    ["overview", "Обзор"],
+    ["resources", "Ресурсы"],
+    ["services", "Услуги"],
+    ["orders", "Заказы"],
+    ["analytics", "Аналитика"],
+  ];
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <div className="w-full px-4 py-8 sm:px-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Store className="h-7 w-7 text-accent" /> Мой магазин
+            <Store className="h-7 w-7 text-accent" /> Кабинет продавца
           </h1>
           <p className="mt-1 text-content-secondary">
-            <span className="sr-only">Кабинет продавца — </span>
+            <span className="sr-only">Продавец: </span>
             {user?.displayName || user?.username}
           </p>
         </div>
+        {/* PLAN-015 §35: первичное действие студии — Publish */}
         <Link href="/seller/new">
           <Button>
-            <Plus className="mr-2 h-4 w-4" /> Новый ресурс
+            <Plus className="mr-2 h-4 w-4" /> Опубликовать
           </Button>
         </Link>
       </div>
 
-      <SellerAnalyticsCard />
-
-      {/* H-002: dashboard stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
-        <Stat icon={Package} label="Ресурсов" value={resources.length} />
-        <Stat icon={Send} label="Опубликованных" value={published} />
-        <Stat icon={Clock} label="На модерации" value={pending} />
-        <Stat icon={FileEdit} label="Черновиков" value={drafts} />
-        <Stat icon={Wallet} label="Продано копий" value={soldCount} />
+      {/* Вкладки студии (§35) */}
+      <div
+        role="group"
+        aria-label="Разделы кабинета"
+        className="mb-8 flex flex-wrap gap-1 rounded-md border border-line p-1 w-fit"
+      >
+        {tabs.map(([value, label]) => (
+          <Link
+            key={value}
+            href={`/seller?tab=${value}`}
+            aria-pressed={tab === value}
+            className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors duration-fast ${
+              tab === value
+                ? "bg-accent text-on-accent"
+                : "text-content-secondary hover:bg-surface-hover hover:text-content"
+            }`}
+          >
+            {label}
+          </Link>
+        ))}
       </div>
 
-      <div className="space-y-8">
-        <MyResourcesSection />
-        <MyServicesSection />
-        <SellerOrdersSection />
-      </div>
+      {tab === "overview" ? (
+        <>
+          <SellerAnalyticsCard />
+
+          {/* H-002: dashboard stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+            <Stat icon={Package} label="Ресурсов" value={resources.length} />
+            <Stat icon={Send} label="Опубликованных" value={published} />
+            <Stat icon={Clock} label="На модерации" value={pending} />
+            <Stat icon={FileEdit} label="Черновиков" value={drafts} />
+            <Stat icon={Wallet} label="Продано копий" value={soldCount} />
+          </div>
+
+          <div className="space-y-8">
+            <MyResourcesSection />
+            <MyServicesSection />
+            <SellerOrdersSection />
+          </div>
+        </>
+      ) : null}
+
+      {tab === "resources" ? <MyResourcesSection /> : null}
+      {tab === "services" ? <MyServicesSection /> : null}
+      {tab === "orders" ? <SellerOrdersSection /> : null}
+      {tab === "analytics" ? (
+        <>
+          <SellerAnalyticsCard />
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Stat icon={Package} label="Ресурсов" value={resources.length} />
+            <Stat icon={Wallet} label="Продано копий" value={soldCount} />
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
