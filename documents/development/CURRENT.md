@@ -1,12 +1,40 @@
 # CURRENT — состояние проекта
 
-Обновлено: 2026-09-12 (PLAN-014 выполнен).
+Обновлено: 2026-09-12 (PLAN-015 выполнен).
 
 ## Активный план
 
-**PLAN-014 — Dependency, Toolchain, CI & Platform Maintenance Modernization —
-IMPLEMENTATION COMPLETE** (запись: completed/PLAN-014.md). Следующий план не
-сформирован (см. NEXT-PHASE).
+Активного плана нет. **PLAN-015 — MTA Market Experience Architecture & Visual
+System — IMPLEMENTATION COMPLETE** (запись: completed/PLAN-015.md). Следующий
+план не сформирован (см. NEXT-PHASE).
+
+### Что появилось в PLAN-015 (2026-09-12)
+
+- **AppShell** (§5–§7): Sidebar (expanded w-60 / collapsed w-14 icons-only,
+  tooltip, персистентность, creator-секция только продавцам, admin отдельно)
+  + Topbar (logo, GlobalSearch, ContextCreate, LiveChip, ThemeToggle, bell,
+  «Выход», AccountMenu с балансом). Navbar.tsx заменён.
+- **Две темы** (§10): light `:root` + dark `.dark` на идентичных именах
+  токенов; ThemeProvider + no-FOUC inline-скрипт; один переключатель;
+  новые токены `--on-accent`/`--star` (убраны raw text-white/amber).
+- **GlobalSearch** (§8): дропдаун в topbar над реальным GET /search —
+  группы Ресурсы/Серверы/Обсуждения/Статьи, клавиатура, хоткей «/».
+- **Home** (§12–§15): hero + LiveStrip, PromotionHero (placement-контракт
+  §38 на реальных featured-сущностях), Популярное/Новинки/Бесплатные,
+  Новости+Обсуждения, Активность, правый рельс (Авторы из реальных
+  публикаций, Лента событий, secondary placement). /activity теперь один
+  fetch на страницу (общий queryKey).
+- **Маркет** (§16/§25): вкладки Ресурсы | Услуги (реальный GET /services —
+  первый UI сервиса-каталога), ResourceCard §17, ServiceCard, TrustBadges.
+- **Personal** (§31–§32): dashboard → My MTA («Сейчас» первым блоком),
+  /me/following (creators/resources/threads), уведомления «Сегодня/Ранее»,
+  a11y-фикс вложенного интерактива.
+- **Creator Studio** (§35): /seller?tab= (Обзор/Ресурсы/Услуги/Заказы/
+  Аналитика), действие «Опубликовать».
+- Приёмка: type-check чист, web build ✓, unit **392/392**, E2E **59/59**,
+  браузерная верификация 1440/1920 light+dark.
+
+### Что появилось в PLAN-014 (2026-09-12)
 
 ### Что появилось в PLAN-014 (2026-09-12)
 

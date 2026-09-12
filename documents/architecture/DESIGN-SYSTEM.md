@@ -1,7 +1,8 @@
 # DESIGN-SYSTEM — визуальная система MTA Market
 
-Статус: source of truth для PLAN-013 (Visual System & UX Redesign).
-Дата: 2026-09-11.
+Статус: source of truth для PLAN-013 (Visual System) и PLAN-015
+(Experience Architecture & Visual System).
+Дата: 2026-09-12 (обновлено PLAN-015: две темы, AppShell, trust-система).
 
 Документ описывает единый визуальный язык платформы: tokens, компоненты,
 layout, responsive rules, motion, accessibility. Каждый frontend-изменённый
@@ -15,8 +16,13 @@ layout, responsive rules, motion, accessibility. Каждый frontend-изме�
 1. **Одна платформа** — все поверхности (Home, Market, Server, Community,
    Content, Profile, Seller, Admin, Commerce, DRM) читаются как части одного
    продукта, а не набор CRUD-страниц.
-2. **Dark premium** — единственная тема (тёмная), high-contrast, без
-   light-theme в текущем цикле.
+2. **Две первоклассные темы (PLAN-015 §10)** — light (нейтральный фон,
+   белые surfaces, сдержанные линии) и dark premium (глубокий graphite,
+   PLAN-013 наследие). Один глобальный переключатель, персистентное
+   предпочтение (localStorage `mta-theme`), system-fallback при первом
+   визите, no-FOUC inline-скрипт в layout. Имена токенов идентичны в
+   обеих темах; dark не является инверсией light — значения подобраны
+   отдельно.
 3. **Система, а не recolor** — цвета, отступы, типографика, радиусы,
    тени, motion задаются токенами; никакие значения не дублируются
    в компонентах.
@@ -69,6 +75,13 @@ layout, responsive rules, motion, accessibility. Каждый frontend-изме�
 | `--danger` / `--danger-soft` | ошибки, опасные действия, revoked |
 | `--info` / `--info-soft` | информация, DRM/лицензии |
 | `--verified` | verified-бейджи (дублирует success-семейство, отдельный токен для trust-системы) |
+
+Дополнительные токены PLAN-015:
+| Токен | Назначение |
+|---|---|
+| `--on-accent` | текст/иконки поверх brand-заливки (не raw white) |
+| `--star` | цвет звёзд рейтинга (единственный тёплый семантический цвет) |
+| `--hero-from` | верхний тон hero-градиента (тема-зависимый) |
 
 Правила:
 - сырая палитра Tailwind (slate/blue/red/green/…) в компонентах ЗАПРЕЩЕНА —
@@ -164,18 +177,53 @@ identity-карточка (banner + logo + статус), ThreadRow — communit
 
 ---
 
-## 7. NAVIGATION
+## 7. NAVIGATION (PLAN-015 §5–§7: AppShell)
 
-- `Navbar` — sticky, h-16, единый `Container`; desktop-меню + mobile right-sheet.
-- Состав: Logo · Главная навигация (Маркетплейс, Серверы, Статьи,
-  Сообщество) · Search trigger → /search · для аутентифицированных:
-  Balance chip, Notifications bell с unread badge, Профиль-меню (Кабинет,
-  Мой магазин, Выход), для ADMIN/MODERATOR — Админ.
-- Guests: Войти + Регистрация.
-- Active state: `bg-surface-hover text-content` + нижний accent-бордер.
-- Footer: бренд · Разделы · Сообщество · Аккаунт · © + правовой блок.
+Каркас: `layout/AppShell` = `Topbar` + `[ Sidebar | Content ]` + `Footer`
+(компоненты `layout/Sidebar.tsx`, `layout/Topbar.tsx`). Все основные
+поверхности живут в одном каркасе.
 
----
+### Sidebar (§6)
+- Два состояния: expanded (`w-60`) / collapsed (`w-14`, иконки-only);
+  состояние персистентно (localStorage `mta-sidebar-collapsed`);
+  авторасширение на hover запрещено; tooltip при hover в collapsed.
+- Секции: Primary (Главная · Маркетплейс · Серверы · Сообщество · Новости),
+  Личное (Подписки `/me/following` · Уведомления + unread badge),
+  Продавец (Мои ресурсы/Услуги/Заказы/Аналитика → `/seller?tab=…`;
+  только для реальных продавцов), Модерация (ADMIN/MODERATOR — отдельно).
+- Mobile (<lg): тот же nav в left-sheet drawer из topbar-бургера.
+
+### Topbar (§7)
+Состав: sidebar-toggle · logo «MTA MARKET» · GlobalSearch · ContextCreate ·
+LiveChip (реальные агрегаты `/activity`) · ThemeToggle (единственный) ·
+Notifications bell (unread badge) · быстрый Выход (стабильная кнопка E2E) ·
+AccountMenu (аватар + имя + баланс из `/auth/me`).
+
+### Global Search (§8)
+`search/GlobalSearch` — дропдаун в topbar над существующим `GET /search`:
+группы Ресурсы/Серверы/Обсуждения/Статьи (по 3–4), keyboard navigation
+(↑↓/Enter/Esc), хоткей «/», состояния loading/empty/error, линк «Все
+результаты» → `/search?q=`. Никакого фейкового локального поиска.
+
+### ContextCreate (§9)
+Одно первичное create-действие; метка по разделу: Опубликовать (/seller),
+Продать ресурс (/resources), Добавить сервер (/servers), Новая тема
+(/community), Новая статья (/content), на Home — меню выбора. Для гостей
+скрыто. Не дублируется пятью кнопками.
+
+### Trust UI (§19)
+`components/trust/TrustBadges.tsx` — единый примитив TrustBadge; сигналы
+только реальные: VERIFIED_SERVER (владение подтверждено), VERIFIED_CREATOR,
+VERIFIED_INTERACTION (подтверждённое взаимодействие), MODERATED (прошёл
+модерацию), OFFICIAL, COMMUNITY. Верификация = подтверждённый факт, не
+оценка качества. Per-page бейдж-дизайны запрещены.
+
+### Promotion placements (§13/§38)
+`home/PromotionHero` + контракт `PromotionItem` (kind/placement/priority/
+startAt/endAt/status/creative) — placement-архитектура, совместимая с
+будущим рекламным доменом. Сейчас контент выводится из реальных сущностей
+(популярный сервер/ресурс) с честной меткой «Рекомендуем»; метка
+«Sponsored» появится только с реальными кампаниями.
 
 ## 8. RESPONSIVE RULES
 
