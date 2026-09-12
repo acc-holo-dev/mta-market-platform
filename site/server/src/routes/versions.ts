@@ -418,6 +418,24 @@ router.get(
         return;
       }
 
+      // PLAN-020 H-002.1: a revoked (e.g. refunded) license must stop raw
+      // downloads even though the purchase row stays COMPLETED. Missing
+      // license rows (legacy data) keep working — only an explicit
+      // non-ACTIVE state denies.
+      const downloadLicense = await db.orm.public.License
+        .where({ purchaseId: purchase.id })
+        .first();
+      if (downloadLicense && downloadLicense.status !== "ACTIVE") {
+        incDownloadFailure();
+        reqLog(req).warn("download_denied_license_revoked", {
+          user_id: req.user!.userId,
+          purchase_id: purchase.id,
+          license_status: downloadLicense.status,
+        });
+        res.status(403).json({ error: "License is no longer active" });
+        return;
+      }
+
       // Verify user has entitlement to THIS version
       // Case 1: User purchased this exact version
       // Case 2: User purchased an earlier version and this is an update (future: check update policy)

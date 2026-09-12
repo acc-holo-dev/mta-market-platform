@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TASK-020 / PLAN A-006: DRM Protocol v2 Service
  *
  * High-level service for DRM v2 protocol operations, rewritten against the
@@ -557,6 +557,18 @@ export async function issueVersionDek(input: VersionDekRequest): Promise<{
   const lease = await getActiveLease(installationId, version.resourceId);
   if (!lease || lease.resourceVersionId !== versionId) {
     throw new Error(DRM_ERROR_CODES.INSUFFICIENT_CAPABILITIES);
+  }
+
+  // PLAN-020 H-002.1/H-001.1: a live lease is not enough — the license the
+  // installation belongs to must still be ACTIVE. A refunded/revoked license
+  // must not re-fetch a DEK through its previously issued lease.
+  if (installation.licenseId) {
+    const license = await db.orm.public.License
+      .where({ id: installation.licenseId })
+      .first();
+    if (!license || license.status !== 'ACTIVE') {
+      throw new Error(DRM_ERROR_CODES.INVALID_LICENSE);
+    }
   }
 
   const encryption = await db.orm.public.ArtifactEncryption

@@ -1,4 +1,4 @@
-﻿// PLAN-005 Workstream J (+K discipline): Server reviews with token-based
+// PLAN-005 Workstream J (+K discipline): Server reviews with token-based
 // eligibility. A plain registered user CANNOT rate a server: a review is
 // allowed only after claiming a valid one-time interaction token issued by
 // the server integration (mta-market-module). "✓ Verified Interaction"
@@ -7,6 +7,7 @@ import { Router, Response } from "express";
 import { authenticate, AuthRequest } from "../lib/auth.js";
 import { standardRateLimit, userRateLimit } from "../lib/rateLimit.js";
 import { db } from "../prisma/db.js";
+import { affectedCount } from "../lib/ledger.js";
 import { reqLog } from "../middleware/requestId.js";
 import { bustActivityCache } from "../lib/activity.js";
 import { recordAudit } from "../lib/audit.js";
@@ -160,10 +161,16 @@ router.post(
 
       // Replay protection: the conditional update flips ACTIVE -> CONSUMED at
       // most once; a concurrent duplicate claim sees the row already CONSUMED.
+      // PLAN-020 B-004.4: real CAS — plain update() cannot enforce the guard
+      // (select-identity -> update-by-PK); updateAndCount reports the truth.
       const consumed = await db.orm.public.ServerReviewToken
         .where({ id: lookup.id, status: "ACTIVE" })
-        .update({ status: "CONSUMED", consumedAt: new Date().toISOString(), consumedBy: req.user!.userId });
-      if (!consumed || (consumed as any).status !== "CONSUMED") {
+        .updateAndCount({
+          status: "CONSUMED",
+          consumedAt: new Date().toISOString(),
+          consumedBy: req.user!.userId,
+        });
+      if (affectedCount(consumed) !== 1) {
         res.status(409).json({ error: "Токен уже использован" });
         return;
       }

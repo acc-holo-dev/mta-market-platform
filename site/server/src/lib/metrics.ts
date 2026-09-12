@@ -123,36 +123,33 @@ export function incPaymentSuccess(): void {
 }
 
 // ---- PLAN-018 P-001 / PLAN-019 Q-004: outbox (queue) observability --------
-// The worker reports depth each poll cycle; dead-letter increments fire when
-// an event exhausts its retry budget (H-005: no infinite retries).
+// PLAN-020 P-003.1: the outbox series are GAUGES derived from the live
+// database at /metrics scrape time (see app.ts). They cannot be process-local
+// counters: the worker owns event lifecycle but is a separate process whose
+// in-memory registry is not scrapeable.
 
 export const OUTBOX_HELP = {
-  outbox_depth: "Outbox events pending processing (last observed)",
-  outbox_dead_letter_total: "Outbox events moved to permanent FAILED after retries",
-  outbox_processed_total: "Outbox events processed successfully",
+  outbox_depth: "Outbox events awaiting processing (PENDING + PROCESSING)",
+  outbox_dead_letter: "Outbox events in permanent FAILED state (dead letter)",
+  outbox_processed: "Outbox events currently in PROCESSED state (retention-pruned)",
 } as const;
 
-export function recordOutboxDepth(depth: number): void {
-  // Depth is a gauge, not a counter: render through a counter keyed by the
-  // current depth bucket would churn labels; the worker reports the raw
-  // number via this helper, and the registry stores it as a single-value
-  // counter series reset each scrape cycle by the worker (last-write wins
-  // in practice — the worker overwrites every poll).
-  const series = (metrics as unknown as {
+export function recordOutboxGauge(series: keyof typeof OUTBOX_HELP, value: number): void {
+  const registry = (metrics as unknown as {
     counters: Map<string, { help: string; values: Map<string, number> }>;
   }).counters;
-  let existing = series.get("outbox_depth");
+  let existing = registry.get(series);
   if (!existing) {
-    existing = { help: OUTBOX_HELP.outbox_depth, values: new Map() };
-    series.set("outbox_depth", existing);
+    existing = { help: OUTBOX_HELP[series], values: new Map() };
+    registry.set(series, existing);
   }
-  existing.values.set("", depth);
+  existing.values.set("", value);
 }
 
 export function incOutboxDeadLetter(): void {
-  metrics.counter("outbox_dead_letter_total", OUTBOX_HELP.outbox_dead_letter_total);
+  metrics.counter("outbox_dead_letter", OUTBOX_HELP.outbox_dead_letter);
 }
 
 export function incOutboxProcessed(): void {
-  metrics.counter("outbox_processed_total", OUTBOX_HELP.outbox_processed_total);
+  metrics.counter("outbox_processed", OUTBOX_HELP.outbox_processed);
 }

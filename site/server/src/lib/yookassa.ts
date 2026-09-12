@@ -3,10 +3,12 @@
 // Webhook authenticity is established by re-verifying payment state via the
 // provider API rather than by trusting webhook headers.
 import crypto from "crypto";
+import { providerFetch } from "./providerHttp.js";
 
 const YOOKASSA_SHOP_ID = process.env.YOOKASSA_SHOP_ID || "";
 const YOOKASSA_SECRET_KEY = process.env.YOOKASSA_SECRET_KEY || "";
 const YOOKASSA_ENABLED = process.env.YOOKASSA_ENABLED === "true";
+
 
 if (YOOKASSA_ENABLED && (!YOOKASSA_SHOP_ID || !YOOKASSA_SECRET_KEY)) {
   throw new Error(
@@ -71,8 +73,8 @@ export async function createYooKassaPayment(
   const idempotenceKey = crypto.randomUUID();
   const authHeader = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
 
-  const response = await fetch("https://api.yookassa.ru/v3/payments", {
-    method: "POST",
+  const response = await providerFetch("https://api.yookassa.ru/v3/payments", {
+        method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Idempotence-Key": idempotenceKey,
@@ -114,8 +116,8 @@ export async function getYooKassaPayment(paymentId: string): Promise<YooKassaPay
 
   const authHeader = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
 
-  const response = await fetch(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
-    method: "GET",
+  const response = await providerFetch(`https://api.yookassa.ru/v3/payments/${paymentId}`, {
+        method: "GET",
     headers: {
       Authorization: `Basic ${authHeader}`,
     },
@@ -148,8 +150,8 @@ export async function createYooKassaRefund(input: {
 
   const authHeader = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
 
-  const response = await fetch("https://api.yookassa.ru/v3/refunds", {
-    method: "POST",
+  const response = await providerFetch("https://api.yookassa.ru/v3/refunds", {
+        method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Idempotence-Key": input.idempotenceKey,
@@ -186,8 +188,8 @@ export async function cancelYooKassaPayment(paymentId: string): Promise<{
 
   const authHeader = Buffer.from(`${YOOKASSA_SHOP_ID}:${YOOKASSA_SECRET_KEY}`).toString("base64");
 
-  const response = await fetch(`https://api.yookassa.ru/v3/payments/${paymentId}/cancel`, {
-    method: "POST",
+  const response = await providerFetch(`https://api.yookassa.ru/v3/payments/${paymentId}/cancel`, {
+        method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Idempotence-Key": crypto.randomUUID(),

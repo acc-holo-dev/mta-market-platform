@@ -26,7 +26,6 @@ const server = app.listen(PORT, () => {
     port: PORT,
     node_env: process.env.NODE_ENV ?? "development",
   });
-
   // PLAN B-003 / PLAN-005 E: the reconciliation and server-monitoring
   // schedulers moved to the dedicated worker runtime (PLAN-019 H-003) so
   // background work scales independently from the HTTP server.
@@ -76,4 +75,19 @@ const server = app.listen(PORT, () => {
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
+});
+
+// PLAN-020 N-004: listen failures (port already in use, permission denied)
+// must surface as a clear fatal error instead of an unhandled 'error' event
+// that dumps a raw stack while the process lingers "starting".
+server.on("error", (error: NodeJS.ErrnoException) => {
+  if (error.code === "EADDRINUSE") {
+    logger.error("server_start_failed", {
+      message: `Port ${PORT} is already in use — stop the process holding it or set PORT.`,
+      port: PORT,
+    });
+  } else {
+    logger.error("server_start_failed", { port: PORT, error });
+  }
+  process.exit(1);
 });

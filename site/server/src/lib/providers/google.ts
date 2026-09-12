@@ -1,4 +1,4 @@
-﻿// Google OpenID Connect Identity Provider (PLAN D-002 wave 1)
+// Google OpenID Connect Identity Provider (PLAN D-002 wave 1)
 import crypto from "crypto";
 import {
   IIdentityProvider,
@@ -74,7 +74,7 @@ export class GoogleProvider implements IIdentityProvider {
       throw new Error("Google OAuth is not configured");
     }
 
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+    const tokenResponse = await providerFetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -107,7 +107,7 @@ export class GoogleProvider implements IIdentityProvider {
   }
 
   async getUserInfo(accessToken: string): Promise<ProviderUser> {
-    const userResponse = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    const userResponse = await providerFetch("https://openidconnect.googleapis.com/v1/userinfo", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -131,4 +131,5 @@ export class GoogleProvider implements IIdentityProvider {
 }
 
 import { identityProviders } from "../identityProvider.js";
+import { providerFetch } from "../providerHttp.js";
 identityProviders.register(new GoogleProvider());

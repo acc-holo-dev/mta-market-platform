@@ -250,3 +250,50 @@ export async function failEvent(
   });
   return "RETRY";
 }
+
+// --- retention (PLAN-020 E-005) --------------------------------------------
+
+/**
+ * PLAN-020 E-005: retention for finished outbox events. Without it,
+ * PROCESSED (and dead-lettered FAILED) rows grow forever — nothing in the
+ * codebase deleted them (verified by grep). PROCESSED rows are pure
+ * bookkeeping and are pruned after `processedDays` (default 14); FAILED rows
+ * are the dead-letter queue and get a longer inspection window
+ * (`failedDays`, default 30). Work is bounded per call (batched drain), so a
+ * large backlog cannot block the caller: run this from a periodic job, never
+ * the request path.
+ */
+export async function pruneFinishedOutboxEvents(
+  options: { processedDays?: number; failedDays?: number; batchSize?: number } = {}
+): Promise<{ processed: number; failed: number }> {
+  const processedDays = Math.max(1, options.processedDays ?? 14);
+  const failedDays = Math.max(1, options.failedDays ?? 30);
+  const batchSize = Math.max(1, options.batchSize ?? 500);
+
+  async function drain(status: "PROCESSED" | "FAILED", cutoff: Date): Promise<number> {
+    let removed = 0;
+    for (;;) {
+      const batch = await db.orm.public.OutboxEvent
+        .where({ status })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .where((e: any) => e.createdAt.lt(cutoff.toISOString()))
+        .limit(batchSize)
+        .all();
+      if (batch.length === 0) break;
+      for (const row of batch) {
+        // Status guard: never delete a row that changed state since the read.
+        await db.orm.public.OutboxEvent.where({ id: row.id, status }).delete();
+        removed += 1;
+      }
+      if (batch.length < batchSize) break;
+    }
+    return removed;
+  }
+
+  const processed = await drain("PROCESSED", new Date(Date.now() - processedDays * 86_400_000));
+  const failed = await drain("FAILED", new Date(Date.now() - failedDays * 86_400_000));
+  if (processed > 0 || failed > 0) {
+    logger.info("outbox_retention_pruned", { processed, failed });
+  }
+  return { processed, failed };
+}

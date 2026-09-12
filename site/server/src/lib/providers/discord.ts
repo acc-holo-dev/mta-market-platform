@@ -1,4 +1,4 @@
-﻿// Discord Identity Provider (PLAN D-002 wave 1)
+// Discord Identity Provider (PLAN D-002 wave 1)
 import crypto from "crypto";
 import {
   IIdentityProvider,
@@ -74,7 +74,7 @@ export class DiscordProvider implements IIdentityProvider {
       throw new Error("Discord OAuth is not configured");
     }
 
-    const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+    const tokenResponse = await providerFetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -107,7 +107,7 @@ export class DiscordProvider implements IIdentityProvider {
   }
 
   async getUserInfo(accessToken: string): Promise<ProviderUser> {
-    const userResponse = await fetch("https://discord.com/api/users/@me", {
+    const userResponse = await providerFetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
@@ -133,4 +133,5 @@ export class DiscordProvider implements IIdentityProvider {
 }
 
 import { identityProviders } from "../identityProvider.js";
+import { providerFetch } from "../providerHttp.js";
 identityProviders.register(new DiscordProvider());

@@ -34,7 +34,13 @@ jobs:
             bash -n "$f" || { echo "::error::bash -n failed: $f"; exit 1; }
           done
       - name: startup.py compiles
-        run: python3 -m py_compile startup.py scripts/development/*.py
+        # PLAN-020 T-001: scripts/development/seed.py removed (superseded by
+        # scripts/seed-services.ts); no .py files remain in that directory.
+        run: python3 -m py_compile startup.py $(ls scripts/development/*.py 2>/dev/null || true)
+      - name: Mojibake check (repair-cyrillic --check)
+        # PLAN-020 O-001: the tool was documented as CI-usable (--check exits
+        # 1 on survivors) but was never wired; this closes the gap.
+        run: node scripts/development/repair-cyrillic.cjs --check
       - name: Single test root (no stray tests outside tests/)
         run: |
           bad=$(git ls-files '*test*' '*spec*' \

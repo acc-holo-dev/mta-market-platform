@@ -1,4 +1,4 @@
-﻿// Services API routes (PLAN C-009/C-010/C-011).
+// Services API routes (PLAN C-009/C-010/C-011).
 // Lifecycle: DRAFT -> PENDING_REVIEW -> PUBLISHED (seller cannot publish own
 // service — same policy as resource moderation, A-008) and order lifecycle
 // PENDING -> IN_PROGRESS -> DELIVERED -> ACCEPTED -> CLOSED (alt: CANCELLED,
@@ -154,15 +154,17 @@ router.post("/:id/submit", authenticate, standardRateLimit, async (req: AuthRequ
       res.status(403).json({ error: "Not authorized" });
       return;
     }
+    // PLAN-020 B-004.4: CAS via updateAndCount (plain update() is
+    // select-identity -> update-by-PK and cannot enforce the guard).
     const transitioned = await db.orm.public.Service
       .where({ id: service.id, status: "DRAFT" })
-      .update({ status: "PENDING_REVIEW" });
-    if (!transitioned) {
+      .updateAndCount({ status: "PENDING_REVIEW" });
+    if (affectedCount(transitioned) !== 1) {
       res.status(409).json({ error: "Only draft services can be submitted" });
       return;
     }
     reqLog(req).info("service_submitted", { service_id: service.id });
-    res.json(transitioned);
+    res.json({ ok: true });
   } catch (error) {
     reqLog(req).error("service_submit_failed", { error });
     res.status(500).json({ error: "Failed to submit service" });
@@ -358,9 +360,10 @@ router.post("/orders/:id/revision", authenticate, standardRateLimit, async (req:
             .all())[0];
       if (!delivery) {
         // Roll the status back: no delivery to revise against.
+        // PLAN-020 B-004.4: CAS rollback (never overwrite a concurrent flip).
         await tx.orm.public.ServicePurchase
           .where({ id: ctx.sp.id, status: "IN_PROGRESS" })
-          .update({ status: "DELIVERED" });
+          .updateAndCount({ status: "DELIVERED" });
         return { limitReached: false as const, revision: null };
       }
 

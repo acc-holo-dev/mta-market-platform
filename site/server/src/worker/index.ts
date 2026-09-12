@@ -34,6 +34,10 @@
 //   SERVER_MONITORING_ENABLED=false / SERVER_MONITORING_INTERVAL_MS (60000)
 //   DEMO_SWEEP_ENABLED=false     / DEMO_SWEEP_INTERVAL_MS (60000)
 //   PRICE_ALERT_SWEEP_ENABLED=false / PRICE_ALERT_SWEEP_INTERVAL_MS (300000)
+//   RETENTION_ENABLED=false      / RETENTION_INTERVAL_MS (daily) — PLAN-020
+//     E-005 retention sweep; window knobs: OUTBOX_RETENTION_DAYS (14),
+//     OUTBOX_FAILED_RETENTION_DAYS (30), RECONCILIATION_RETENTION_DAYS (90),
+//     PROVIDER_EVENT_RETENTION_DAYS (90), SANDBOX_RUN_RETENTION_DAYS (30).
 //
 // Contract for the optional domain libs (dynamic, crash-safe):
 //   lib/demo.ts         -> export async function sweepDemos(): Promise<unknown>
@@ -54,6 +58,7 @@ import {
   claimBatch,
   completeEvent,
   failEvent,
+  pruneFinishedOutboxEvents,
   type ClaimedEvent,
 } from "../lib/events.js";
 import { runReconciliationCycle } from "../jobs/reconciliation.js";
@@ -459,6 +464,58 @@ async function main(): Promise<void> {
       })
     );
   }
+
+  // PLAN-020 E-005: retention — outbox (PROCESSED/FAILED), reconciliation
+  // history, raw provider webhook events and old sandbox runs must not grow
+  // forever. Daily, best-effort: one failing prune logs and lets the rest
+  // run.
+  jobs.push(
+    startIntervalJob({
+      name: "retention",
+      enabled: process.env.RETENTION_ENABLED !== "false",
+      intervalMs: positiveIntEnv("RETENTION_INTERVAL_MS", 24 * 60 * 60 * 1000),
+      initialDelayMs: positiveIntEnv("RETENTION_INITIAL_DELAY_MS", 5 * 60 * 1000),
+      run: async () => {
+        const outbox = await pruneFinishedOutboxEvents({
+          processedDays: positiveIntEnv("OUTBOX_RETENTION_DAYS", 14),
+          failedDays: positiveIntEnv("OUTBOX_FAILED_RETENTION_DAYS", 30),
+        });
+        const { pruneReconciliationHistory, prunePaymentProviderEvents } = await import(
+          "../lib/reconciliation/service.js"
+        );
+        const reconciliation = await pruneReconciliationHistory({
+          daysOld: positiveIntEnv("RECONCILIATION_RETENTION_DAYS", 90),
+        });
+        const providerEvents = await prunePaymentProviderEvents({
+          daysOld: positiveIntEnv("PROVIDER_EVENT_RETENTION_DAYS", 90),
+        });
+        let sandboxRuns = 0;
+        try {
+          const { cleanupOldSandboxRuns } = await import("../lib/sandbox/service.js");
+          sandboxRuns = await cleanupOldSandboxRuns(
+            positiveIntEnv("SANDBOX_RUN_RETENTION_DAYS", 30)
+          );
+        } catch (error) {
+          logger.warn("worker_retention_sandbox_prune_failed", { error });
+        }
+        if (
+          outbox.processed ||
+          outbox.failed ||
+          reconciliation.reports ||
+          providerEvents ||
+          sandboxRuns
+        ) {
+          logger.info("worker_retention_sweep", {
+            outbox_processed: outbox.processed,
+            outbox_failed: outbox.failed,
+            reconciliation_reports: reconciliation.reports,
+            provider_events: providerEvents,
+            sandbox_runs: sandboxRuns,
+          });
+        }
+      },
+    })
+  );
 
   const loopPromise = runOutboxLoop();
 

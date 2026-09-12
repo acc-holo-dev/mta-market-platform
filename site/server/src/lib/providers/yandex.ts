@@ -1,4 +1,4 @@
-﻿// Yandex ID Identity Provider (PLAN D-002 wave 1)
+// Yandex ID Identity Provider (PLAN D-002 wave 1)
 import crypto from "crypto";
 import {
   IIdentityProvider,
@@ -71,7 +71,7 @@ export class YandexProvider implements IIdentityProvider {
       throw new Error("Yandex OAuth is not configured");
     }
 
-    const tokenResponse = await fetch("https://oauth.yandex.ru/token", {
+    const tokenResponse = await providerFetch("https://oauth.yandex.ru/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -104,7 +104,7 @@ export class YandexProvider implements IIdentityProvider {
 
   async getUserInfo(accessToken: string): Promise<ProviderUser> {
     // Yandex Login Info API: oauth_token query param (Bearer also accepted).
-    const userResponse = await fetch(
+    const userResponse = await providerFetch(
       `https://login.yandex.ru/info?format=json&oauth_token=${encodeURIComponent(accessToken)}`
     );
 
@@ -129,4 +129,5 @@ export class YandexProvider implements IIdentityProvider {
 }
 
 import { identityProviders } from "../identityProvider.js";
+import { providerFetch } from "../providerHttp.js";
 identityProviders.register(new YandexProvider());

@@ -1,4 +1,4 @@
-﻿// Disputes API (PLAN K-002/K-003).
+// Disputes API (PLAN K-002/K-003).
 // State machine: OPEN -> WAITING_BUYER -> WAITING_SELLER -> UNDER_REVIEW ->
 // RESOLVED_BUYER | RESOLVED_SELLER | PARTIAL_REFUND -> CLOSED.
 // Buyers/sellers communicate through messages; every transition is recorded
@@ -152,8 +152,11 @@ router.post("/", authenticate, standardRateLimit, async (req: AuthRequest, res: 
 
     // Freeze the target order while disputed (resource purchases get DISPUTED,
     // service orders already carry DISPUTED in their lifecycle).
+    // PLAN-020 B-004.4: guarded CAS (re-checks COMPLETED at the DB level).
     if (purchaseRow && purchaseRow.status === "COMPLETED") {
-      await db.orm.public.Purchase.where({ id: purchaseRow.id }).update({ status: "DISPUTED" });
+      await db.orm.public.Purchase
+        .where({ id: purchaseRow.id, status: "COMPLETED" })
+        .updateAndCount({ status: "DISPUTED" });
     }
     if (
       servicePurchaseRow &&

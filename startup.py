@@ -67,6 +67,10 @@ DEV_PROJECT = "mta-market-dev"
 TESTS_PROJECT = "mta-market-tests"
 RELEASE_PREFIX = "mta-market-release"
 
+# Operator-provided PORT (captured before derive_environment exports the API
+# port into os.environ; the web service must not inherit the backend port).
+OPERATOR_PORT = os.environ.get("PORT")
+
 IS_WINDOWS = os.name == "nt"
 
 OK, FAIL, SKIP, INFO = "[ok]", "[FAIL]", "[skip]", "[..]"
@@ -416,7 +420,7 @@ def derive_web_env(data: dict) -> dict[str, str]:
     web_port = cfg_int(data, ("web", "port"), 3000)
     public_api = cfg_str(data, ("web", "publicApiUrl"), f"http://localhost:{api_port}")
     env: dict[str, str] = {}
-    env["PORT"] = os.environ.get("PORT") or str(web_port)
+    env["PORT"] = OPERATOR_PORT or str(web_port)
     env["NEXT_PUBLIC_API_URL"] = os.environ.get("NEXT_PUBLIC_API_URL") or public_api
     return env
 
@@ -507,7 +511,10 @@ def cmd_status() -> int:
 # ---------------------------------------------------------------------------
 
 def sh(cmd: list[str], **kw: object) -> subprocess.CompletedProcess:
-    return subprocess.run([str(c) for c in cmd], cwd=str(ROOT), **kw)
+    # PLAN-020 N-002/U-001: callers may override cwd (cmd_module runs in
+    # module/); ROOT stays the default working directory.
+    kw.setdefault("cwd", str(ROOT))
+    return subprocess.run([str(c) for c in cmd], **kw)
 
 
 def sh_ok(cmd: list[str], **kw: object) -> bool:
@@ -817,7 +824,10 @@ def cmd_dev(only: str | None = None) -> int:
         if only in (None, "backend"):
             ok &= spawn_detached("backend", [exe("pnpm"), "--filter", "@mta-market/server", "dev"])
             if ok and not wait_for_http(f"http://127.0.0.1:{api_port}/health", timeout=60):
-                out(f"  {INFO} API not healthy yet (check logs/development/backend.log)")
+                # PLAN-020 N-004: a spawned-but-unhealthy backend is a failure
+                # ("dev" must not exit 0 with a dead service).
+                ok = False
+                out(f"  {FAIL} API not healthy after 60s (check logs/development/backend.log)")
         # PLAN-019 H: the worker runtime owns the outbox consumer and the
         # periodic schedulers (reconciliation, server monitoring, demo and
         # price-alert sweeps). Spawned with the same derived environment as
@@ -837,7 +847,9 @@ def cmd_dev(only: str | None = None) -> int:
             os.environ[key] = value
         ok &= spawn_detached("web", [exe("pnpm"), "--filter", "@mta-market/web", "dev"])
         if ok and not wait_for_http(f"http://127.0.0.1:{web_port}", timeout=60):
-            out(f"  {INFO} web not answering yet (check logs/development/web.log)")
+            # PLAN-020 N-004: spawned-but-dead web is a failure, not a note.
+            ok = False
+            out(f"  {FAIL} web not answering after 60s (check logs/development/web.log)")
 
     out()
     out(f"  API : http://localhost:{api_port}  (health /health /live /ready /metrics)")

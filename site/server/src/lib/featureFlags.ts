@@ -66,3 +66,14 @@ export function isFeatureEnabled(name: string): boolean {
   const flags = cachedYamlFlags();
   return flags[name] === true;
 }
+
+/**
+ * PLAN-020 A-003 (arch audit): the full resolved flag table through the SAME
+ * 60s cache — the public /config/features route used to call
+ * config/loader.featureFlags() directly, re-reading and re-validating three
+ * YAML files (plus the JSON schema) on EVERY request.
+ */
+export function allFeatureFlags(): { environment: "production" | "development"; features: FeatureFlags } {
+  const environment = featureEnvironment();
+  return { environment, features: { ...cachedYamlFlags() } };
+}

@@ -7,7 +7,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import { requestIdMiddleware } from "./middleware/requestId.js";
 import { observabilityMiddleware } from "./middleware/observability.js";
-import { metrics } from "./lib/metrics.js";
+import { metrics, recordOutboxGauge } from "./lib/metrics.js";
 import { db } from "./prisma/db.js";
 import authRoutes from "./routes/auth.js";
 import resourcesRoutes from "./routes/resources.js";
@@ -101,6 +101,20 @@ export function createApp(): Express {
     app.set("trust proxy", 1);
   }
 
+  // PLAN-020 Q-005-a: webhook payloads are small signed JSON documents. A
+  // tight route-scoped parser (mounted BEFORE the global 10mb one) removes
+  // the unauthenticated large-body parse surface on signature-checked
+  // routes; the rawBody stash required for HMAC verification is preserved.
+  app.use(
+    "/payments/webhook",
+    express.json({
+      limit: "256kb",
+      verify: (req, _res, buf) => {
+        (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+      },
+    })
+  );
+
   // PLAN-016 P-002: stash raw bytes for HMAC webhook verification while
   // keeping the global JSON body parsing contract unchanged.
   app.use(
@@ -172,7 +186,29 @@ export function createApp(): Express {
   });
 
   // PLAN O-001: Prometheus text exposition endpoint.
-  app.get("/metrics", (_req, res) => {
+  app.get("/metrics", async (_req, res) => {
+    // PLAN-020 P-003.1: outbox gauges are derived from the live database at
+    // scrape time. The worker is a separate process — its in-memory registry
+    // is not scrapeable — and process-local counters would silently render
+    // zeros forever (the exact defect the audit flagged). Bounded COUNT
+    // queries, best-effort: scrape never fails on observability.
+    try {
+      const statusCounts = await Promise.all(
+        (["PENDING", "PROCESSING", "FAILED", "PROCESSED"] as const).map((status) =>
+          db.orm.public.OutboxEvent
+            .where({ status })
+            .aggregate((agg: any) => ({ total: agg.count() }))
+            .then((r: unknown) => Number((r as { total?: number })?.total ?? 0))
+            .catch(() => 0)
+        )
+      );
+      const [pending, processing, failed, processed] = statusCounts;
+      recordOutboxGauge("outbox_depth", pending + processing);
+      recordOutboxGauge("outbox_dead_letter", failed);
+      recordOutboxGauge("outbox_processed", processed);
+    } catch {
+      // keep the previous series; never fail the scrape
+    }
     res.setHeader("Content-Type", "text/plain; version=0.0.4");
     res.send(metrics.render());
   });
@@ -186,8 +222,9 @@ export function createApp(): Express {
   app.use("/resources", reviewsRoutes);
   // TASK A-006: DRM v2 is the canonical machine protocol (/drm/v2/*).
   app.use("/drm", drmV2Routes);
-  // TASK A-007: v1 activation endpoints are deprecated (410) inside;
-  // v1 license management endpoints (my-licenses, revoke) remain.
+  // TASK A-007: v1 activation endpoints are deprecated (410) inside.
+  // PLAN-020 A-004.01: the v1 license management endpoints were removed —
+  // canonical license management lives in lib/drm/service.ts via /drm/v2.
   app.use("/drm", drmRoutes);
   app.use("/purchases", purchasesRoutes);
   app.use("/upload", uploadRoutes);

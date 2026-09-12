@@ -647,7 +647,43 @@ export async function activateSubscriptionPayment(input: ActivatePaymentInput): 
     if (order.status === "COMPLETED") {
       const active = await findLiveSubscription(order.buyerId, planKind);
       if (!active) {
-        throw new SubscriptionError(409, "subscription_missing", "Checkout completed but no live subscription exists");
+        // PLAN-020 B-004.2: self-heal the crash window. A COMPLETED order
+        // with no live subscription means a previous activation died between
+        // completePendingOrder and upsertSubscriptionWindow. The remaining
+        // steps are idempotent (deterministic settle key, keyed upsert,
+        // check-then-insert grant), so replaying them here recovers instead
+        // of leaving the buyer stuck on a permanent 409.
+        const attempts = (await db.orm.public.Payment.where({ orderItemId: item.id } as any)
+          .orderBy((p: any) => p.createdAt.desc())
+          .all()) as PaymentRow[];
+        const captured = attempts.find((p) => isMoneyState(p.status)) ?? null;
+        if (!captured) {
+          throw new SubscriptionError(
+            409,
+            "subscription_missing",
+            "Checkout completed but no live subscription exists"
+          );
+        }
+        await settlePlatformOrderRevenue(order, captured.id, "settle:subscription");
+        const recovered = await upsertSubscriptionWindow(order.buyerId, planKind, captured.id);
+        const entitlementId = await grantPlanEntitlement(
+          order.buyerId,
+          planKind,
+          recovered.expiresAt,
+          input.actorId
+        );
+        logger.warn("subscription_activation_recovered", {
+          order_id: order.id,
+          user_id: order.buyerId,
+          subscription_id: recovered.id,
+        });
+        return {
+          orderId: order.id,
+          subscription: recovered,
+          entitlementId,
+          alreadyActive: true,
+          paymentCaptured: false,
+        };
       }
       const entitlement = (await db.orm.public.Entitlement
         .where({ subjectType: "USER", subjectId: order.buyerId, kind: planKind, source: "PLAN_PURCHASE", revokedAt: null } as any)

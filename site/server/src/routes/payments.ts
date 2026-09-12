@@ -472,10 +472,17 @@ async function handleProviderWebhook(
         // PurchaseStatus has no CANCELED — FAILED is the terminal "no
         // entitlement" state (the provider-side cancel is reflected on the
         // Payment row, which does have CANCELED).
-        await db.orm.public.Purchase.where({ id: cancelOrderRef, status: "PENDING" }).update({
-          status: "FAILED",
-          completedAt: new Date().toISOString(),
-        });
+        // PLAN-020 B-004.4: honest CAS — a non-PENDING purchase means the
+        // succeeded flow already resolved it; nothing to close.
+        const closed = await db.orm.public.Purchase
+          .where({ id: cancelOrderRef, status: "PENDING" })
+          .updateAndCount({
+            status: "FAILED",
+            completedAt: new Date().toISOString(),
+          });
+        if (affectedCount(closed) !== 1) {
+          reqLog(req).info("cancel_purchase_already_resolved", { order_ref: cancelOrderRef });
+        }
       }
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
         status: "PROCESSED",
@@ -771,6 +778,24 @@ router.post(
 
       await provider.cancelPayment(paymentRow.providerPaymentId);
       await transitionPaymentTo(paymentRow.providerPaymentId, "CANCELED");
+      // PLAN-020 C-004.1: a canceled payment must close its PENDING purchase,
+      // otherwise the buyer can never re-checkout — the partial unique
+      // (buyer, resource) live-purchase index rejects a second attempt and
+      // nothing swept the orphan (verified by the audit).
+      if (paymentRow.purchaseId) {
+        const closed = await db.orm.public.Purchase
+          .where({ id: paymentRow.purchaseId, status: "PENDING" })
+          .updateAndCount({
+            status: "FAILED",
+            completedAt: new Date().toISOString(),
+          });
+        if (affectedCount(closed) === 1) {
+          reqLog(req).info("cancel_purchase_closed", {
+            purchase_id: paymentRow.purchaseId,
+            payment_id: paymentRow.id,
+          });
+        }
+      }
       reqLog(req).info("payment_canceled", {
         payment_id: paymentRow.id,
         actor_id: req.user!.userId,

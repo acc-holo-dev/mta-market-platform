@@ -365,9 +365,32 @@ router.post("/refresh", authRateLimit, userRateLimit({ windowMs: 60_000, max: pa
       return;
     }
 
-    // Generate new tokens (rotation)
-    const newAccessToken = generateAccessToken(payload);
-    const newRefreshToken = generateRefreshToken(payload);
+    // PLAN-020 I-002-c: the database is the source of truth for account
+    // state and role. The old flow trusted stale JWT claims forever — a
+    // banned user or a downgraded admin kept working access through
+    // refresh. Re-check on every rotation and mint claims from the DB.
+    const refreshUser = await db.orm.public.User.where({ id: session.userId }).first();
+    if (!refreshUser || refreshUser.status !== "ACTIVE") {
+      await db.orm.public.Session.where({ id: session.id }).delete();
+      clearRefreshCookie(res);
+      reqLog(req).warn("refresh_account_disabled", {
+        user_id: session.userId,
+        status: refreshUser?.status ?? "MISSING",
+      });
+      res.status(403).json({
+        error: { code: "ACCOUNT_DISABLED", message: "Account is disabled" },
+      });
+      return;
+    }
+
+    // Generate new tokens (rotation) with FRESH claims from the database.
+    const freshPayload = {
+      userId: refreshUser.id,
+      email: refreshUser.email,
+      role: refreshUser.role,
+    };
+    const newAccessToken = generateAccessToken(freshPayload);
+    const newRefreshToken = generateRefreshToken(freshPayload);
     const newRefreshTokenHash = hashRefreshToken(newRefreshToken);
 
     // Mark old session as used (for reuse detection)
@@ -790,10 +813,12 @@ router.post("/telegram/callback", authRateLimit, async (req: Request, res: Respo
     // Telegram never issues provider tokens — they are stored as null.
     await handleLoginCallback(req, res, provider.name, null, user);
   } catch (error) {
+    // PLAN-020 D-003.2: the raw provider error (internal detail) stays in
+    // the log; the client gets a canonical, non-leaking message.
     reqLog(req).warn("telegram_login_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
-    res.status(401).json({ error: error instanceof Error ? error.message : "Telegram login failed" });
+    res.status(401).json({ error: "Telegram login failed" });
   }
 });
 
@@ -1081,6 +1106,21 @@ async function handleLoginCallback(
       providerAccountId: user.providerId,
       ...accountTokenFields,
     });
+  }
+
+  // PLAN-020 I-002-d: OAuth logins honor account status exactly like the
+  // password path — a SUSPENDED/BANNED account must not get a fresh session
+  // through a returning identity link or a verified-email match.
+  if (!targetUser || targetUser.status !== "ACTIVE") {
+    reqLog(req).warn("oauth_login_account_disabled", {
+      provider: providerName,
+      user_id: targetUser?.id ?? null,
+      status: targetUser?.status ?? null,
+    });
+    res.status(403).json({
+      error: { code: "ACCOUNT_DISABLED", message: "Account is disabled" },
+    });
+    return;
   }
 
   // Issue the session (refresh cookie holds the raw token; DB holds the hash).

@@ -84,7 +84,7 @@ export class VkProvider implements IIdentityProvider {
 
     // VK ID token endpoint takes a JSON body (no PKCE: code_verifier stays
     // empty, matching the authorization request which sends no challenge).
-    const tokenResponse = await fetch("https://id.vk.com/oauth2/auth", {
+    const tokenResponse = await providerFetch("https://id.vk.com/oauth2/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -119,7 +119,7 @@ export class VkProvider implements IIdentityProvider {
   }
 
   async getUserInfo(accessToken: string): Promise<ProviderUser> {
-    const userResponse = await fetch("https://id.vk.com/oauth2/user_info", {
+    const userResponse = await providerFetch("https://id.vk.com/oauth2/user_info", {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -154,4 +154,5 @@ export class VkProvider implements IIdentityProvider {
 }
 
 import { identityProviders } from "../identityProvider.js";
+import { providerFetch } from "../providerHttp.js";
 identityProviders.register(new VkProvider());

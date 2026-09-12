@@ -1,4 +1,4 @@
-﻿// Rate limiting middleware using Redis
+// Rate limiting middleware using Redis
 import { Request, Response, NextFunction } from "express";
 import { redis } from "../lib/redis.js";
 import { logger } from "./logger.js";
@@ -19,6 +19,30 @@ interface RateLimitOptions {
   failClosed?: boolean;
 }
 
+const RATE_LIMIT_WINDOW_MS = "windowMs";
+
+/**
+ * PLAN-020 F-001b: INCR and PEXPIRE must be atomic. The previous two-step
+ * INCR-then-PEXPIRE-on-first-increment left a key WITHOUT a TTL forever if
+ * the process died (or Redis blipped) between the two commands — that
+ * identifier was then permanently 429/503-limited. The script re-applies the
+ * TTL whenever it is missing, so a lost TTL self-heals on the next request
+ * while fixed-window semantics are preserved.
+ */
+const INCR_WITH_WINDOW_LUA = `
+local current = redis.call('INCR', KEYS[1])
+if current == 1 or redis.call('TTL', KEYS[1]) == -1 then
+  redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+return current
+`;
+
+/** Atomic fixed-window counter: INCR + guaranteed window TTL. */
+async function incrWithWindow(key: string, windowMs: number): Promise<number> {
+  const current = await redis.eval(INCR_WITH_WINDOW_LUA, 1, key, String(windowMs));
+  return Number(current);
+}
+
 export function rateLimit(options: RateLimitOptions) {
   const { windowMs, max, keyPrefix = "rl", failClosed = false } = options;
 
@@ -27,11 +51,7 @@ export function rateLimit(options: RateLimitOptions) {
     const key = `${keyPrefix}:${identifier}`;
 
     try {
-      const current = await redis.incr(key);
-
-      if (current === 1) {
-        await redis.pexpire(key, windowMs);
-      }
+      const current = await incrWithWindow(key, windowMs);
 
       res.setHeader("X-RateLimit-Limit", max);
       res.setHeader("X-RateLimit-Remaining", Math.max(0, max - current));
@@ -115,10 +135,7 @@ export function userRateLimit(options: {
     const key = `rlu:${action}:${userId}`;
 
     try {
-      const current = await redis.incr(key);
-      if (current === 1) {
-        await redis.pexpire(key, windowMs);
-      }
+      const current = await incrWithWindow(key, windowMs);
       if (current > max) {
         logger.warn("user_rate_limit_exceeded", { action, user_id: userId });
         res.status(429).json({

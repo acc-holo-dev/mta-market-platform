@@ -2,21 +2,19 @@
 // Exposes the typed feature flags from config/application/features.yaml so
 // the web can hide UI for features that are disabled instead of rendering
 // broken placeholders. Read-only, public, cache-friendly.
+// PLAN-020 A-003: resolved through lib/featureFlags (60s cache) — the old
+// direct loader call re-read and re-validated config/ (3 YAML + JSON schema)
+// on every request.
 import { Router } from "express";
-import { featureFlags } from "../config/loader.js";
-import { reqLog } from "../middleware/requestId.js";
+import { allFeatureFlags } from "../lib/featureFlags.js";
 
 export const configRoutes: Router = Router();
 
 configRoutes.get("/features", (req, res) => {
-  const environment = process.env.NODE_ENV === "production" ? "production" : "development";
-  const { flags, issues } = featureFlags(environment);
-  if (issues.length) {
-    reqLog(req).warn("config_features_degraded", { issues });
-  }
+  const { environment, features } = allFeatureFlags();
   res.json({
     environment,
-    features: flags,
+    features,
   });
 });
 

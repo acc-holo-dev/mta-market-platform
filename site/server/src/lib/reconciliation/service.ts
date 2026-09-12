@@ -635,3 +635,81 @@ export async function getReports(limit: number = 50): Promise<any[]> {
     .limit(limit)
     .all();
 }
+
+/**
+ * PLAN-020 E-005: retention for reconciliation history. Reports older than
+ * `daysOld` (default 90) are removed together with their mismatch rows — but
+ * ONLY when every mismatch is resolved: unresolved discrepancies must stay
+ * visible until someone closes them. Bounded per call (batch of reports);
+ * run from a periodic job, never the request path.
+ */
+export async function pruneReconciliationHistory(
+  options: { daysOld?: number; batchSize?: number } = {}
+): Promise<{ reports: number; mismatches: number }> {
+  const daysOld = Math.max(1, options.daysOld ?? 90);
+  const batchSize = Math.max(1, options.batchSize ?? 200);
+  const cutoff = new Date(Date.now() - daysOld * 86_400_000).toISOString();
+
+  const stale = await db.orm.public.ReconciliationReport
+    .where({})
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .where((r: any) => r.createdAt.lt(cutoff))
+    .limit(batchSize)
+    .all();
+
+  let reports = 0;
+  let mismatches = 0;
+  for (const report of stale) {
+    const unresolved = await db.orm.public.ReconciliationMismatch
+      .where({ reportId: report.id, resolved: false })
+      .all();
+    if (unresolved.length > 0) continue;
+    const rows = await db.orm.public.ReconciliationMismatch
+      .where({ reportId: report.id })
+      .all();
+    for (const row of rows) {
+      await db.orm.public.ReconciliationMismatch.where({ id: row.id }).delete();
+      mismatches += 1;
+    }
+    await db.orm.public.ReconciliationReport.where({ id: report.id }).delete();
+    reports += 1;
+  }
+  if (reports > 0) {
+    logger.info("reconciliation_retention_pruned", { reports, mismatches });
+  }
+  return { reports, mismatches };
+}
+
+/**
+ * PLAN-020 E-005: retention for raw provider webhook events
+ * (PaymentProviderEvent). They are an audit trail of provider calls and the
+ * input of the provider-event mismatch check — old rows are pruned after
+ * `daysOld` (default 90) regardless of status. Bounded per call.
+ */
+export async function prunePaymentProviderEvents(
+  options: { daysOld?: number; batchSize?: number } = {}
+): Promise<number> {
+  const daysOld = Math.max(1, options.daysOld ?? 90);
+  const batchSize = Math.max(1, options.batchSize ?? 500);
+  const cutoff = new Date(Date.now() - daysOld * 86_400_000).toISOString();
+
+  let removed = 0;
+  for (;;) {
+    const batch = await db.orm.public.PaymentProviderEvent
+      .where({})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .where((e: any) => e.receivedAt.lt(cutoff))
+      .limit(batchSize)
+      .all();
+    if (batch.length === 0) break;
+    for (const row of batch) {
+      await db.orm.public.PaymentProviderEvent.where({ id: row.id }).delete();
+      removed += 1;
+    }
+    if (batch.length < batchSize) break;
+  }
+  if (removed > 0) {
+    logger.info("provider_event_retention_pruned", { removed });
+  }
+  return removed;
+}

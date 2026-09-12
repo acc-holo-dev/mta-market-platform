@@ -33,9 +33,8 @@
 
 | Package | Версия | Примечание |
 |---|---|---|
-| @prisma/client | **7.10.0 (exact)** | клиентская ветка, спаренная с 8 RC toolchain; стабильного 8.x client не существует |
 | prisma (CLI) | **8.0.0-rc.13** | официальный `latest` registry-канала; осознанный выбор PLAN-014 §16 (вариант C) — код уже зависит от 8.x API (contract emit, db update, orm-adapter'ы) |
-| @prisma/orm-postgres | **8.0.0-rc.9** | driver adapter для PostgreSQL |
+| @prisma/orm-postgres | **8.0.0-rc.9** | driver adapter / рантайм ORM (`postgres<Contract>` в `src/prisma/db.ts`); классический `@prisma/client` не используется и удалён (PLAN-020 B-001) |
 | @prisma/cli-engine | **0.3.0** | парная версия, заявленная rc.13 |
 | PostgreSQL | 16 | services CI (postgres:16-alpine), Docker compose |
 

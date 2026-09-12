@@ -10,9 +10,9 @@ import { hasValidSignature } from "../lib/artifact/signing.js";
 import { getSandboxRun } from "../lib/sandbox/service.js";
 import { bustActivityCache } from "../lib/activity.js";
 // PLAN-019 H-002: domain events ride the outbox; the worker consumes them
-// (price alerts, future integrations). Emitted AFTER the primary writes
-// commit — this legacy path is not yet transactional, so the events reflect
-// already-committed state.
+// (price alerts, future integrations). PLAN-020 E-001: transition writes and
+// their outbox events are committed in the SAME transaction (awaited emit,
+// tx handle) so a crash can no longer silently lose an event.
 import { emitOutbox } from "../lib/events.js";
 import {
   creatorFollowerIds,
@@ -156,18 +156,79 @@ router.patch(
         }
       }
 
-      await db.orm.public.Resource.where({ id: resourceId }).update({ status });
+      // PLAN-020 E-001: every domain write of a moderation transition
+      // (resource status, moderation event, version publication) commits in
+      // ONE transaction together with its outbox events (awaited emit, tx
+      // handle) — a crash can no longer silently lose an event after the
+      // status update committed.
+      const publishedVersions: Array<{
+        versionId: string;
+        version: string;
+        changelog: string | null;
+      }> = [];
+      let resourceJustPublished = false;
 
-      // PLAN J-002: append-only moderation event log.
-      await db.orm.public.ModerationEvent.create({
-        resourceId: resource.id,
-        actorId: req.user!.userId,
-        fromStatus: from,
-        toStatus: status,
-        reason: req.body?.reason ?? null,
-      });
+      await db.transaction(
+        async (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => {
+          await tx.orm.public.Resource.where({ id: resourceId }).update({ status });
 
-      // PLAN Q-004: audit trail.
+          // PLAN J-002: append-only moderation event log.
+          await tx.orm.public.ModerationEvent.create({
+            resourceId: resource.id,
+            actorId: req.user!.userId,
+            fromStatus: from,
+            toStatus: status,
+            reason: req.body?.reason ?? null,
+          });
+
+          // PLAN I-005: publishing the resource marks its versions PUBLISHED in
+          // the release lifecycle.
+          if (status === "PUBLISHED") {
+            const versions = await tx.orm.public.ResourceVersion
+              .where({ resourceId: resource.id })
+              .all();
+            for (const version of versions) {
+              const fresh = await tx.orm.public.ResourceVersion
+                .where({ id: version.id })
+                .first();
+              if (fresh && ["CANDIDATE", "VERIFIED"].includes(fresh.releaseStatus)) {
+                await tx.orm.public.ResourceVersion
+                  .where({ id: version.id })
+                  .update({ releaseStatus: "PUBLISHED" });
+                // PLAN-019 H-002: version publish event → worker (price alerts:
+                // VERSION_RELEASED watchers). Payload contract matches the
+                // worker's RESOURCE_VERSION_PUBLISHED handler.
+                await emitOutbox(tx, "RESOURCE_VERSION_PUBLISHED", {
+                  resourceId: resource.id,
+                  versionId: version.id,
+                  version: version.version,
+                  changelog: version.changelog ?? undefined,
+                });
+                publishedVersions.push({
+                  versionId: version.id,
+                  version: version.version,
+                  changelog: version.changelog ?? null,
+                });
+              }
+            }
+          }
+
+          // PLAN-006: RESOURCE_RELEASE is a high-value activity item.
+          if (status === "PUBLISHED" && resource.status !== "PUBLISHED") {
+            // PLAN-019 H-002: resource-level release event → outbox (worker
+            // consumers; future email/digest channels).
+            await emitOutbox(tx, "RESOURCE_PUBLISHED", {
+              resourceId: resource.id,
+              slug: resource.slug,
+              sellerId: resource.sellerId,
+            });
+            resourceJustPublished = true;
+          }
+        }
+      );
+
+      // PLAN Q-004: audit trail (best-effort by design — recordAudit never
+      // throws; audit rows are observability, not event state).
       await recordAudit({
         actorId: req.user!.userId,
         action: "moderation.transition",
@@ -179,54 +240,34 @@ router.patch(
         requestId: req.id,
       });
 
-      // PLAN I-005: publishing the resource marks its versions PUBLISHED in
-      // the release lifecycle.
+      // Post-commit follow-ups: cache bust + notifications (durable state —
+      // the outbox events — is already committed above).
       if (status === "PUBLISHED") {
-        const versions = await db.orm.public.ResourceVersion
-          .where({ resourceId: resource.id })
-          .all();
-        for (const version of versions) {
-          const fresh = await db.orm.public.ResourceVersion
-            .where({ id: version.id })
-            .first();
-          if (fresh && ["CANDIDATE", "VERIFIED"].includes(fresh.releaseStatus)) {
-            await db.orm.public.ResourceVersion
-              .where({ id: version.id })
-              .update({ releaseStatus: "PUBLISHED" });
-            // PLAN-019 H-002: version publish event → worker (price alerts:
-            // VERSION_RELEASED watchers). Payload contract matches the
-            // worker's RESOURCE_VERSION_PUBLISHED handler.
-            emitOutbox(db, "RESOURCE_VERSION_PUBLISHED", {
-              resourceId: resource.id,
-              versionId: version.id,
-              version: version.version,
-              changelog: version.changelog ?? undefined,
-            });
-            // PLAN-006: RESOURCE_UPDATE activity item.
-            await bustActivityCache();
-            // PLAN-008 D-002: buyers (§26 — purchase already creates the
-            // relationship), resource followers and creator followers, with
-            // recipient dedup (one notification per user).
-            const recipients = Array.from(
-              new Set([
-                ...(await buyerIds(resource.id)),
-                ...(await resourceFollowerIds(resource.id)),
-                ...(await creatorFollowerIds(resource.sellerId)),
-              ])
-            );
-            await deliverFollowNotifications(
-              recipients,
-              (recipientId) => ({
-                recipientId,
-                type: "RESOURCE_UPDATE" as const,
-                title: `${resource.title} — новая версия ${version.version}`,
-                body: version.changelog ? version.changelog.slice(0, 200) : undefined,
-                entityType: "resource",
-                entityId: resource.id,
-              }),
-              { excludeActorId: req.user!.userId }
-            );
-          }
+        // PLAN-006: RESOURCE_UPDATE activity item (idempotent bust).
+        await bustActivityCache();
+        // PLAN-008 D-002: buyers (§26 — purchase already creates the
+        // relationship), resource followers and creator followers, with
+        // recipient dedup (one notification per user).
+        for (const published of publishedVersions) {
+          const recipients = Array.from(
+            new Set([
+              ...(await buyerIds(resource.id)),
+              ...(await resourceFollowerIds(resource.id)),
+              ...(await creatorFollowerIds(resource.sellerId)),
+            ])
+          );
+          await deliverFollowNotifications(
+            recipients,
+            (recipientId) => ({
+              recipientId,
+              type: "RESOURCE_UPDATE" as const,
+              title: `${resource.title} — новая версия ${published.version}`,
+              body: published.changelog ? published.changelog.slice(0, 200) : undefined,
+              entityType: "resource",
+              entityId: resource.id,
+            }),
+            { excludeActorId: req.user!.userId }
+          );
         }
       }
 
@@ -235,17 +276,7 @@ router.patch(
         ({ displayName: null, username: null } as any);
       const creatorLabel = creatorName.displayName || creatorName.username || "Создатель";
 
-      // PLAN-006: RESOURCE_RELEASE is a high-value activity item.
-      if (status === "PUBLISHED" && resource.status !== "PUBLISHED") {
-        // PLAN-019 H-002: resource-level release event → outbox (worker
-        // consumers; future email/digest channels). Emitted after the
-        // status transition and version updates committed.
-        emitOutbox(db, "RESOURCE_PUBLISHED", {
-          resourceId: resource.id,
-          slug: resource.slug,
-          sellerId: resource.sellerId,
-        });
-        await bustActivityCache();
+      if (resourceJustPublished) {
         // PLAN-008 D-001: notify the creator's followers about the release.
         const followerIds = await creatorFollowerIds(resource.sellerId);
         await deliverFollowNotifications(
@@ -378,157 +409,14 @@ router.get(
   }
 );
 
-// GET /admin/users - List all users
-router.get(
-  "/users",
-  authenticate,
-  adminOnly,
-  standardRateLimit,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const { status, page = "1", limit = "20" } = req.query;
-
-      const pageNum = parseInt(page as string, 10);
-      const limitNum = Math.min(parseInt(limit as string, 10), 100);
-      const skip = (pageNum - 1) * limitNum;
-
-      let users;
-      if (status) {
-        users = await db.orm.public.User.where({ status: status as any })
-          .orderBy((m) => m.createdAt.desc())
-          .limit(limitNum)
-          .offset(skip)
-          .all();
-      } else {
-        users = await db.orm.public.User.orderBy((m) => m.createdAt.desc())
-          .limit(limitNum)
-          .offset(skip)
-          .all();
-      }
-
-      // PLAN B-004: honest total via COUNT aggregate.
-      const countQuery = status
-        ? db.orm.public.User.where({ status: status as any })
-        : db.orm.public.User.where({});
-      const countResult = await countQuery.aggregate((agg: any) => ({ total: agg.count() }));
-      const total = Number(countResult.total);
-
-      res.json({
-        data: users,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          pages: Math.ceil(total / limitNum),
-        },
-      });
-    } catch (error) {
-      reqLog(req).error("admin_users_fetch_failed", { error });
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  }
-);
-
-// PATCH /admin/users/:id/status - Update user status
-router.patch(
-  "/users/:id/status",
-  authenticate,
-  adminOnly,
-  validateCuid('id'),
-  standardRateLimit,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const userId = req.params.id as string;
-      const { status, reason } = req.body;
-
-      if (!status) {
-        res.status(400).json({ error: "Status is required" });
-        return;
-      }
-
-      // PLAN-004 G-007 (audit GAP-12): validate against the UserStatus enum
-      // instead of writing arbitrary strings to the DB.
-      const ALLOWED_STATUSES = ["ACTIVE", "SUSPENDED", "BANNED"] as const;
-      if (!ALLOWED_STATUSES.includes(status)) {
-        res.status(400).json({ error: `Invalid status. Allowed: ${ALLOWED_STATUSES.join(", ")}` });
-        return;
-      }
-
-      const user = await db.orm.public.User.where({ id: userId }).first();
-
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      if (user.role === "ADMIN" && req.user!.role !== "ADMIN") {
-        res.status(403).json({ error: "Cannot modify admin users" });
-        return;
-      }
-
-      await db.orm.public.User.where({ id: userId }).update({ status });
-
-      res.json({
-        message: "User status updated",
-        status,
-        reason,
-      });
-    } catch (error) {
-      reqLog(req).error("admin_user_status_update_failed", { error });
-      res.status(500).json({ error: "Failed to update user status" });
-    }
-  }
-);
-
-// PATCH /admin/users/:id/role - Update user role
-router.patch(
-  "/users/:id/role",
-  authenticate,
-  adminOnly,
-  validateCuid('id'),
-  standardRateLimit,
-  async (req: AuthRequest, res: Response) => {
-    try {
-      const userId = req.params.id as string;
-      const { role } = req.body;
-
-      if (!role) {
-        res.status(400).json({ error: "Role is required" });
-        return;
-      }
-
-      // PLAN-004 G-007 (audit GAP-12): validate against the UserRole enum.
-      const ALLOWED_ROLES = ["USER", "ADMIN", "MODERATOR"] as const;
-      if (!ALLOWED_ROLES.includes(role)) {
-        res.status(400).json({ error: `Invalid role. Allowed: ${ALLOWED_ROLES.join(", ")}` });
-        return;
-      }
-
-      // Only ADMIN can change roles
-      if (req.user!.role !== "ADMIN") {
-        res.status(403).json({ error: "Admin access required" });
-        return;
-      }
-
-      const user = await db.orm.public.User.where({ id: userId }).first();
-
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      await db.orm.public.User.where({ id: userId }).update({ role });
-
-      res.json({
-        message: "User role updated",
-        role,
-      });
-    } catch (error) {
-      reqLog(req).error("admin_user_role_update_failed", { error });
-      res.status(500).json({ error: "Failed to update user role" });
-    }
-  }
-);
+// PLAN-020 J-003-c/A-004.01: the legacy user-management handlers were
+// removed. GET /admin/users and PATCH /admin/users/:id/role were dead code
+// (adminPlatformRoutes is mounted first and owns both); the live legacy
+// PATCH /admin/users/:id/status had no consumers and was unsafe (a
+// MODERATOR could ban a SUPERADMIN — its ADMIN-only guard missed the role,
+// no audit entry, no session revocation). Parity lives in adminPlatform
+// with the permission model: users.view, roles.manage, users.suspend /
+// users.restore.
 
 // DELETE /admin/reviews/:id - Delete review
 router.delete(

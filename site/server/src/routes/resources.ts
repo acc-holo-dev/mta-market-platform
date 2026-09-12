@@ -920,8 +920,20 @@ router.delete(
         return;
       }
 
-      if (resource.sellerId !== req.user!.userId) {
-        res.status(403).json({ error: "Not authorized" });
+      // PLAN-020 C-003.2: a resource with purchase history is NOT deletable.
+      // Without this guard the DB either 500s on the Restrict FK
+      // (Purchase.versionId) for sold resources, or silently cascades away
+      // reviews/forum threads while order-item snapshots remain. Sellers
+      // unpublish/suspend instead; deletion is only for unsold resources.
+      const purchaseRefs = await db.orm.public.Purchase
+        .where({ resourceId: resource.id })
+        .limit(1)
+        .all();
+      if (purchaseRefs.length > 0) {
+        res.status(409).json({
+          error:
+            "Resource has purchase history and cannot be deleted. Unpublish or suspend it instead.",
+        });
         return;
       }
 
