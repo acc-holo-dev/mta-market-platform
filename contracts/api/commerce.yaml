@@ -8,12 +8,14 @@ endpoints:
     - { method: GET,  path: /purchases/my }
     - { method: GET,  path: /purchases/:id, note: owner-only detail }
   payments:
-    - { method: POST, path: /payments/create, note: YooKassa when enabled; else dev-completion; honors Idempotency-Key }
-    - { method: POST, path: /payments/webhook, note: provider webhook; idempotent (paymentProviderEvent) }
-    - { method: POST, path: /payments/cancel, note: cancels a PENDING payment at the provider (owner/admin) }
-    - { method: POST, path: /payments/refunds, note: create refund (INV-013 ceiling); ADMIN only; honors Idempotency-Key }
+    - { method: GET,  path: /payments/providers, note: PLAN-016 discovery of enabled payment providers (confirmation type) }
+    - { method: POST, path: /payments/create, note: explicit provider honored (validated against registry); default env PAYMENTS_DEFAULT_PROVIDER; honors Idempotency-Key }
+    - { method: POST, path: /payments/webhook, note: backward-compatible alias -> default provider; idempotent (paymentProviderEvent) }
+    - { method: POST, path: /payments/webhook/:provider, note: PLAN-016 P-002 per-provider webhook (raw-body HMAC / IP / Basic per provider) }
+    - { method: POST, path: /payments/cancel, note: cancels a PENDING payment at ITS OWN provider (owner/admin) }
+    - { method: POST, path: /payments/refunds, note: create refund (INV-013 ceiling); ADMIN only; honors Idempotency-Key; capability-gated (crypto providers do not expose refunds) }
     - { method: GET,  path: /payments/:paymentId/refunds, note: list refunds; ADMIN }
-    - { method: POST, path: /payments/:id/simulate, note: DEV-ONLY; 404 in production, 403 when YooKassa enabled outside production (A-005) }
+    - { method: POST, path: /payments/:id/simulate, note: DEV-ONLY; 404 in production, 403 when any provider is enabled outside production (A-005) }
   services:
     - { method: GET,  path: /services }
     - { method: GET,  path: /services/:slug }

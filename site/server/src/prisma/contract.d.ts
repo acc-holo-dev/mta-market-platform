@@ -33,7 +33,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'b1dbf93b4e9242d6c20697c3044b1bcff174d75274cfe580a57e91be286a8a2b'>;
+  StorageHashBase<'67949e74f189c62a46b39b2c8747ce26f14b41ad8ee2b923d2622758b7bf6858'>;
 export type ExecutionHash =
   ExecutionHashBase<'50dff0b9d260a839f52706c89f0b065b7d9629457e7ddbb5af31983c20f6af8c'>;
 export type ProfileHash =
@@ -621,7 +621,7 @@ export type FieldOutputTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly purchaseId: CodecTypes['pg/text@1']['output'] | null;
       readonly orderItemId: CodecTypes['pg/text@1']['output'] | null;
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerPaymentId: CodecTypes['pg/text@1']['output'];
       readonly status:
         | 'PENDING'
@@ -641,7 +641,7 @@ export type FieldOutputTypes = {
     };
     readonly PaymentProviderEvent: {
       readonly id: CodecTypes['pg/text@1']['output'];
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerEventId: CodecTypes['pg/text@1']['output'];
       readonly objectId: CodecTypes['pg/text@1']['output'];
       readonly eventType: CodecTypes['pg/text@1']['output'];
@@ -1457,7 +1457,7 @@ export type FieldInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly purchaseId: CodecTypes['pg/text@1']['input'] | null;
       readonly orderItemId: CodecTypes['pg/text@1']['input'] | null;
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerPaymentId: CodecTypes['pg/text@1']['input'];
       readonly status:
         | 'PENDING'
@@ -1477,7 +1477,7 @@ export type FieldInputTypes = {
     };
     readonly PaymentProviderEvent: {
       readonly id: CodecTypes['pg/text@1']['input'];
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerEventId: CodecTypes['pg/text@1']['input'];
       readonly objectId: CodecTypes['pg/text@1']['input'];
       readonly eventType: CodecTypes['pg/text@1']['input'];
@@ -2297,7 +2297,7 @@ export type StorageColumnTypes = {
       readonly id: CodecTypes['pg/text@1']['output'];
       readonly metadata: CodecTypes['pg/json@1']['output'] | null;
       readonly orderItemId: CodecTypes['pg/text@1']['output'] | null;
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerPaymentId: CodecTypes['pg/text@1']['output'];
       readonly purchaseId: CodecTypes['pg/text@1']['output'] | null;
       readonly status:
@@ -2321,7 +2321,7 @@ export type StorageColumnTypes = {
       readonly payload: CodecTypes['pg/json@1']['output'] | null;
       readonly payloadHash: CodecTypes['pg/text@1']['output'];
       readonly processedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerEventId: CodecTypes['pg/text@1']['output'];
       readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly status: 'RECEIVED' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
@@ -3133,7 +3133,7 @@ export type StorageColumnInputTypes = {
       readonly id: CodecTypes['pg/text@1']['input'];
       readonly metadata: CodecTypes['pg/json@1']['input'] | null;
       readonly orderItemId: CodecTypes['pg/text@1']['input'] | null;
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerPaymentId: CodecTypes['pg/text@1']['input'];
       readonly purchaseId: CodecTypes['pg/text@1']['input'] | null;
       readonly status:
@@ -3157,7 +3157,7 @@ export type StorageColumnInputTypes = {
       readonly payload: CodecTypes['pg/json@1']['input'] | null;
       readonly payloadHash: CodecTypes['pg/text@1']['input'];
       readonly processedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
-      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST';
+      readonly provider: 'YUKASSA' | 'STRIPE' | 'TEST' | 'TBANK' | 'CRYPTO';
       readonly providerEventId: CodecTypes['pg/text@1']['input'];
       readonly receivedAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly status: 'RECEIVED' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
@@ -10145,7 +10145,7 @@ type ContractBase = Omit<
             };
             readonly PaymentProvider: {
               readonly kind: 'valueSet';
-              readonly values: readonly ['YUKASSA', 'STRIPE', 'TEST'];
+              readonly values: readonly ['YUKASSA', 'STRIPE', 'TEST', 'TBANK', 'CRYPTO'];
             };
             readonly PaymentStatus: {
               readonly kind: 'valueSet';
@@ -16965,6 +16965,8 @@ type ContractBase = Omit<
               { readonly name: 'YUKASSA'; readonly value: 'YUKASSA' },
               { readonly name: 'STRIPE'; readonly value: 'STRIPE' },
               { readonly name: 'TEST'; readonly value: 'TEST' },
+              { readonly name: 'TBANK'; readonly value: 'TBANK' },
+              { readonly name: 'CRYPTO'; readonly value: 'CRYPTO' },
             ];
           };
           readonly PaymentStatus: {

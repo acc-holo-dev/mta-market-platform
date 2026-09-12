@@ -12,6 +12,7 @@ import {
   fetchResourceVersions,
   fetchResourceReviews,
   fetchMyPurchases,
+  fetchPaymentProviders,
   createPurchase,
   createPayment,
   postReview,
@@ -34,7 +35,7 @@ import { Rating } from "@/components/ui/Rating";
 import { Gallery } from "@/components/ui/Gallery";
 import { Avatar } from "@/components/ui/Avatar";
 import { typeLabel, formatDate } from "@/lib/domain";
-import { Star, ShieldCheck, Package, Store, CheckCircle2, Clock } from "lucide-react";
+import { Star, ShieldCheck, Package, Store, CheckCircle2, Clock, Copy, Check } from "lucide-react";
 
 export default function ResourceDetailPage() {
   const params = useParams();
@@ -67,11 +68,55 @@ export default function ResourceDetailPage() {
     queryFn: () => fetchResourceReviews(slug, 1, 20),
   });
 
+  // PLAN-016 P-005: payment method selection (enabled providers only).
+  const { data: paymentProviderInfos } = useQuery({
+    queryKey: ["payments", "providers"],
+    queryFn: fetchPaymentProviders,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const [paymentProvider, setPaymentProvider] = useState<string | null>(null);
+  const selectedProvider = paymentProvider ?? paymentProviderInfos?.[0]?.provider ?? null;
+
+  // ---------- Checkout state (M-004/M-005; declared before the purchases
+  // query because the polling interval depends on it) ----------
+  const [discountCode, setDiscountCode] = useState("");
+  const [checkoutResult, setCheckoutResult] = useState<
+    | { kind: "completed"; licenseId: string }
+    | {
+        kind: "pending";
+        purchaseId: string;
+        amount: number;
+        originalAmount: number;
+        discount?: { amount: number; percentage: number };
+        provider?: string;
+        confirmation?: {
+          type: "redirect" | "crypto_invoice";
+          redirectUrl?: string;
+          payUrl?: string;
+          address?: string;
+          memo?: string;
+          expiresAt?: string;
+        } | null;
+        devMessage?: string;
+      }
+    | null
+  >(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
   // Ownership: needed for the "already acquired" state and the review form.
   const { data: myPurchases } = useQuery({
     queryKey: ["purchases", "my", slug],
     queryFn: fetchMyPurchases,
     enabled: accessToken !== null,
+    // PLAN-016 P-005 §10: polling of the purchase status — only while an
+    // active crypto-invoice checkout is PENDING, at most every 5 seconds.
+    refetchInterval:
+      checkoutResult?.kind === "pending" &&
+      checkoutResult.confirmation?.type === "crypto_invoice"
+        ? 5000
+        : false,
   });
 
   const owned = useMemo(
@@ -117,22 +162,24 @@ export default function ResourceDetailPage() {
     },
   });
 
-  // ---------- Checkout state (M-004/M-005) ----------
-  const [discountCode, setDiscountCode] = useState("");
-  const [checkoutResult, setCheckoutResult] = useState<
-    | { kind: "completed"; licenseId: string }
-    | {
-        kind: "pending";
-        purchaseId: string;
-        amount: number;
-        originalAmount: number;
-        discount?: { amount: number; percentage: number };
-        devMessage?: string;
-      }
-    | null
-  >(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  // ---------- Checkout handlers (M-004/M-005) ----------
+
+  // PLAN-016 P-005: the invoice provider confirms by polling — when the
+  // refetch sees the purchase COMPLETED, the surface flips to the completed
+  // state (no manual "admin button", no fake indication).
+  useEffect(() => {
+    if (checkoutResult?.kind !== "pending") return;
+    const row = (myPurchases as Purchase[] | undefined)?.find(
+      (p) => p.id === checkoutResult.purchaseId
+    );
+    if (row && row.status === "COMPLETED") {
+      setCheckoutResult({
+        kind: "completed",
+        licenseId: row.license?.id ?? "",
+      });
+      qc.invalidateQueries({ queryKey: ["purchases"] });
+    }
+  }, [myPurchases, checkoutResult, qc]);
 
   const handleBuy = async () => {
     if (!isAuthenticated()) {
@@ -150,10 +197,23 @@ export default function ResourceDetailPage() {
         return;
       }
 
-      // Paid purchase (possibly discounted): create the YooKassa payment.
+      // PLAN-016 P-005: the selected payment provider is explicit.
       let devMessage: string | undefined;
       try {
-        const payment = await createPayment(purchase.purchaseId);
+        const payment = await createPayment(purchase.purchaseId, selectedProvider ?? undefined);
+        if (payment.confirmation?.type === "crypto_invoice") {
+          // Crypto invoice: render the invoice surface and poll for payment.
+          setCheckoutResult({
+            kind: "pending",
+            purchaseId: purchase.purchaseId,
+            amount: purchase.amount,
+            originalAmount: purchase.originalAmount,
+            discount: purchase.discount,
+            provider: payment.provider,
+            confirmation: payment.confirmation,
+          });
+          return;
+        }
         if (payment.paymentUrl) {
           window.location.href = payment.paymentUrl;
           return;
@@ -536,6 +596,37 @@ export default function ResourceDetailPage() {
                 </div>
               ) : (
                 <>
+                  {resource.price > 0 && (paymentProviderInfos?.length ?? 0) > 0 ? (
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-content-muted">
+                        Способ оплаты
+                      </p>
+                      <div
+                        role="group"
+                        aria-label="Способ оплаты"
+                        className="mt-1 space-y-1.5"
+                      >
+                        {paymentProviderInfos?.map((p) => (
+                          <label
+                            key={p.provider}
+                            className="flex items-center gap-2 rounded-md border border-line px-3 py-2 text-sm transition-colors duration-fast has-[:checked]:border-accent has-[:checked]:bg-accent-soft/40"
+                          >
+                            <input
+                              type="radio"
+                              name="payment-provider"
+                              value={p.provider}
+                              checked={selectedProvider === p.provider}
+                              onChange={() => setPaymentProvider(p.provider)}
+                              className="accent-accent"
+                              aria-label={`Оплата через ${p.displayName}`}
+                            />
+                            {p.displayName}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {resource.price > 0 ? (
                     <div>
                       <label htmlFor="discount" className="text-sm text-content-secondary">
@@ -566,7 +657,7 @@ export default function ResourceDetailPage() {
                   </Button>
                   {resource.price > 0 && (
                     <p className="text-xs text-content-muted text-center">
-                      Безопасная оплата через ЮKassa
+                      Оплата через платёжного провайдера
                     </p>
                   )}
                 </>
@@ -609,7 +700,50 @@ export default function ResourceDetailPage() {
                     </p>
                   )}
                   <StatusBadge status="PENDING_PAYMENT">Ожидает оплаты</StatusBadge>
-                  {checkoutResult.devMessage ? (
+                  {checkoutResult.confirmation?.type === "crypto_invoice" ? (
+                    <>
+                      {checkoutResult.confirmation.payUrl ? (
+                        <a
+                          href={checkoutResult.confirmation.payUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors duration-fast hover:bg-accent-strong"
+                        >
+                          Открыть инвойс для оплаты
+                        </a>
+                      ) : null}
+                      {checkoutResult.confirmation.memo ? (
+                        <p className="text-xs text-content-secondary tabular-nums">
+                          Комментарий к платежу:{" "}
+                          <span className="font-semibold text-content">
+                            {checkoutResult.confirmation.memo}
+                          </span>
+                          <CopyButton value={checkoutResult.confirmation.memo} label="Комментарий" />
+                        </p>
+                      ) : null}
+                      {checkoutResult.confirmation.address ? (
+                        <p className="flex flex-wrap items-center gap-2 text-xs text-content-secondary tabular-nums">
+                          Адрес:{" "}
+                          <span className="break-all font-mono font-semibold text-content">
+                            {checkoutResult.confirmation.address}
+                          </span>
+                          <CopyButton
+                            value={checkoutResult.confirmation.address}
+                            label="Адрес"
+                          />
+                        </p>
+                      ) : null}
+                      {checkoutResult.confirmation.expiresAt ? (
+                        <InvoiceCountdown expiresAt={checkoutResult.confirmation.expiresAt} />
+                      ) : null}
+                      <p className="text-xs text-content-secondary flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" aria-hidden /> Статус проверки
+                        автоматически каждые 5 секунд (пока покупка ожидает оплаты) —
+                        оплата подтверждает покупка и лицензия появляются
+                        автоматически.
+                      </p>
+                    </>
+                  ) : checkoutResult.devMessage ? (
                     <p className="text-xs text-content-secondary">{checkoutResult.devMessage}</p>
                   ) : (
                     <p className="text-xs text-content-secondary flex items-center gap-1">
@@ -668,5 +802,64 @@ export default function ResourceDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PLAN-016 P-005: crypto-invoice helpers. No fake indication: the countdown
+// is real (server TTL), the copy button is real clipboard, the completion
+// transition comes from the polled purchase status.
+// ---------------------------------------------------------------------------
+
+/** Live TTL countdown for the invoice window (updates once per second). */
+function InvoiceCountdown({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const remaining = Math.max(0, Math.floor((new Date(expiresAt).getTime() - now) / 1000));
+  if (remaining === 0) {
+    return (
+      <p className="text-xs text-bad" role="status">
+        Инвойс истёк — оформите покупку заново.
+      </p>
+    );
+  }
+  const mm = String(Math.floor(remaining / 60)).padStart(2, "0");
+  const ss = String(remaining % 60).padStart(2, "0");
+  return (
+    <p className="text-xs text-content-muted" role="timer" aria-live="off">
+      Инвойс действует ещё{" "}
+      <span className="font-semibold tabular-nums text-content">
+        {mm}:{ss}
+      </span>
+    </p>
+  );
+}
+
+/** Copy-to-clipboard pill for invoice fields (memo/address). */
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API unavailable (insecure context) — честно ничего не делаем.
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => void copy()}
+      aria-label={`Скопировать ${label.toLowerCase()}`}
+      className="inline-flex items-center gap-1 rounded-pill border border-line px-2 py-0.5 text-[11px] text-content-secondary transition-colors duration-fast hover:border-accent/40 hover:text-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      {copied ? <Check className="h-3 w-3 text-ok" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+      {copied ? "Скопировано" : "Копировать"}
+    </button>
   );
 }

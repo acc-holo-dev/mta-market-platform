@@ -1,4 +1,4 @@
-﻿// Payment routes (PLAN E-001..E-008).
+// Payment routes (PLAN E-001..E-008).
 // Routes talk to the neutral IPaymentProvider registry, never a provider SDK
 // directly (E-002). Payment row mutations go through the state machine
 // (E-003). Refunds are an independent lifecycle (E-008, INV-013).
@@ -13,8 +13,13 @@ import { sendPurchaseEmail } from "../lib/email.js";
 import { completeResourceOrderItem, markServicePurchasePaid, CommerceError } from "../lib/commerce.js";
 import { affectedCount } from "../lib/ledger.js";
 import { paymentProviders, type IPaymentProvider } from "../lib/paymentProvider.js";
-// E-002: side-effect import registers the YooKassa implementation.
+// E-002: side-effect imports register the implementations (YooKassa is the
+// canonical one; T-Bank/crypto adapters self-register when env-configured —
+// PLAN-016 C3/C4; the TEST provider is a dev-only stub, P-007).
 import "../lib/providers/payment-yookassa.js";
+import "../lib/providers/payment-tbank.js";
+import "../lib/providers/payment-crypto.js";
+import "../lib/providers/payment-test.js";
 import {
   assertTransition,
   type PaymentState,
@@ -25,13 +30,43 @@ import { reqLog } from "../middleware/requestId.js";
 import { incPaymentSuccess } from "../lib/metrics.js";
 import { withIdempotency, isIdempotencyError } from "../lib/idempotency.js";
 import { isUniqueViolation } from "../lib/dbErrors.js";
-import type { YooKassaWebhook } from "../lib/yookassa.js";
+import type {
+  ParsedWebhook,
+  ProviderConfirmation,
+} from "../lib/paymentProvider.js";
 
 const router: Router = Router();
 
-function yooKassaProvider(): IPaymentProvider | null {
-  const provider = paymentProviders.get("YUKASSA");
-  return provider && provider.isEnabled() ? provider : null;
+/**
+ * PLAN-016 P-001: neutral provider resolution. An explicit provider name
+ * (from the checkout request) wins when it is enabled and supports
+ * payment.create; otherwise the platform default (env
+ * PAYMENTS_DEFAULT_PROVIDER, else the single enabled provider) applies.
+ * Returns null when nothing is configured — endpoints stay honestly
+ * disabled (A-010 rule).
+ */
+function resolveProvider(requested?: string): IPaymentProvider | null {
+  if (requested) {
+    const name = requested.toUpperCase();
+    const provider = paymentProviders.get(name);
+    if (provider && provider.isEnabled() && provider.supportsCapability("payment.create")) {
+      return provider;
+    }
+    return null;
+  }
+  const configured = (process.env.PAYMENTS_DEFAULT_PROVIDER || "").toUpperCase();
+  if (configured) {
+    const byEnv = paymentProviders.get(configured);
+    if (byEnv && byEnv.isEnabled() && byEnv.supportsCapability("payment.create")) {
+      return byEnv;
+    }
+  }
+  const enabled = paymentProviders.getEnabled().filter((p) => p.supportsCapability("payment.create"));
+  if (enabled.length === 1) return enabled[0];
+  // Multiple enabled providers without a default: fall back to the
+  // canonical YooKassa when present (legacy behavior), else null.
+  const yooKassa = paymentProviders.get("YUKASSA");
+  return yooKassa && yooKassa.isEnabled() ? yooKassa : null;
 }
 
 /**
@@ -69,6 +104,28 @@ async function transitionPaymentTo(providerPaymentId: string, to: PaymentState):
   );
 }
 
+// GET /payments/providers — PLAN-016: public discovery of enabled payment
+// providers. confirmation type derived from the payment.poll capability
+// (invoice providers confirm by polling; redirect PSPs by redirecting).
+const PAYMENT_DISPLAY_NAMES: Record<string, string> = {
+  YUKASSA: "ЮKassa",
+  TBANK: "T-Bank",
+  CRYPTO: "Криптовалюта",
+  STRIPE: "Stripe",
+  TEST: "Тестовый (dev)",
+};
+
+router.get("/providers", async (_req: Request, res: Response) => {
+  const providers = paymentProviders.getEnabled().map((p) => ({
+    provider: p.name,
+    displayName: PAYMENT_DISPLAY_NAMES[p.name] ?? p.name,
+    confirmation: (p.supportsCapability("payment.poll") ? "crypto_invoice" : "redirect") as
+      | "redirect"
+      | "crypto_invoice",
+  }));
+  res.json({ providers });
+});
+
 // POST /payments/create - Create payment (authenticated)
 // Accepts { purchaseId } for resource lines (legacy) or { servicePurchaseId }
 // for service lines (C-010). The provider amount is always the FINAL total.
@@ -86,8 +143,34 @@ router.post(
       res.status(400).json({ error: "Missing purchaseId or servicePurchaseId" });
       return;
     }
+    // PLAN-016 P-001: explicit provider selection from checkout; unknown or
+    // disabled providers are rejected with a precise error (no silent
+    // fallback that could surprise the buyer).
+    const requestedProviderName =
+      typeof req.body?.provider === "string" ? req.body.provider.toUpperCase() : undefined;
+    if (requestedProviderName && !paymentProviders.get(requestedProviderName)) {
+      res.status(400).json({ error: `Unknown payment provider: ${requestedProviderName}` });
+      return;
+    }
+    // PLAN-016 §9: an explicitly requested known-but-disabled provider is a
+    // conflict (409), not a server fault — the endpoint itself stays honest.
+    if (requestedProviderName) {
+      const registered = paymentProviders.get(requestedProviderName)!;
+      if (!registered.isEnabled() || !registered.supportsCapability("payment.create")) {
+        res
+          .status(409)
+          .json({ error: `Payment provider ${requestedProviderName} is disabled` });
+        return;
+      }
+    }
 
-    const provider = yooKassaProvider();
+    const provider = resolveProvider(requestedProviderName);
+    const providerEnum = (provider?.name ?? "YUKASSA") as
+      | "YUKASSA"
+      | "TBANK"
+      | "CRYPTO"
+      | "STRIPE"
+      | "TEST";
 
     // ---- Service payment (C-010) ----
     if (servicePurchaseId) {
@@ -115,8 +198,8 @@ router.post(
       }
 
       if (!provider) {
-        res.json({
-          message: "YooKassa disabled - service order awaits manual payment setup",
+        res.status(503).json({
+          error: "Payment provider is not configured",
           servicePurchaseId: servicePurchase.id,
         });
         return;
@@ -132,7 +215,7 @@ router.post(
       await db.orm.public.Payment.create({
         purchaseId: null,
         orderItemId: serviceOrderItem.orderItemId,
-        provider: "YUKASSA",
+        provider: providerEnum,
         providerPaymentId: created.providerPaymentId,
         amount: servicePurchase.finalPrice,
         currency: "RUB",
@@ -142,6 +225,8 @@ router.post(
       res.json({
         paymentUrl: created.redirectUrl,
         paymentId: created.providerPaymentId,
+        provider: providerEnum,
+        confirmation: created.confirmation ?? null,
       });
       return;
     }
@@ -184,7 +269,7 @@ router.post(
 
       await db.orm.public.Payment.create({
         purchaseId: purchase.id,
-        provider: "YUKASSA",
+        provider: providerEnum,
         providerPaymentId: created.providerPaymentId,
         amount: purchase.finalPrice,
         currency: "RUB",
@@ -194,11 +279,17 @@ router.post(
       res.json({
         paymentUrl: created.redirectUrl,
         paymentId: created.providerPaymentId,
+        provider: providerEnum,
+        confirmation: created.confirmation ?? null,
       });
     } else {
-      // Development mode: simulate payment
+      // Development mode: simulate payment (or requested provider disabled)
+      if (requestedProviderName) {
+        res.status(503).json({ error: `Payment provider ${requestedProviderName} is not available` });
+        return;
+      }
       res.json({
-        message: "YooKassa disabled - use /payments/:id/simulate for testing",
+        message: "Payment provider disabled - use /payments/:id/simulate for testing",
         purchaseId: purchase.id,
       });
     }
@@ -226,51 +317,67 @@ router.post(
   })
 );
 
-// POST /payments/webhook - YooKassa webhook
-// Transport authenticity (IP allowlist + HTTP Basic auth) is delegated to the
-// provider implementation (E-006); business verification re-fetches the
-// payment from the provider API (A-010/A-011). The event is persisted before
-// any business effect (E-004/E-005); repeated deliveries are safe.
-router.post("/webhook", async (req: Request, res: Response) => {
-  try {
-    // TASK A-010: when the provider is not configured there is no way to
-    // verify transport authenticity or re-fetch provider state — the endpoint
-    // must be DISABLED, not open.
-    const provider = yooKassaProvider();
-    if (!provider) {
-      res.status(503).json({ error: "Payment provider is not configured" });
-      return;
-    }
+// POST /payments/webhook/:provider — PLAN-016 P-002: per-provider webhook
+// entry. POST /payments/webhook remains as a backward-compatible alias for
+// the platform default provider (existing YooKassa settings keep working).
+// Transport authenticity is delegated to the provider implementation (E-006:
+// IP allowlist / Basic auth / HMAC signature over raw bytes); business
+// verification always re-fetches the payment from the provider API
+// (A-010/A-011). The event is persisted before any business effect
+// (E-004/E-005); repeated deliveries are safe (unique [provider,
+// providerEventId, eventType]).
+async function handleProviderWebhook(
+  req: Request,
+  res: Response,
+  provider: IPaymentProvider
+): Promise<void> {
+  const providerEnum = provider.name as "YUKASSA" | "TBANK" | "CRYPTO" | "STRIPE" | "TEST";
 
-    // Transport verification: IP allowlist + Basic auth (E-006).
-    const clientIP = getClientIP(req);
-    const verification = provider.verifyWebhook({ req, body: req.body, sourceIp: clientIP });
+  try {
+    // TASK A-010 rule (kept): this function is only reached with a resolved,
+    // enabled provider; otherwise the route responds 503 (disabled, not open).
+
+    // Transport verification: IP allowlist / Basic auth / signature (E-006).
+    const ctx = {
+      req,
+      body: req.body,
+      rawBody: (req as { rawBody?: Buffer }).rawBody,
+      sourceIp: getClientIP(req),
+    };
+    const clientIP = ctx.sourceIp;
+    const verification = provider.verifyWebhook(ctx);
     if (!verification.ok) {
       if (verification.reason === "ip") {
         reqLog(req).warn("webhook_rejected_ip_not_whitelisted", { client_ip: clientIP });
         res.status(403).json({ error: "Forbidden: Invalid source IP" });
+      } else if (verification.reason === "signature") {
+        reqLog(req).warn("webhook_rejected_invalid_signature", { provider: provider.name });
+        res.status(400).json({ error: "Invalid webhook signature" });
       } else {
-        reqLog(req).warn("webhook_rejected_invalid_auth", { client_ip: clientIP });
+        reqLog(req).warn("webhook_rejected_invalid_auth", { provider: provider.name });
         res.status(401).json({ error: "Unauthorized: Invalid credentials" });
       }
       return;
     }
 
-    const webhook = req.body as YooKassaWebhook;
-
-    if (!webhook?.event || !webhook.object?.id) {
+    // PLAN-016 P-002: provider wire format → neutral event shape.
+    const parsed = provider.parseWebhook(ctx);
+    if (!parsed) {
       res.status(400).json({ error: "Invalid webhook payload" });
       return;
     }
 
-    const { object } = webhook;
-    const eventType = webhook.event;
-    const payloadHash = crypto.createHash("sha256").update(JSON.stringify(req.body)).digest("hex");
+    const eventType = parsed.eventType;
+    const ppId = parsed.providerPaymentId;
+    const payloadHash = crypto
+      .createHash("sha256")
+      .update((req as { rawBody?: Buffer }).rawBody ?? JSON.stringify(req.body))
+      .digest("hex");
 
     // Persist event before applying business effects. Repeated deliveries are safe.
     const existingEvent = await db.orm.public.PaymentProviderEvent.where({
-      provider: "YUKASSA",
-      providerEventId: object.id,
+      provider: providerEnum,
+      providerEventId: parsed.providerEventId,
       eventType,
     }).first();
 
@@ -283,9 +390,9 @@ router.post("/webhook", async (req: Request, res: Response) => {
     if (!eventRecord) {
       try {
         eventRecord = await db.orm.public.PaymentProviderEvent.create({
-          provider: "YUKASSA",
-          providerEventId: object.id,
-          objectId: object.id,
+          provider: providerEnum,
+          providerEventId: parsed.providerEventId,
+          objectId: ppId,
           eventType,
           objectType: "payment",
           payloadHash,
@@ -303,8 +410,8 @@ router.post("/webhook", async (req: Request, res: Response) => {
           // PLAN-012 §7: a parallel delivery (other instance) persisted the
           // same event first — adopt its record instead of failing.
           eventRecord = await db.orm.public.PaymentProviderEvent.where({
-            provider: "YUKASSA",
-            providerEventId: object.id,
+            provider: providerEnum,
+            providerEventId: parsed.providerEventId,
             eventType,
           }).first();
           if (eventRecord?.status === "PROCESSED") {
@@ -345,21 +452,20 @@ router.post("/webhook", async (req: Request, res: Response) => {
     // PLAN-004 D-004 (audit GAP-1): real cancellation lifecycle. A
     // `payment.canceled` event closes the local PENDING payment/purchase so
     // it does not hang forever, and — critically — when the provider reports
-    // a *succeeded* payment while the local state is already CANCELED (user
-    // canceled at the provider after capture, or a race with
-    // /payments/cancel), provider truth wins: the transition is repaired to
-    // SUCCEEDED instead of throwing forever on an illegal transition.
+    // a *succeeded* payment while the local state is already CANCELED, provider
+    // truth wins: the transition is repaired to SUCCEEDED instead of throwing
+    // forever on an illegal transition.
     const localPayment = await db.orm.public.Payment.where({
-      providerPaymentId: object.id,
+      providerPaymentId: ppId,
     }).first();
     if (eventType === "payment.canceled") {
       if (localPayment && localPayment.status === "PENDING") {
-        await transitionPaymentTo(object.id, "CANCELED");
-        await db.orm.public.Payment.where({ providerPaymentId: object.id }).update({
+        await transitionPaymentTo(ppId, "CANCELED");
+        await db.orm.public.Payment.where({ providerPaymentId: ppId }).update({
           status: "CANCELED",
         });
       }
-      const cancelOrderRef = object.metadata?.order_id;
+      const cancelOrderRef = parsed.orderRef;
       if (cancelOrderRef) {
         // CAS: only a still-PENDING purchase is closed; a completed one is
         // money already captured (handled by the succeeded flow / refund).
@@ -383,26 +489,24 @@ router.post("/webhook", async (req: Request, res: Response) => {
       // (provider truth wins) and fall through to the normal succeeded flow
       // below — the buyer paid, the entitlement must be granted.
       const repaired = await db.orm.public.Payment
-        .where({ providerPaymentId: object.id, status: "CANCELED" })
+        .where({ providerPaymentId: ppId, status: "CANCELED" })
         .updateAndCount({ status: "PENDING" });
       if (affectedCount(repaired) === 1) {
         reqLog(req).warn("payment_canceled_then_succeeded_repaired", {
-          provider_payment_id: object.id,
+          provider_payment_id: ppId,
         });
       }
     }
 
-    const orderId = object.metadata?.order_id;
-    if (!orderId) {
+    const orderRef = parsed.orderRef;
+    if (!orderRef) {
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
         status: "FAILED",
-        lastError: "Missing order_id",
+        lastError: "Missing order reference",
       });
-      res.status(400).json({ error: "Missing order_id" });
+      res.status(400).json({ error: "Missing order reference" });
       return;
     }
-
-    const orderRef = orderId;
 
     // The reference is either a resource Purchase id (legacy + current
     // resource checkouts) or a ServicePurchase id (C-010 service orders).
@@ -422,7 +526,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
     // Do not trust webhook body alone. Confirm current provider state and amount.
     // TASK A-010/A-011: provider re-fetch + amount/currency/reference invariants.
-    const providerPayment = await provider.getPayment(object.id);
+    const providerPayment = await provider.getPayment(ppId);
     const expectedEntity = purchase ?? servicePurchase!;
     if (providerPayment.state !== "SUCCEEDED" || providerPayment.paid !== true) {
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
@@ -437,12 +541,15 @@ router.post("/webhook", async (req: Request, res: Response) => {
       providerPayment.amount.currency !== "RUB"
     ) {
       // TASK A-011: amount/currency mismatch -> quarantine, no entitlement.
+      // (Crypto adapters normalize overpay→accept inside their state mapper;
+      // underpay never reaches SUCCEEDED.)
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
         status: "FAILED",
         lastError: `Amount mismatch: provider ${providerPayment.amount.value} ${providerPayment.amount.currency}, expected ${expectedEntity.finalPrice} RUB`,
       });
       reqLog(req).error("payment_quarantined_amount_mismatch", {
-        provider_payment_id: object.id,
+        provider: provider.name,
+        provider_payment_id: ppId,
         provider_amount: providerPayment.amount.value,
         provider_currency: providerPayment.amount.currency,
         expected_amount: expectedEntity.finalPrice,
@@ -454,7 +561,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
     // TASK A-011: the provider payment reference must belong to THIS order.
     const existingPayment = await db.orm.public.Payment.where({
-      providerPaymentId: object.id,
+      providerPaymentId: ppId,
     }).first();
     if (existingPayment) {
       const boundRef = existingPayment.purchaseId ?? existingPayment.orderItemId;
@@ -468,10 +575,11 @@ router.post("/webhook", async (req: Request, res: Response) => {
       if (!belongsHere) {
         await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
           status: "FAILED",
-          lastError: `Payment ${object.id} is bound to order ${String(boundRef)}, webhook claims ${orderRef}`,
+          lastError: `Payment ${ppId} is bound to order ${String(boundRef)}, webhook claims ${orderRef}`,
         });
         reqLog(req).error("payment_quarantined_reference_mismatch", {
-          provider_payment_id: object.id,
+          provider: provider.name,
+          provider_payment_id: ppId,
           bound_order_ref: String(boundRef),
           claimed_order_ref: orderRef,
         });
@@ -482,7 +590,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
     // E-003: provider confirmed capture -> SUCCEEDED (before settlement).
     if (existingPayment) {
-      await transitionPaymentTo(object.id, "SUCCEEDED");
+      await transitionPaymentTo(ppId, "SUCCEEDED");
     }
 
     if (purchase) {
@@ -508,7 +616,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
         if (affectedCount(repaired) === 1) {
           reqLog(req).warn("purchase_canceled_then_succeeded_repaired", {
             purchase_id: purchase.id,
-            provider_payment_id: object.id,
+            provider_payment_id: ppId,
           });
         }
       }
@@ -516,7 +624,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
       const completion = await completeResourceOrderItem(purchase.orderItemId);
 
       if (existingPayment) {
-        await db.orm.public.Payment.where({ providerPaymentId: object.id }).update({
+        await db.orm.public.Payment.where({ providerPaymentId: ppId }).update({
           status: "SUCCEEDED",
           succeededAt: new Date().toISOString(),
         });
@@ -525,8 +633,8 @@ router.post("/webhook", async (req: Request, res: Response) => {
         // the provider dashboard): persist it bound to this purchase.
         await db.orm.public.Payment.create({
           purchaseId: purchase.id,
-          provider: "YUKASSA",
-          providerPaymentId: object.id,
+          provider: providerEnum,
+          providerPaymentId: ppId,
           amount: purchase.finalPrice,
           currency: "RUB",
           status: "SUCCEEDED",
@@ -535,7 +643,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
       }
 
       // E-003: entitlement granted + ledger settled -> SETTLED.
-      await transitionPaymentTo(object.id, "SETTLED");
+      await transitionPaymentTo(ppId, "SETTLED");
       incPaymentSuccess();
 
       const user = await db.orm.public.User.where({ id: purchase.buyerId }).first();
@@ -556,7 +664,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
       await markServicePurchasePaid(servicePurchase.id);
 
       if (existingPayment) {
-        await db.orm.public.Payment.where({ providerPaymentId: object.id }).update({
+        await db.orm.public.Payment.where({ providerPaymentId: ppId }).update({
           status: "SUCCEEDED",
           succeededAt: new Date().toISOString(),
         });
@@ -567,8 +675,8 @@ router.post("/webhook", async (req: Request, res: Response) => {
         await db.orm.public.Payment.create({
           purchaseId: null,
           orderItemId: serviceOrderItem?.orderItemId ?? null,
-          provider: "YUKASSA",
-          providerPaymentId: object.id,
+          provider: providerEnum,
+          providerPaymentId: ppId,
           amount: servicePurchase.finalPrice,
           currency: "RUB",
           status: "SUCCEEDED",
@@ -576,7 +684,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
         });
       }
 
-      await transitionPaymentTo(object.id, "SETTLED");
+      await transitionPaymentTo(ppId, "SETTLED");
       incPaymentSuccess();
     }
 
@@ -595,6 +703,29 @@ router.post("/webhook", async (req: Request, res: Response) => {
     reqLog(req).error("webhook_processing_failed", { error });
     res.status(500).json({ error: "Failed to process webhook" });
   }
+}
+
+// Legacy alias: providers configured against POST /payments/webhook keep
+// working — resolves the default provider (env PAYMENTS_DEFAULT_PROVIDER or
+// the single enabled one).
+router.post("/webhook", async (req: Request, res: Response) => {
+  const provider = resolveProvider();
+  if (!provider) {
+    res.status(503).json({ error: "Payment provider is not configured" });
+    return;
+  }
+  await handleProviderWebhook(req, res, provider);
+});
+
+// PLAN-016 P-002: per-provider webhook endpoint.
+router.post("/webhook/:provider", async (req: Request, res: Response) => {
+  const requested = String(req.params.provider).toUpperCase();
+  const provider = paymentProviders.get(requested);
+  if (!provider || !provider.isEnabled()) {
+    res.status(503).json({ error: "Payment provider is not configured" });
+    return;
+  }
+  await handleProviderWebhook(req, res, provider);
 });
 
 // POST /payments/cancel - cancel a PENDING payment at the provider
@@ -627,8 +758,9 @@ router.post(
         }
       }
 
-      const provider = yooKassaProvider();
-      if (!provider || !provider.supportsCapability("payment.cancel")) {
+      // PLAN-016 P-001: cancel at the payment's OWN provider, not the default.
+      const provider = paymentProviders.get(paymentRow.provider);
+      if (!provider || !provider.isEnabled() || !provider.supportsCapability("payment.cancel")) {
         res.status(503).json({ error: "Provider cancellation is not available" });
         return;
       }
@@ -734,7 +866,10 @@ if (process.env.NODE_ENV !== 'production') {
     standardRateLimit,
     withIdempotency("payments.simulate", async (req: AuthRequest, res: Response) => {
       try {
-        if (yooKassaProvider()) {
+        // PLAN-016 P-007: simulate stays a dev-only path — blocked whenever a
+        // battle (non-TEST) provider is enabled. The TEST dev stub is not a
+        // battle provider: its invoices are completed exactly by simulate.
+        if (paymentProviders.getEnabled().some((p) => p.name !== "TEST")) {
           res.status(403).json({ error: "Cannot simulate in production" });
           return;
         }

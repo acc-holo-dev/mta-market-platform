@@ -1,16 +1,16 @@
-﻿/**
+/**
  * PLAN B-003: Reconciliation Scheduler
  *
  * Periodic execution of the existing reconciliation system (REUSE: the
  * service in lib/reconciliation is NOT rewritten — this file only wires it
  * into the runtime and adds the daily cycle):
  *
- *   1. payment reconciliation   (YUKASSA, real provider re-fetch when enabled)
+ *   1. payment reconciliation   (every ENABLED provider — PLAN-016 P-006;
+ *                                real provider re-fetch where supported)
  *   2. refund reconciliation    (internal REFUNDED payments; provider refund
- *                                API arrives with Phase E — provider side is
- *                                reported as unavailable, no fake mismatches)
+ *                                API per capability — no fake mismatches)
  *   3. payout reconciliation    (internal SELLER_PAYOUT ledger; provider payout
- *                                source arrives with Phase F)
+ *                                source arrives with the payouts phase)
  *   4. provider event mismatch  (PaymentProviderEvent vs Payment)
  *   5. internal ledger check    (purchases vs seller balances — full scan)
  *
@@ -20,6 +20,11 @@
  */
 
 import { reconcile, checkProviderEventMismatches } from '../lib/reconciliation/service.js';
+import { paymentProviders } from '../lib/paymentProvider.js';
+// PLAN-016: register the provider implementations for the cycle.
+import '../lib/providers/payment-yookassa.js';
+import '../lib/providers/payment-tbank.js';
+import '../lib/providers/payment-crypto.js';
 import { reconcileAllPurchases } from '../lib/reconciliation/internal.js';
 import { logger } from '../lib/logger.js';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
@@ -74,55 +79,80 @@ export async function runReconciliationCycle(
 
   const steps: CycleStepResult[] = [];
 
-  // 1. Payment reconciliation
+  // PLAN-016 P-006: payment/refund reconciliation runs for every ENABLED
+  // provider, not a hardcoded one. Per-provider results are aggregated; a
+  // provider without a provider-side report source still reports its
+  // internalCount honestly (existing service mechanism, no fake mismatches).
+  const enabledProviders = paymentProviders.getEnabled().map((p) => p.name);
+
+  // 1. Payment reconciliation (per enabled provider)
   await runStep(steps, "payment_reconciliation", async () => {
-    const result = await reconcile({
-      provider: 'YUKASSA',
-      reportType: 'PAYMENT',
-      periodStart,
-      periodEnd
-    });
-    return {
-      reportId: result.reportId,
-      status: result.status === 'mismatches_found' ? 'mismatches_found' : 'completed',
-      internalCount: result.internalCount,
-      providerCount: result.providerCount,
-      mismatchCount: result.mismatches.length,
-    };
+    let internalCount: number | undefined = 0;
+    let providerCount: number | undefined = 0;
+    let mismatchCount: number | undefined = 0;
+    let reportId: string | undefined;
+    let status: CycleStepResult["status"] = "completed";
+    for (const providerName of enabledProviders) {
+      const result = await reconcile({
+        provider: providerName,
+        reportType: "PAYMENT",
+        periodStart,
+        periodEnd,
+      });
+      reportId = result.reportId;
+      if (result.status === "mismatches_found") status = "mismatches_found";
+      internalCount += result.internalCount;
+      providerCount += result.providerCount;
+      mismatchCount += result.mismatches.length;
+    }
+    return { reportId, status, internalCount, providerCount, mismatchCount };
   });
 
-  // 2. Refund reconciliation (provider refund source: Phase E)
+  // 2. Refund reconciliation (internal REFUNDED payments; provider refund API
+  // per provider when it exposes one — crypto adapters do not).
   await runStep(steps, "refund_reconciliation", async () => {
-    const result = await reconcile({
-      provider: 'YUKASSA',
-      reportType: 'REFUND',
-      periodStart,
-      periodEnd
-    });
-    return {
-      reportId: result.reportId,
-      status: result.status === 'mismatches_found' ? 'mismatches_found' : 'completed',
-      internalCount: result.internalCount,
-      providerCount: result.providerCount,
-      mismatchCount: result.mismatches.length,
-    };
+    let internalCount: number | undefined = 0;
+    let providerCount: number | undefined = 0;
+    let mismatchCount: number | undefined = 0;
+    let reportId: string | undefined;
+    let status: CycleStepResult["status"] = "completed";
+    for (const providerName of enabledProviders) {
+      const result = await reconcile({
+        provider: providerName,
+        reportType: "REFUND",
+        periodStart,
+        periodEnd,
+      });
+      if (result.status === "mismatches_found") status = "mismatches_found";
+      internalCount += result.internalCount;
+      providerCount += result.providerCount;
+      mismatchCount += result.mismatches.length;
+    }
+    return { reportId, status, internalCount, providerCount, mismatchCount };
   });
 
-  // 3. Payout reconciliation (provider payout source: Phase F)
+  // 3. Payout reconciliation (internal SELLER_PAYOUT ledger; provider payout
+  // sources arrive with the payouts phase — reported honestly as internal
+  // counts).
   await runStep(steps, "payout_reconciliation", async () => {
-    const result = await reconcile({
-      provider: 'YUKASSA',
-      reportType: 'PAYOUT',
-      periodStart,
-      periodEnd
-    });
-    return {
-      reportId: result.reportId,
-      status: result.status === 'mismatches_found' ? 'mismatches_found' : 'completed',
-      internalCount: result.internalCount,
-      providerCount: result.providerCount,
-      mismatchCount: result.mismatches.length,
-    };
+    let internalCount: number | undefined = 0;
+    let providerCount: number | undefined = 0;
+    let mismatchCount: number | undefined = 0;
+    let reportId: string | undefined;
+    let status: CycleStepResult["status"] = "completed";
+    for (const providerName of enabledProviders) {
+      const result = await reconcile({
+        provider: providerName,
+        reportType: "PAYOUT",
+        periodStart,
+        periodEnd,
+      });
+      if (result.status === "mismatches_found") status = "mismatches_found";
+      internalCount += result.internalCount;
+      providerCount += result.providerCount;
+      mismatchCount += result.mismatches.length;
+    }
+    return { reportId, status, internalCount, providerCount, mismatchCount };
   });
 
   // 4. Provider event mismatch
@@ -259,23 +289,30 @@ export function startReconciliationScheduler(opts?: {
 
 /**
  * Run reconciliation for a specific date range (backfill / manual runs).
+ * PLAN-016 P-001/P-006: no hardcoded provider — with no explicit provider the
+ * backfill covers every ENABLED provider (same contract as the cycle).
  */
 export async function runReconciliationForDateRange(
   startDate: Date,
   endDate: Date,
-  provider: string = 'YUKASSA'
+  provider?: string
 ): Promise<void> {
+  const providerNames =
+    provider && provider.length > 0 ? [provider.toUpperCase()] : paymentProviders.getEnabled().map((p) => p.name);
+
   logger.info("reconciliation_backfill_started", {
-    provider,
+    provider: providerNames.join(","),
     period_start: startDate.toISOString(),
     period_end: endDate.toISOString(),
   });
 
-  await reconcile({
-    provider,
-    reportType: 'PAYMENT',
-    periodStart: startDate,
-    periodEnd: endDate
-  });
+  for (const providerName of providerNames) {
+    await reconcile({
+      provider: providerName,
+      reportType: 'PAYMENT',
+      periodStart: startDate,
+      periodEnd: endDate
+    });
+  }
   await checkProviderEventMismatches(startDate, endDate);
 }

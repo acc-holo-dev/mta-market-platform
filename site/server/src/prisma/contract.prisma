@@ -397,6 +397,9 @@ enum PaymentProvider {
   YUKASSA
   STRIPE
   TEST
+  // PLAN-016: multi-provider payments (P-001/C3).
+  TBANK
+  CRYPTO
 }
 
 enum PaymentStatus {

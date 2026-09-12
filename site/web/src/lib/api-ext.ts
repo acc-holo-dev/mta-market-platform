@@ -311,11 +311,6 @@ export async function postReview(slug: string, rating: number, comment: string) 
   return data;
 }
 
-export async function patchReview(slug: string, rating: number, comment: string) {
-  const { data } = await api.patch<Review>(`/resources/${slug}/reviews`, { rating, comment });
-  return data;
-}
-
 export async function createPurchase(resourceSlug: string, discountCode?: string) {
   const { data } = await api.post<
     | {
@@ -335,11 +330,21 @@ export async function createPurchase(resourceSlug: string, discountCode?: string
   return data;
 }
 
-export async function createPayment(purchaseId: string) {
-  const { data } = await api.post<{ paymentUrl?: string; paymentId?: string; message?: string }>(
-    "/payments/create",
-    { purchaseId }
-  );
+export async function createPayment(purchaseId: string, provider?: string) {
+  const { data } = await api.post<{
+    paymentUrl?: string;
+    paymentId?: string;
+    provider?: string;
+    confirmation?: {
+      type: "redirect" | "crypto_invoice";
+      redirectUrl?: string;
+      payUrl?: string;
+      address?: string;
+      memo?: string;
+      expiresAt?: string;
+    } | null;
+    message?: string;
+  }>("/payments/create", provider ? { purchaseId, provider } : { purchaseId });
   return data;
 }
 
@@ -725,11 +730,6 @@ export async function fetchServer(slug: string): Promise<ServerDetail> {
   return data;
 }
 
-export async function fetchMyServers() {
-  const { data } = await api.get<{ data: ServerFull[] }>("/servers/my");
-  return data.data;
-}
-
 export interface ServerManage {
   server: ServerFull & { integrationTokenIssuedAt?: string | null; verificationNote?: string | null };
   staffRole: string;
@@ -770,11 +770,6 @@ export async function updateServer(slug: string, patch: Record<string, unknown>)
 
 export async function updateServerPrivacy(slug: string, patch: Record<string, boolean>) {
   const { data } = await api.patch<ServerFull>(`/servers/${slug}/privacy`, patch);
-  return data;
-}
-
-export async function archiveServer(slug: string) {
-  const { data } = await api.delete(`/servers/${slug}`);
   return data;
 }
 
@@ -916,11 +911,6 @@ export async function createServerNews(
   return data;
 }
 
-export async function updateServerNews(slug: string, id: string, patch: Record<string, unknown>) {
-  const { data } = await api.patch<ServerNewsItem>(`/servers/${slug}/news/${id}`, patch);
-  return data;
-}
-
 export async function publishServerNews(
   slug: string,
   id: string,
@@ -1022,11 +1012,6 @@ export async function createServerReview(slug: string, rating: number, comment?:
   return data;
 }
 
-export async function deleteServerReview(slug: string) {
-  const { data } = await api.delete(`/servers/${slug}/reviews`);
-  return data;
-}
-
 // ---------- Community / forum ----------
 export interface ForumCategory {
   id: string;
@@ -1066,11 +1051,6 @@ export interface CommunityHub {
 export async function fetchCommunityHub(): Promise<CommunityHub> {
   const { data } = await api.get<CommunityHub>("/community");
   return data;
-}
-
-export async function fetchForumCategories() {
-  const { data } = await api.get<{ data: ForumCategory[] }>("/community/categories");
-  return data.data;
 }
 
 export async function fetchCategoryThreads(slug: string, page = 1) {
@@ -1698,3 +1678,24 @@ export interface DashboardNow {
     items: { threadId: string; threadTitle: string | null; createdAt: string }[];
   };
 }
+
+// =====================================================================
+// PLAN-016: Identity providers & multi-provider payments (web surface)
+// =====================================================================
+
+// =====================================================================
+// PLAN-016 (D-008): Identity providers & multi-provider payments.
+// Доменная логика переехала в lib/api/* (identity.ts, payments.ts);
+// здесь — реэкспорты, чтобы импорты по всему app не ломались.
+// =====================================================================
+
+export {
+  fetchAuthProviders,
+  startIdentityLink,
+  unlinkIdentity,
+  changePassword,
+} from "./api/identity";
+export type { AuthProviderInfo } from "./api/identity";
+
+export { fetchPaymentProviders } from "./api/payments";
+export type { PaymentProviderInfo } from "./api/payments";

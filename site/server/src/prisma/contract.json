@@ -665,6 +665,14 @@
               {
                 "name": "TEST",
                 "value": "TEST"
+              },
+              {
+                "name": "TBANK",
+                "value": "TBANK"
+              },
+              {
+                "name": "CRYPTO",
+                "value": "CRYPTO"
               }
             ]
           },
@@ -15245,8 +15253,8 @@
             "payment": {
               "checks": [
                 {
-                  "expression": "\"provider\" IN ('YUKASSA', 'STRIPE', 'TEST')",
-                  "name": "payment_provider_check_7f539d22",
+                  "expression": "\"provider\" IN ('YUKASSA', 'STRIPE', 'TEST', 'TBANK', 'CRYPTO')",
+                  "name": "payment_provider_check_e8ce0afb",
                   "prefix": "payment_provider_check"
                 },
                 {
@@ -15394,8 +15402,8 @@
             "paymentProviderEvent": {
               "checks": [
                 {
-                  "expression": "\"provider\" IN ('YUKASSA', 'STRIPE', 'TEST')",
-                  "name": "paymentProviderEvent_provider_check_7f539d22",
+                  "expression": "\"provider\" IN ('YUKASSA', 'STRIPE', 'TEST', 'TBANK', 'CRYPTO')",
+                  "name": "paymentProviderEvent_provider_check_e8ce0afb",
                   "prefix": "paymentProviderEvent_provider_check"
                 },
                 {
@@ -20269,7 +20277,9 @@
               "values": [
                 "YUKASSA",
                 "STRIPE",
-                "TEST"
+                "TEST",
+                "TBANK",
+                "CRYPTO"
               ]
             },
             "PaymentStatus": {
@@ -20522,7 +20532,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "b1dbf93b4e9242d6c20697c3044b1bcff174d75274cfe580a57e91be286a8a2b"
+    "storageHash": "67949e74f189c62a46b39b2c8747ce26f14b41ad8ee2b923d2622758b7bf6858"
   },
   "execution": {
     "executionHash": "50dff0b9d260a839f52706c89f0b065b7d9629457e7ddbb5af31983c20f6af8c",

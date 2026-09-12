@@ -1,4 +1,4 @@
-﻿// PLAN E-003: payment state machine.
+// PLAN E-003: payment state machine.
 // Canonical transitions; every Payment row mutation goes through assertTransition.
 // Actual provider-specific transitions may be richer — provider implementations
 // map their native states onto these.
@@ -36,16 +36,6 @@ export function assertTransition(from: PaymentState, to: PaymentState): void {
   }
 }
 
-/**
- * Map a YooKassa native payment status onto the neutral state vocabulary.
- * Shared by the YooKassa provider implementation and reconciliation.
- */
-export function fromYooKassaStatus(status: string): PaymentState {
-  const map: Record<string, PaymentState> = {
-    succeeded: "SUCCEEDED",
-    canceled: "CANCELED",
-    pending: "PENDING",
-    waiting_for_capture: "PENDING",
-  };
-  return map[status] ?? "PENDING";
-}
+// PLAN-016 P-003: provider-specific status mappers (fromYooKassaStatus etc.)
+// live in their provider files; this module keeps only the neutral
+// vocabulary and the canonical transition table.

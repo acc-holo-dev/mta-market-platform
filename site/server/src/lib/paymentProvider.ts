@@ -52,10 +52,27 @@ export interface ProviderRefundResult {
   amount: PaymentAmount;
 }
 
+/**
+ * PLAN-016 P-004: provider-neutral confirmation descriptor. A redirect PSP
+ * (YooKassa/T-Bank) sends the buyer to `redirectUrl`; a crypto invoice
+ * provider exposes the invoice surface (payment page/address, memo, TTL) and
+ * is confirmed by webhook + `payment.poll` re-fetch.
+ */
+export interface ProviderConfirmation {
+  type: "redirect" | "crypto_invoice";
+  redirectUrl?: string;
+  payUrl?: string;
+  address?: string;
+  memo?: string;
+  expiresAt?: string;
+}
+
 export interface ProviderWebhookContext {
   req: Request;
   /** Raw parsed body. */
   body: unknown;
+  /** Raw request bytes (when the json body parser stashed them) — HMAC bases. */
+  rawBody?: Buffer;
   sourceIp: string;
 }
 
@@ -63,7 +80,22 @@ export type Capability =
   | "payment.create"
   | "payment.verification"
   | "payment.cancel"
-  | "refund.create";
+  | "refund.create"
+  /** PLAN-016 P-004: invoice-style providers confirm by polling getPayment. */
+  | "payment.poll";
+
+/** Normalized webhook event (PLAN-016 P-002): the neutral handler dispatches
+ * on this shape; each provider maps its wire format in parseWebhook. */
+export interface ParsedWebhook {
+  /** Idempotency key inside [provider, providerEventId, eventType]. */
+  providerEventId: string;
+  /** Free-form; handlers only care about "payment.succeeded"/"payment.canceled". */
+  eventType: string;
+  providerPaymentId: string;
+  /** Internal order reference (Purchase/ServicePurchase id), when present. */
+  orderRef?: string;
+  metadata?: Record<string, string>;
+}
 
 /**
  * E-001: provider-neutral payment provider interface.
@@ -77,6 +109,8 @@ export interface IPaymentProvider {
     providerPaymentId: string;
     state: PaymentState;
     redirectUrl?: string;
+    /** PLAN-016: structured confirmation (redirect vs crypto invoice). */
+    confirmation?: ProviderConfirmation;
   }>;
 
   getPayment(providerPaymentId: string): Promise<ProviderPayment>;
@@ -95,11 +129,26 @@ export interface IPaymentProvider {
    * signature — whatever the actual provider protocol requires). Business
    * verification (provider re-fetch) happens in the route/service layer.
    * The structured result lets routes map failure reasons to precise HTTP
-   * statuses (403 for untrusted source, 401 for bad credentials).
+   * statuses (403 for untrusted source, 401 for bad credentials, 400 for a
+   * broken signature payload — PLAN-016 adds "signature").
    */
   verifyWebhook(
     ctx: ProviderWebhookContext
-  ): { ok: true } | { ok: false; reason: "ip" | "auth" };
+  ): { ok: true } | { ok: false; reason: "ip" | "auth" | "signature" };
+
+  /**
+   * PLAN-016 P-002: map the provider wire format onto the neutral event
+   * shape. Returns null when the payload is not recognizable (HTTP 400).
+   * Business truth still comes from getPayment re-fetch — parsing only
+   * routes the event and its idempotency key.
+   */
+  parseWebhook(ctx: ProviderWebhookContext): {
+    providerEventId: string;
+    eventType: string;
+    providerPaymentId: string;
+    orderRef?: string;
+    metadata?: Record<string, string>;
+  } | null;
 }
 
 /**

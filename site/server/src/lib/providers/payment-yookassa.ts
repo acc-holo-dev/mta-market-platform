@@ -1,4 +1,4 @@
-﻿// PLAN E-002/E-006/E-008: canonical YooKassa implementation of IPaymentProvider.
+// PLAN E-002/E-006/E-008: canonical YooKassa implementation of IPaymentProvider.
 // Wraps the YooKassa HTTP transport (lib/yookassa.ts) — the only place where
 // YooKassa specifics meet the neutral payment layer. Verification follows the
 // actual provider protocol: IP allowlist + HTTP Basic auth on the transport
@@ -13,15 +13,17 @@ import {
   YOOKASSA_ENABLED,
   YOOKASSA_SHOP_ID,
   type YooKassaPayment,
+  type YooKassaWebhook,
 } from "../yookassa.js";
 import { isYooKassaIP, verifyYooKassaAuth } from "../yookassaWebhook.js";
-import { fromYooKassaStatus, type PaymentState } from "../paymentStateMachine.js";
+import { type PaymentState } from "../paymentStateMachine.js";
 import type {
   CreatePaymentRequest,
   IPaymentProvider,
   ProviderPayment,
   ProviderRefundResult,
   ProviderWebhookContext,
+  ParsedWebhook,
   Capability,
 } from "../paymentProvider.js";
 
@@ -35,6 +37,22 @@ function toAmount(amount: { value: string; currency: string }): {
   };
 }
 
+/**
+ * PLAN-016 P-003: the YooKassa status mapper lives in the provider file —
+ * the neutral paymentStateMachine keeps only the neutral vocabulary.
+ * Conservative by design: an unknown native status stays PENDING (verified
+ * by re-fetch; never guessed to a terminal state).
+ */
+export function fromYooKassaStatus(status: string): PaymentState {
+  const map: Record<string, PaymentState> = {
+    succeeded: "SUCCEEDED",
+    canceled: "CANCELED",
+    pending: "PENDING",
+    waiting_for_capture: "PENDING",
+  };
+  return map[status] ?? "PENDING";
+}
+
 export class YooKassaPaymentProvider implements IPaymentProvider {
   readonly name = "YUKASSA";
 
@@ -46,9 +64,9 @@ export class YooKassaPaymentProvider implements IPaymentProvider {
     switch (capability) {
       case "payment.create":
       case "payment.verification":
-      case "refund.create":
-        return this.isEnabled();
       case "payment.cancel":
+      case "payment.poll":
+      case "refund.create":
         return this.isEnabled();
     }
   }
@@ -112,7 +130,7 @@ export class YooKassaPaymentProvider implements IPaymentProvider {
 
   verifyWebhook(
     ctx: ProviderWebhookContext
-  ): { ok: true } | { ok: false; reason: "ip" | "auth" } {
+  ): { ok: true } | { ok: false; reason: "ip" | "auth" | "signature" } {
     if (!isYooKassaIP(ctx.sourceIp)) {
       return { ok: false, reason: "ip" };
     }
@@ -123,6 +141,23 @@ export class YooKassaPaymentProvider implements IPaymentProvider {
       return { ok: false, reason: "auth" };
     }
     return { ok: true };
+  }
+
+  /**
+   * PLAN-016 P-002: YooKassa wire format → neutral event shape. Business
+   * truth is still re-fetched by the route handler (getPayment); this only
+   * routes the event and its idempotency key.
+   */
+  parseWebhook(ctx: ProviderWebhookContext): ParsedWebhook | null {
+    const webhook = ctx.body as YooKassaWebhook | undefined;
+    if (!webhook?.event || !webhook.object?.id) return null;
+    return {
+      providerEventId: webhook.object.id,
+      eventType: webhook.event,
+      providerPaymentId: webhook.object.id,
+      orderRef: webhook.object.metadata?.order_id,
+      metadata: webhook.object.metadata,
+    };
   }
 }
 

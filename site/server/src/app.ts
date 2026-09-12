@@ -1,4 +1,4 @@
-﻿// TASK A-001/A-002/A-003/A-006: Express app factory.
+// TASK A-001/A-002/A-003/A-006: Express app factory.
 // Extracted from index.ts so integration tests can boot the app
 // without binding a port (supertest) and so middleware wiring is
 // explicit and testable.
@@ -77,7 +77,16 @@ export function createApp(): Express {
     app.set("trust proxy", 1);
   }
 
-  app.use(express.json({ limit: "10mb" }));
+  // PLAN-016 P-002: stash raw bytes for HMAC webhook verification while
+  // keeping the global JSON body parsing contract unchanged.
+  app.use(
+    express.json({
+      limit: "10mb",
+      verify: (req, _res, buf) => {
+        (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+      },
+    })
+  );
   app.use(cookieParser());
   // PLAN B-007: request_id on every request (header + logs).
   app.use(requestIdMiddleware);
