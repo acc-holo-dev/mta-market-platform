@@ -13,7 +13,7 @@ import path from "path";
 import { createApp } from "@server/app";
 import { db } from "@server/prisma/db";
 import { generateAccessToken } from "@server/lib/jwt";
-import { resetTestEntities, createTestUser } from "@tests/tools/helpers/db-reset";
+import { resetTestEntities, resetUsersByUsernamePrefix, createTestUser } from "@tests/tools/helpers/db-reset";
 import { buildZip } from "@tests/tools/helpers/zip";
 
 const app = request(createApp());
@@ -56,6 +56,9 @@ beforeAll(async () => {
 afterAll(async () => {
   if (!dbAvailable) return;
   await resetTestEntities();
+  // PLAN-016 D-013: the API-created `p1*` users are outside the fixed test
+  // UUID range — remove them in the same FK-safe order.
+  await resetUsersByUsernamePrefix("p1");
 });
 
 describe.skipIf(!dbAvailable)("L-001: password authentication", () => {

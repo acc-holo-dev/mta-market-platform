@@ -10,6 +10,24 @@ export async function resetTestEntities(): Promise<void> {
   const testUserIds = new Set(
     allUsers.filter((u) => u.id.startsWith(TEST_ID_PREFIX)).map((u) => u.id)
   );
+  await deleteEntitiesForUserIds(testUserIds);
+}
+
+/**
+ * PLAN-016 D-013: cleanup for users created through the API by test files
+ * (plan001 registers `p1user_*`/`p1buyer_*`/… with random UUIDs — outside the
+ * fixed test range). Same FK-safe order as the fixed-range reset.
+ */
+export async function resetUsersByUsernamePrefix(usernamePrefix: string): Promise<void> {
+  const allUsers = await db.orm.public.User.where({}).all();
+  const matched = new Set(
+    allUsers.filter((u) => (u.username ?? "").startsWith(usernamePrefix)).map((u) => u.id)
+  );
+  await deleteEntitiesForUserIds(matched);
+}
+
+/** FK-safe entity deletion for an arbitrary set of user ids. */
+async function deleteEntitiesForUserIds(testUserIds: Set<string>): Promise<void> {
 
   // 1. Purchases (cascade: license -> installation -> lease)
   try {
@@ -69,9 +87,10 @@ export async function resetTestEntities(): Promise<void> {
     console.warn("[reset] balances:", e instanceof Error ? e.message : e);
   }
 
-  // 5. Payment provider events of the test range
+  // 5. Payment provider events of the test range — PLAN-016: ALL providers,
+  // not a single hardcoded one.
   try {
-    const events = await db.orm.public.PaymentProviderEvent.where({ provider: "YUKASSA" }).all();
+    const events = await db.orm.public.PaymentProviderEvent.where({}).all();
     for (const ev of events) {
       // Test events reference test purchases which are already gone
       const stillThere = await db.orm.public.Purchase.where({ id: ev.objectId }).first().catch(() => null);

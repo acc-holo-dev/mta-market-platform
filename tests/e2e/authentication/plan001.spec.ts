@@ -45,6 +45,35 @@ test.describe.serial("PLAN-001 full product cycle", () => {
     expect(adminToken).toBeTruthy();
   });
 
+  // PLAN-016 D-013 (PLAN-006 §17-18): remove the entities this run created
+  // so repeated runs do not accumulate `e2e_*` rows. Resources cascade with
+  // the seller; RESTRICT children (purchases/orders/transactions/…) are
+  // deleted first. e2e-admin is never touched.
+  test.afterAll(async () => {
+    const users = `('${BUYER}', '${SELLER}', 'e2e_login_${RUN}')`;
+    try {
+      const ids = await psql(
+        `SELECT string_agg('''' || id || '''', ',') FROM "user" WHERE username IN (${users})`
+      );
+      if (!ids) return;
+      await psql(`DELETE FROM "financialTransaction" WHERE "userId" IN (${ids})`);
+      await psql(`DELETE FROM "purchase" WHERE "buyerId" IN (${ids})`);
+      await psql(`DELETE FROM "order" WHERE "buyerId" IN (${ids})`);
+      await psql(`DELETE FROM "servicePurchase" WHERE "buyerId" IN (${ids})`);
+      await psql(`DELETE FROM "discountCampaign" WHERE "sellerId" IN (${ids})`);
+      // Publisher keys are RESTRICT-referenced by artifact signatures.
+      await psql(
+        `DELETE FROM "artifactSignature" WHERE "keyId" IN (SELECT id FROM "publisherKey" WHERE "sellerId" IN (${ids}))`
+      );
+      await psql(`DELETE FROM "publisherKey" WHERE "sellerId" IN (${ids})`);
+      await psql(`DELETE FROM "user" WHERE id IN (${ids})`);
+    } catch (e) {
+      // Cleanup is hygiene, not an assertion — a failed cleanup must not
+      // fail the run report.
+      console.warn("[plan001 afterAll] cleanup skipped:", String(e).slice(0, 200));
+    }
+  });
+
   // ------------------------------------------------------------------
   // 1. Registration / login / profile / balance / session
   // ------------------------------------------------------------------
@@ -418,8 +447,9 @@ test.describe.serial("PLAN-001 full product cycle", () => {
 
     await page.getByRole("button", { name: "Купить сейчас" }).click();
 
-    // YooKassa is disabled in the acceptance env: the checkout stays pending.
-    await expect(page.getByText("Ожидает оплаты")).toBeVisible({ timeout: 20_000 });
+    // YooKassa is disabled in the acceptance env: the checkout stays pending
+    // (with the dev TEST stub the crypto-invoice block may render next to it).
+    await expect(page.getByText("Ожидает оплаты", { exact: true })).toBeVisible({ timeout: 20_000 });
 
     const purchaseId = await psql(
       `SELECT pu.id FROM purchase pu JOIN "user" u ON u.id = pu."buyerId" JOIN resource r ON r.id = pu."resourceId" WHERE u.username = '${BUYER}' AND r.slug = '${PAID_SLUG}'`
