@@ -1,0 +1,170 @@
+[
+  {
+    "id": "dropCheckConstraint.payment.payment_provider_check_7f539d22",
+    "label": "Drop check constraint \"payment_provider_check_7f539d22\" on \"payment\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "payment_provider_check_7f539d22",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payment_provider_check_7f539d22\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_provider_check_7f539d22",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"payment_provider_check_7f539d22\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" DROP CONSTRAINT \"payment_provider_check_7f539d22\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payment_provider_check_7f539d22\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_provider_check_7f539d22",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dropCheckConstraint.paymentProviderEvent.paymentProviderEvent_provider_check_7f539d22",
+    "label": "Drop check constraint \"paymentProviderEvent_provider_check_7f539d22\" on \"paymentProviderEvent\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "paymentProviderEvent_provider_check_7f539d22",
+        "table": "paymentProviderEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"paymentProviderEvent_provider_check_7f539d22\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentProviderEvent_provider_check_7f539d22",
+          "public",
+          "\"public\".\"paymentProviderEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"paymentProviderEvent_provider_check_7f539d22\"",
+        "sql": "ALTER TABLE \"public\".\"paymentProviderEvent\" DROP CONSTRAINT \"paymentProviderEvent_provider_check_7f539d22\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"paymentProviderEvent_provider_check_7f539d22\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentProviderEvent_provider_check_7f539d22",
+          "public",
+          "\"public\".\"paymentProviderEvent\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.payment.payment_provider_check_e8ce0afb",
+    "label": "Add check constraint \"payment_provider_check_e8ce0afb\" on \"payment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "payment_provider_check_e8ce0afb",
+        "table": "payment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"payment_provider_check_e8ce0afb\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_provider_check_e8ce0afb",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"payment_provider_check_e8ce0afb\"",
+        "sql": "ALTER TABLE \"public\".\"payment\" ADD CONSTRAINT \"payment_provider_check_e8ce0afb\" CHECK (\"provider\" IN ('YUKASSA', 'STRIPE', 'TEST', 'TBANK', 'CRYPTO'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"payment_provider_check_e8ce0afb\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "payment_provider_check_e8ce0afb",
+          "public",
+          "\"public\".\"payment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.paymentProviderEvent.paymentProviderEvent_provider_check_e8ce0afb",
+    "label": "Add check constraint \"paymentProviderEvent_provider_check_e8ce0afb\" on \"paymentProviderEvent\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "paymentProviderEvent_provider_check_e8ce0afb",
+        "table": "paymentProviderEvent"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"paymentProviderEvent_provider_check_e8ce0afb\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentProviderEvent_provider_check_e8ce0afb",
+          "public",
+          "\"public\".\"paymentProviderEvent\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"paymentProviderEvent_provider_check_e8ce0afb\"",
+        "sql": "ALTER TABLE \"public\".\"paymentProviderEvent\" ADD CONSTRAINT \"paymentProviderEvent_provider_check_e8ce0afb\" CHECK (\"provider\" IN ('YUKASSA', 'STRIPE', 'TEST', 'TBANK', 'CRYPTO'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"paymentProviderEvent_provider_check_e8ce0afb\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "paymentProviderEvent_provider_check_e8ce0afb",
+          "public",
+          "\"public\".\"paymentProviderEvent\""
+        ]
+      }
+    ]
+  }
+]
