@@ -40,7 +40,7 @@ export function Footer() {
   const year = new Date().getFullYear();
   return (
     <footer className="border-t border-line bg-surface/60">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1400px] px-4 py-12 sm:px-6">
         <div className="grid gap-10 md:grid-cols-4">
           {/* Brand column */}
           <div>
@@ -51,8 +51,8 @@ export function Footer() {
               MTA Market
             </p>
             <p className="mt-3 text-sm leading-relaxed text-content-secondary max-w-xs">
-              Маркетплейс серверных ресурсов для MTA:SA — скрипты, карты,
-              модели и гейммоды с лицензированием и DRM-защитой.
+              Единая экосистема MTA:SA — маркет ресурсов и услуг, серверы,
+              новости и сообщество, с лицензированием и DRM-защитой покупок.
             </p>
           </div>
 
