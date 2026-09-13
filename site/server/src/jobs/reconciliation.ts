@@ -238,7 +238,7 @@ async function runStep(
 export function startReconciliationScheduler(opts?: {
   intervalMs?: number;
   initialDelayMs?: number;
-}): { stop: () => void } {
+}): { stop: () => void; idle: () => Promise<void> } {
   const disabled =
     process.env.NODE_ENV === 'test' || process.env.RECONCILIATION_ENABLED === 'false';
 
@@ -246,7 +246,7 @@ export function startReconciliationScheduler(opts?: {
     logger.info("reconciliation_scheduler_disabled", {
       reason: process.env.RECONCILIATION_ENABLED === 'false' ? 'env_disabled' : 'test_env',
     });
-    return { stop: () => undefined };
+    return { stop: () => undefined, idle: async () => undefined };
   }
 
   const intervalMs =
