@@ -19,6 +19,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Change detection
+    runs-on: ubuntu-latest
+    # PLAN-020 O-003: path-aware execution for the two heaviest gates. The
+    # full blocking gate is unchanged on push/workflow_call (release safety);
+    # on pull requests the native module build and the browser E2E suite run
+    # only when their owning paths changed.
+    outputs:
+      module: ${{ steps.filter.outputs.module }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - name: Compute changed paths
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "module=true" >> "$GITHUB_OUTPUT"
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.number }}/files" \
+            --paginate --jq '.[].filename')
+          echo "$changed" > /tmp/changed.txt
+          if grep -qE '^(module/|CMakeLists\.txt|CMakePresets\.json|\.github/workflows/(module|ci)\.yml$)' /tmp/changed.txt; then
+            echo "module=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "module=false" >> "$GITHUB_OUTPUT"
+          fi
+          if grep -qE '^(site/|tests/|package\.json|pnpm-lock\.yaml|playwright\.config\.ts|\.github/workflows/(e2e|ci)\.yml$)' /tmp/changed.txt; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+          fi
+
   validate:
     name: Validate
     uses: ./.github/workflows/validate.yml
@@ -45,6 +80,8 @@ jobs:
 
   module:
     name: Module
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.module == 'true'
     uses: ./.github/workflows/module.yml
     permissions:
       contents: read
@@ -57,6 +94,8 @@ jobs:
 
   e2e:
     name: E2E
+    needs: [changes]
+    if: github.event_name != 'pull_request' || needs.changes.outputs.e2e == 'true'
     uses: ./.github/workflows/e2e.yml
     permissions:
       contents: read

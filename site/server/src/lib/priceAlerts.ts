@@ -339,6 +339,9 @@ async function deliverVersionRelease(
         body: version.changelog ? version.changelog.slice(0, 200) : undefined,
         entityType: "resourceVersion",
         entityId: version.id,
+        // PLAN-020 E-002/E-002b: one notification per (recipient, version)
+        // across ALL delivery paths (admin route, outbox dispatch, CRON sweep).
+        dedupKey: `RESOURCE_UPDATE:resourceVersion:${version.id}:${recipientId}`,
       }))
     );
   } catch (error) {

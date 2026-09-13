@@ -6918,6 +6918,13 @@
                   "kind": "scalar"
                 }
               },
+              "dedupKey": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "entityId": {
                 "nullable": true,
                 "type": {
@@ -6998,6 +7005,9 @@
                 },
                 "createdAt": {
                   "column": "createdAt"
+                },
+                "dedupKey": {
+                  "column": "dedupKey"
                 },
                 "entityId": {
                   "column": "entityId"
@@ -19084,6 +19094,11 @@
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
+                "dedupKey": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "entityId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -19178,7 +19193,13 @@
                   "id"
                 ]
               },
-              "uniques": []
+              "uniques": [
+                {
+                  "columns": [
+                    "dedupKey"
+                  ]
+                }
+              ]
             },
             "order": {
               "checks": [
@@ -25614,7 +25635,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "fae5ec8b3bd61d7a252362bafa8271495f8f9c4dc55393ea790a41ff5c33b930"
+    "storageHash": "9ddc439ca7f019655410e2c66bb39dae214fbae25fa0f42c49d62eaab8b370e4"
   },
   "execution": {
     "executionHash": "6f0034f1e817f016aeff619a8bd2da3ec2c2c9f6ce231e46d3bbf9f3a35cbf6a",

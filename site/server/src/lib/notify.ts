@@ -1,8 +1,9 @@
-﻿// PLAN-005 M: notification foundation. Recipient-owned notification objects
+// PLAN-005 M: notification foundation. Recipient-owned notification objects
 // with a stable type vocabulary (M-002). Creation is best-effort: a follower
 // notification burst must never fail the triggering request.
 import { db } from "../prisma/db.js";
 import { logger } from "./logger.js";
+import { isUniqueViolation } from "./dbErrors.js";
 
 export type NotificationType =
   | "SERVER_NEWS"
@@ -22,6 +23,8 @@ export interface NotificationInput {
   body?: string | null;
   entityType?: string | null;
   entityId?: string | null;
+  /** PLAN-020 E-002: DB-level idempotency key (unique index); see contract. */
+  dedupKey?: string | null;
 }
 
 /**
@@ -55,9 +58,17 @@ export async function createNotifications(
         body: n.body ?? null,
         entityType: n.entityType ?? null,
         entityId: n.entityId ?? null,
+        dedupKey: n.dedupKey ?? null,
       });
       created += 1;
     } catch (error) {
+      if (isUniqueViolation(error)) {
+        // PLAN-020 E-002: a duplicate dedupKey means another delivery path
+        // (admin route / outbox worker / CRON sweep) already notified this
+        // (recipient, entity) — a benign skip, not a failure.
+        logger.debug("notification_dedup_skipped", { recipient_id: n.recipientId });
+        continue;
+      }
       logger.error("notification_create_failed", { recipient_id: n.recipientId, error });
     }
   }

@@ -1,4 +1,4 @@
-﻿// PLAN-008 Workstream D: delivery helpers for the Follow Expansion.
+// PLAN-008 Workstream D: delivery helpers for the Follow Expansion.
 // Events are delivered synchronously inside the mutations (no jobs), with
 // recipient dedup — a user who is simultaneously a buyer, resource follower
 // and creator follower receives exactly one notification.
@@ -53,6 +53,8 @@ interface NotificationDraft {
   body?: string;
   entityType?: string;
   entityId?: string;
+  /** PLAN-020 E-002: passes through to the DB-level dedup key. */
+  dedupKey?: string;
 }
 
 /**

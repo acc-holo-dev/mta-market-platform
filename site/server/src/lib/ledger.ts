@@ -1,4 +1,4 @@
-﻿// Financial ledger (PLAN F-001..F-005) + seller balance helpers.
+// Financial ledger (PLAN F-001..F-005) + seller balance helpers.
 //
 // F-001: the source of truth is the append-only LedgerEntry table; every
 // amount is a positive number with a DEBIT/CREDIT direction, grouped into
@@ -148,43 +148,78 @@ export async function postLedgerEntries(
     return; // already posted — idempotent repair pass
   }
 
-  const debits = entries
-    .filter((e) => e.direction === "DEBIT")
-    .reduce((sum, e) => sum + e.amount, 0);
-  const credits = entries
-    .filter((e) => e.direction === "CREDIT")
-    .reduce((sum, e) => sum + e.amount, 0);
+  // PLAN-020 G-005.1: root-db postings (the settle:* path passes no executor)
+  // previously created entries as separate implicit transactions — a crash
+  // mid-post left a permanently unbalanced `settle:*` group that the
+  // check-before-insert above then treated as "already posted" forever.
+  // Wrap the group in ONE transaction under a blocking advisory lock keyed by
+  // the ledger transaction id: the loser waits, then sees the finished group
+  // via the fast path. When the caller already supplies a transaction
+  // context, its atomicity is owned by the caller and no wrapping happens.
+  const isTransactionContext =
+    executor !== db && typeof (executor as { execute?: unknown }).execute === "function";
 
-  if (debits !== credits) {
-    throw new LedgerUnbalancedError(transactionId, debits, credits);
-  }
-  if (entries.some((e) => e.amount <= 0)) {
-    throw new LedgerUnbalancedError(transactionId, -1, -1); // non-positive amount
-  }
+  const post = async (exec: DbOrTx): Promise<void> => {
+    const existingRows = await exec.orm.public.LedgerEntry.where({ transactionId }).first();
+    if (existingRows) {
+      return; // already posted inside the lock — idempotent
+    }
 
-  for (const entry of entries) {
-    const account = await ensureLedgerAccount(entry.account.code, entry.account.kind, {
-      userId: entry.account.userId,
-      executor,
+    const debits = entries
+      .filter((e) => e.direction === "DEBIT")
+      .reduce((sum, e) => sum + e.amount, 0);
+    const credits = entries
+      .filter((e) => e.direction === "CREDIT")
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    if (debits !== credits) {
+      throw new LedgerUnbalancedError(transactionId, debits, credits);
+    }
+    if (entries.some((e) => e.amount <= 0)) {
+      throw new LedgerUnbalancedError(transactionId, -1, -1); // non-positive amount
+    }
+
+    for (const entry of entries) {
+      const account = await ensureLedgerAccount(entry.account.code, entry.account.kind, {
+        userId: entry.account.userId,
+        executor: exec,
+      });
+      await exec.orm.public.LedgerEntry.create({
+        transactionId,
+        accountId: account.id,
+        direction: entry.direction,
+        amount: entry.amount,
+        currency: entry.currency ?? "RUB",
+        orderId: entry.orderId ?? null,
+        paymentId: entry.paymentId ?? null,
+        userId: entry.userId ?? entry.account.userId ?? null,
+        memo: entry.memo ?? null,
+      });
+    }
+
+    logger.info("ledger_transaction_posted", {
+      transaction_id: transactionId,
+      entries: entries.length,
+      debits,
+      credits,
     });
-    await executor.orm.public.LedgerEntry.create({
-      transactionId,
-      accountId: account.id,
-      direction: entry.direction,
-      amount: entry.amount,
-      currency: entry.currency ?? "RUB",
-      orderId: entry.orderId ?? null,
-      paymentId: entry.paymentId ?? null,
-      userId: entry.userId ?? entry.account.userId ?? null,
-      memo: entry.memo ?? null,
-    });
+  };
+
+  if (isTransactionContext) {
+    await post(executor);
+    return;
   }
 
-  logger.info("ledger_transaction_posted", {
-    transaction_id: transactionId,
-    entries: entries.length,
-    debits,
-    credits,
+  const lockPlan = db.raw.sql
+    `SELECT 1 AS locked WHERE pg_advisory_xact_lock(hashtext(${`ledger:${transactionId}`})) IS NULL`
+    .returnsRow({ locked: "pg/int4@1" })
+    .build();
+  await db.transaction(async (tx) => {
+    // Blocking acquisition (same pattern as lockRefundCeiling): a concurrent
+    // poster waits for the first posting to commit, then its in-lock fast
+    // path sees the finished group and returns idempotently.
+    await (tx as unknown as { execute: (p: unknown) => Promise<unknown> }).execute(lockPlan);
+    await post(tx);
   });
 }
 

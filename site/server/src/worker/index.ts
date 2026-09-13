@@ -63,6 +63,7 @@ import {
 } from "../lib/events.js";
 import { runReconciliationCycle } from "../jobs/reconciliation.js";
 import { runMonitoringSweep } from "../lib/serverMonitoring.js";
+import { runUnderSchedulerLock } from "../lib/schedulerLock.js";
 
 const SERVICE = "worker";
 
@@ -351,6 +352,43 @@ async function runOutboxLoop(): Promise<void> {
   }
 }
 
+/**
+ * PLAN-020 E-005: the retention sweep body (run under the F-004
+ * cross-instance scheduler lock). One failing prune logs and lets the rest
+ * run; observability failures never break the sweep.
+ */
+async function retentionSweep(): Promise<void> {
+  const outbox = await pruneFinishedOutboxEvents({
+    processedDays: positiveIntEnv("OUTBOX_RETENTION_DAYS", 14),
+    failedDays: positiveIntEnv("OUTBOX_FAILED_RETENTION_DAYS", 30),
+  });
+  const { pruneReconciliationHistory, prunePaymentProviderEvents } = await import(
+    "../lib/reconciliation/service.js"
+  );
+  const reconciliation = await pruneReconciliationHistory({
+    daysOld: positiveIntEnv("RECONCILIATION_RETENTION_DAYS", 90),
+  });
+  const providerEvents = await prunePaymentProviderEvents({
+    daysOld: positiveIntEnv("PROVIDER_EVENT_RETENTION_DAYS", 90),
+  });
+  let sandboxRuns = 0;
+  try {
+    const { cleanupOldSandboxRuns } = await import("../lib/sandbox/service.js");
+    sandboxRuns = await cleanupOldSandboxRuns(positiveIntEnv("SANDBOX_RUN_RETENTION_DAYS", 30));
+  } catch (error) {
+    logger.warn("worker_retention_sandbox_prune_failed", { error });
+  }
+  if (outbox.processed || outbox.failed || reconciliation.reports || providerEvents || sandboxRuns) {
+    logger.info("worker_retention_sweep", {
+      outbox_processed: outbox.processed,
+      outbox_failed: outbox.failed,
+      reconciliation_reports: reconciliation.reports,
+      provider_events: providerEvents,
+      sandbox_runs: sandboxRuns,
+    });
+  }
+}
+
 // --- boot -------------------------------------------------------------------
 
 async function main(): Promise<void> {
@@ -397,7 +435,8 @@ async function main(): Promise<void> {
       enabled: process.env.RECONCILIATION_ENABLED !== "false",
       intervalMs: positiveIntEnv("RECONCILIATION_INTERVAL_MS", 24 * 60 * 60 * 1000),
       initialDelayMs: positiveIntEnv("RECONCILIATION_INITIAL_DELAY_MS", 60 * 1000),
-      run: () => runReconciliationCycle(),
+      // PLAN-020 F-004: cross-instance lock — a second replica skips the tick.
+      run: () => runUnderSchedulerLock("worker:scheduler:reconciliation", () => runReconciliationCycle()),
     })
   );
   jobs.push(
@@ -406,12 +445,13 @@ async function main(): Promise<void> {
       enabled: process.env.SERVER_MONITORING_ENABLED !== "false",
       intervalMs: positiveIntEnv("SERVER_MONITORING_INTERVAL_MS", 60_000),
       initialDelayMs: 15_000,
-      run: async () => {
-        const result = await runMonitoringSweep();
-        if (result.servers > 0 || result.tokens > 0) {
-          logger.info("server_monitoring_sweep", { ...result });
-        }
-      },
+      run: () =>
+        runUnderSchedulerLock("worker:scheduler:server_monitoring", async () => {
+          const result = await runMonitoringSweep();
+          if (result.servers > 0 || result.tokens > 0) {
+            logger.info("server_monitoring_sweep", { ...result });
+          }
+        }),
     })
   );
 
@@ -424,7 +464,7 @@ async function main(): Promise<void> {
         enabled: process.env.DEMO_SWEEP_ENABLED !== "false",
         intervalMs: positiveIntEnv("DEMO_SWEEP_INTERVAL_MS", 60_000),
         initialDelayMs: 30_000,
-        run: () => demoModule!.sweepDemos!(),
+        run: () => runUnderSchedulerLock("worker:scheduler:demo_sweep", () => demoModule!.sweepDemos!()),
       })
     );
   }
@@ -443,24 +483,26 @@ async function main(): Promise<void> {
         initialDelayMs: 30_000,
         // lib/priceAlerts owns all three alert sweeps; each is idempotent
         // (notification dedup keys), so running the trio together is safe.
-        run: async () => {
-          const mod = priceAlertsModule!;
-          const drops =
-            typeof mod.notifyPriceDrops === "function" ? Number(await mod.notifyPriceDrops()) : 0;
-          const discountStarts =
-            typeof mod.notifyDiscountStarts === "function" ? Number(await mod.notifyDiscountStarts()) : 0;
-          const versionReleases =
-            typeof mod.sweepRecentVersionReleases === "function"
-              ? Number(await mod.sweepRecentVersionReleases())
-              : 0;
-          if (drops || discountStarts || versionReleases) {
-            logger.info("price_alert_sweep", {
-              price_drops: drops,
-              discount_starts: discountStarts,
-              version_releases: versionReleases,
-            });
-          }
-        },
+        // PLAN-020 F-004: cross-instance lock.
+        run: () =>
+          runUnderSchedulerLock("worker:scheduler:price_alert_sweep", async () => {
+            const mod = priceAlertsModule!;
+            const drops =
+              typeof mod.notifyPriceDrops === "function" ? Number(await mod.notifyPriceDrops()) : 0;
+            const discountStarts =
+              typeof mod.notifyDiscountStarts === "function" ? Number(await mod.notifyDiscountStarts()) : 0;
+            const versionReleases =
+              typeof mod.sweepRecentVersionReleases === "function"
+                ? Number(await mod.sweepRecentVersionReleases())
+                : 0;
+            if (drops || discountStarts || versionReleases) {
+              logger.info("price_alert_sweep", {
+                price_drops: drops,
+                discount_starts: discountStarts,
+                version_releases: versionReleases,
+              });
+            }
+          }),
       })
     );
   }
@@ -468,52 +510,14 @@ async function main(): Promise<void> {
   // PLAN-020 E-005: retention — outbox (PROCESSED/FAILED), reconciliation
   // history, raw provider webhook events and old sandbox runs must not grow
   // forever. Daily, best-effort: one failing prune logs and lets the rest
-  // run.
+  // run. PLAN-020 F-004: cross-instance lock.
   jobs.push(
     startIntervalJob({
       name: "retention",
       enabled: process.env.RETENTION_ENABLED !== "false",
       intervalMs: positiveIntEnv("RETENTION_INTERVAL_MS", 24 * 60 * 60 * 1000),
       initialDelayMs: positiveIntEnv("RETENTION_INITIAL_DELAY_MS", 5 * 60 * 1000),
-      run: async () => {
-        const outbox = await pruneFinishedOutboxEvents({
-          processedDays: positiveIntEnv("OUTBOX_RETENTION_DAYS", 14),
-          failedDays: positiveIntEnv("OUTBOX_FAILED_RETENTION_DAYS", 30),
-        });
-        const { pruneReconciliationHistory, prunePaymentProviderEvents } = await import(
-          "../lib/reconciliation/service.js"
-        );
-        const reconciliation = await pruneReconciliationHistory({
-          daysOld: positiveIntEnv("RECONCILIATION_RETENTION_DAYS", 90),
-        });
-        const providerEvents = await prunePaymentProviderEvents({
-          daysOld: positiveIntEnv("PROVIDER_EVENT_RETENTION_DAYS", 90),
-        });
-        let sandboxRuns = 0;
-        try {
-          const { cleanupOldSandboxRuns } = await import("../lib/sandbox/service.js");
-          sandboxRuns = await cleanupOldSandboxRuns(
-            positiveIntEnv("SANDBOX_RUN_RETENTION_DAYS", 30)
-          );
-        } catch (error) {
-          logger.warn("worker_retention_sandbox_prune_failed", { error });
-        }
-        if (
-          outbox.processed ||
-          outbox.failed ||
-          reconciliation.reports ||
-          providerEvents ||
-          sandboxRuns
-        ) {
-          logger.info("worker_retention_sweep", {
-            outbox_processed: outbox.processed,
-            outbox_failed: outbox.failed,
-            reconciliation_reports: reconciliation.reports,
-            provider_events: providerEvents,
-            sandbox_runs: sandboxRuns,
-          });
-        }
-      },
+      run: () => runUnderSchedulerLock("worker:scheduler:retention", retentionSweep),
     })
   );
 

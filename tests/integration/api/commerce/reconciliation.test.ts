@@ -86,6 +86,19 @@ beforeAll(async () => {
   if (!dbAvailable) return;
   testStartedAt = new Date();
   await resetTestEntities();
+  // PLAN-020 hygiene: provider events have no user link, so resetTestEntities
+  // cannot drain them; leftover events from other suites turn every cycle
+  // into a full-table scan (hundreds of rows) and make the scheduler-timing
+  // assertions below flaky. The test database is disposable.
+  {
+    let stale: Array<{ id: string }> = [];
+    do {
+      stale = (await db.orm.public.PaymentProviderEvent.where({}).limit(200).all()) as Array<{ id: string }>;
+      for (const row of stale) {
+        await db.orm.public.PaymentProviderEvent.where({ id: row.id }).delete().catch(() => undefined);
+      }
+    } while (stale.length > 0);
+  }
   await createTestUser(USER_ID, `recon_${SUFFIX}`, "USER", () => "not-a-jwt");
 
   mockedGetPayment.mockImplementation(async (paymentId: string) => {
@@ -257,12 +270,16 @@ describe.skipIf(!dbAvailable)("reconciliation periodic scheduler", () => {
       const before = await countReports();
       const handle = startReconciliationScheduler({ intervalMs: 60_000, initialDelayMs: 30 });
 
-      await new Promise((r) => setTimeout(r, 700));
+      await new Promise((r) => setTimeout(r, 300));
+      // PLAN-020 S-001a: await cycle completion instead of guessing with
+      // timed samples — a cycle legitimately finishes after stop(), and its
+      // report waves span multiple seconds under a loaded test database.
+      await handle.idle();
       const during = await countReports();
       expect(during).toBeGreaterThan(before); // first tick ran a full cycle
 
       handle.stop();
-      await new Promise((r) => setTimeout(r, 250));
+      await handle.idle();
       const after = await countReports();
       expect(after).toBe(during); // no more cycles after stop()
     } finally {

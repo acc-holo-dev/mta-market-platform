@@ -248,6 +248,11 @@ router.patch(
         // PLAN-008 D-002: buyers (§26 — purchase already creates the
         // relationship), resource followers and creator followers, with
         // recipient dedup (one notification per user).
+        // PLAN-020 E-002b: the inline path now uses the SAME notification
+        // identity as the worker paths (resourceVersion entity + dedupKey),
+        // so a user who is both a buyer and a price-alert watcher gets ONE
+        // notification per version — the unique index arbitrates across the
+        // concurrent paths.
         for (const published of publishedVersions) {
           const recipients = Array.from(
             new Set([
@@ -263,8 +268,9 @@ router.patch(
               type: "RESOURCE_UPDATE" as const,
               title: `${resource.title} — новая версия ${published.version}`,
               body: published.changelog ? published.changelog.slice(0, 200) : undefined,
-              entityType: "resource",
-              entityId: resource.id,
+              entityType: "resourceVersion",
+              entityId: published.versionId,
+              dedupKey: `RESOURCE_UPDATE:resourceVersion:${published.versionId}:${recipientId}`,
             }),
             { excludeActorId: req.user!.userId }
           );

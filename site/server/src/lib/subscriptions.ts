@@ -423,7 +423,7 @@ function planLineTitle(plan: SubscriptionPlanDef): string {
   return `Подписка ${plan.label} [${plan.kind}]`;
 }
 
-function planKindFromLineTitle(title: string | null | undefined): SubscriptionPlanKind | null {
+export function planKindFromLineTitle(title: string | null | undefined): SubscriptionPlanKind | null {
   if (!title) return null;
   const match = /\[([A-Z_]+)\]\s*$/.exec(title);
   if (!match) return null;

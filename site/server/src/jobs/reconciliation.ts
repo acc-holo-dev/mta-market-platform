@@ -285,6 +285,14 @@ export function startReconciliationScheduler(opts?: {
       clearInterval(intervalTimer);
       logger.info("reconciliation_scheduler_stopped", {});
     },
+    // PLAN-020 S-001a: expose cycle completion for tests/observability — a
+    // started cycle legitimately finishes after stop() (graceful semantics);
+    // callers that need deterministic post-stop state await this.
+    idle: async (): Promise<void> => {
+      while (running) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+    },
   };
 }
 

@@ -24,7 +24,10 @@ import {
   assertTransition,
   type PaymentState,
 } from "../lib/paymentStateMachine.js";
-import { createRefund } from "../lib/refunds.js";
+import { createRefund, applyRefundEffects } from "../lib/refunds.js";
+// PLAN-020 G-006.1: platform-order webhook dispatch (subscriptions + ads).
+import { activateSubscriptionPayment, planKindFromLineTitle } from "../lib/subscriptions.js";
+import { completeCampaignPayment } from "../lib/adsBilling.js";
 import { PaymentRefundError, PaymentStateError } from "../lib/paymentErrors.js";
 import { reqLog } from "../middleware/requestId.js";
 import { incPaymentSuccess } from "../lib/metrics.js";
@@ -440,6 +443,59 @@ async function handleProviderWebhook(
       });
     }
 
+    // PLAN-020 B-004.3/G-003.1: async refund completion. `refund.succeeded`
+    // arrives as its own provider event; a PENDING refund must apply its
+    // effects (ledger, license revocation, INV-013 ceiling release) exactly
+    // once — the CAS PENDING -> SUCCEEDED arbitrates concurrent deliveries
+    // and replayed events.
+    if (eventType.startsWith("refund.")) {
+      const refundRow = await db.orm.public.Refund
+        .where({ providerRefundId: parsed.providerEventId })
+        .first();
+      if (!refundRow) {
+        await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
+          status: "FAILED",
+          lastError: `Refund not found for provider refund ${parsed.providerEventId}`,
+        });
+        res.status(404).json({ error: "Refund not found" });
+        return;
+      }
+      const succeededEvent = eventType === "refund.succeeded";
+      const cas = await db.orm.public.Refund
+        .where({ id: refundRow.id, status: "PENDING" })
+        .updateAndCount({
+          status: succeededEvent ? "SUCCEEDED" : "FAILED",
+          processedAt: new Date().toISOString(),
+          ...(succeededEvent ? {} : { lastError: `Provider reported ${eventType}` }),
+        });
+      if (affectedCount(cas) === 1 && succeededEvent) {
+        const paymentRow = await db.orm.public.Payment.where({ id: refundRow.paymentId }).first();
+        if (!paymentRow) {
+          await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
+            status: "FAILED",
+            lastError: `Refund ${refundRow.id} has no local payment`,
+          });
+          res.status(409).json({ error: "Refund payment not found" });
+          return;
+        }
+        await applyRefundEffects({
+          payment: paymentRow as never,
+          refundId: refundRow.id,
+          amount: refundRow.amount,
+        });
+      }
+      await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
+        status: "PROCESSED",
+        processedAt: new Date().toISOString(),
+      });
+      reqLog(req).info("refund_webhook_applied", {
+        refund_id: refundRow.id,
+        event: eventType,
+      });
+      res.status(200).json({ message: "Event acknowledged" });
+      return;
+    }
+
     if (eventType !== "payment.succeeded" && eventType !== "payment.canceled") {
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
         status: "PROCESSED",
@@ -515,26 +571,32 @@ async function handleProviderWebhook(
       return;
     }
 
-    // The reference is either a resource Purchase id (legacy + current
-    // resource checkouts) or a ServicePurchase id (C-010 service orders).
+    // The reference is a resource Purchase id (legacy + current resource
+    // checkouts), a ServicePurchase id (C-010 service orders), or — since
+    // PLAN-020 G-006.1 — a platform checkout Order id (subscriptions, ad
+    // campaigns: the provider metadata order_id carries the Order id).
     const purchase = await db.orm.public.Purchase.where({ id: orderRef }).first();
     const servicePurchase = purchase
       ? null
       : await db.orm.public.ServicePurchase.where({ id: orderRef }).first();
-
+    let platformOrder: { id: string; buyerId: string; status: string; finalTotal: number; currency: string } | null = null;
     if (!purchase && !servicePurchase) {
-      await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
-        status: "FAILED",
-        lastError: `Order not found: ${orderRef}`,
-      });
-      res.status(404).json({ error: "Order not found" });
-      return;
+      platformOrder = (await db.orm.public.Order.where({ id: orderRef }).first()) as
+        | { id: string; buyerId: string; status: string; finalTotal: number; currency: string }
+        | null;
+      if (!platformOrder) {
+        await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
+          status: "FAILED",
+          lastError: `Order not found: ${orderRef}`,
+        });
+        res.status(404).json({ error: "Order not found" });
+        return;
+      }
     }
 
     // Do not trust webhook body alone. Confirm current provider state and amount.
     // TASK A-010/A-011: provider re-fetch + amount/currency/reference invariants.
     const providerPayment = await provider.getPayment(ppId);
-    const expectedEntity = purchase ?? servicePurchase!;
     if (providerPayment.state !== "SUCCEEDED" || providerPayment.paid !== true) {
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
         status: "FAILED",
@@ -543,8 +605,10 @@ async function handleProviderWebhook(
       res.status(409).json({ error: "Provider payment is not succeeded" });
       return;
     }
+    const expectedAmountMinor =
+      purchase?.finalPrice ?? servicePurchase?.finalPrice ?? platformOrder?.finalTotal;
     if (
-      providerPayment.amount.value !== expectedEntity.finalPrice ||
+      providerPayment.amount.value !== expectedAmountMinor ||
       providerPayment.amount.currency !== "RUB"
     ) {
       // TASK A-011: amount/currency mismatch -> quarantine, no entitlement.
@@ -552,14 +616,14 @@ async function handleProviderWebhook(
       // underpay never reaches SUCCEEDED.)
       await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
         status: "FAILED",
-        lastError: `Amount mismatch: provider ${providerPayment.amount.value} ${providerPayment.amount.currency}, expected ${expectedEntity.finalPrice} RUB`,
+        lastError: `Amount mismatch: provider ${providerPayment.amount.value} ${providerPayment.amount.currency}, expected ${expectedAmountMinor} RUB`,
       });
       reqLog(req).error("payment_quarantined_amount_mismatch", {
         provider: provider.name,
         provider_payment_id: ppId,
         provider_amount: providerPayment.amount.value,
         provider_currency: providerPayment.amount.currency,
-        expected_amount: expectedEntity.finalPrice,
+        expected_amount: expectedAmountMinor,
         order_ref: orderRef,
       });
       res.status(409).json({ error: "Provider payment amount mismatch" });
@@ -578,7 +642,11 @@ async function handleProviderWebhook(
           existingPayment.orderItemId != null &&
           (await db.orm.public.ServiceOrderItem.where({
             id: servicePurchase.serviceOrderItemId,
-          }).first())?.orderItemId === existingPayment.orderItemId);
+          }).first())?.orderItemId === existingPayment.orderItemId) ||
+        (platformOrder != null &&
+          existingPayment.orderItemId != null &&
+          (await db.orm.public.OrderItem.where({ id: existingPayment.orderItemId }).first())
+            ?.orderId === platformOrder.id);
       if (!belongsHere) {
         await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
           status: "FAILED",
@@ -598,6 +666,60 @@ async function handleProviderWebhook(
     // E-003: provider confirmed capture -> SUCCEEDED (before settlement).
     if (existingPayment) {
       await transitionPaymentTo(ppId, "SUCCEEDED");
+    }
+
+    // PLAN-020 G-006.1: captured platform money activates itself. The Order
+    // line tag routes to the owning domain activation — the same
+    // provider-verified, idempotent, key-locked flows as the manual
+    // activation endpoints (POST /subscriptions/:id/activate-payment and
+    // POST /advertising/campaigns/:id/activate-payment). A duplicate webhook
+    // re-presents the already-active state; a failed activation marks the
+    // provider event FAILED so the provider retries.
+    if (platformOrder) {
+      const line = await db.orm.public.OrderItem.where({ orderId: platformOrder.id }).first();
+      const planKind = planKindFromLineTitle(line?.titleSnapshot ?? null);
+      const paymentIdRef = existingPayment?.id ?? null;
+      try {
+        if (planKind) {
+          await activateSubscriptionPayment({
+            orderId: platformOrder.id,
+            paymentId: paymentIdRef,
+            actorId: "system:webhook",
+            isOrderOwner: true,
+          });
+        } else if (/\[AD_CAMPAIGN\]\s*$/.test(line?.titleSnapshot ?? "")) {
+          await completeCampaignPayment({
+            orderId: platformOrder.id,
+            paymentId: paymentIdRef,
+            actorId: "system:webhook",
+            isOwner: true,
+          });
+        } else {
+          throw new Error(`Unrecognized platform checkout line: ${String(line?.titleSnapshot).slice(-60)}`);
+        }
+        await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
+          status: "PROCESSED",
+          processedAt: new Date().toISOString(),
+        });
+        reqLog(req).info("platform_order_webhook_activated", {
+          order_id: platformOrder.id,
+          plan: planKind ?? "AD_CAMPAIGN",
+        });
+        res.status(200).json({ message: "Event acknowledged" });
+        return;
+      } catch (activationError) {
+        const message = activationError instanceof Error ? activationError.message : String(activationError);
+        await db.orm.public.PaymentProviderEvent.where({ id: eventRecord.id }).update({
+          status: "FAILED",
+          lastError: `Platform order activation failed: ${message.slice(0, 512)}`,
+        });
+        reqLog(req).error("platform_order_activation_failed", {
+          order_id: platformOrder.id,
+          error: activationError,
+        });
+        res.status(409).json({ error: "Platform order activation failed" });
+        return;
+      }
     }
 
     if (purchase) {

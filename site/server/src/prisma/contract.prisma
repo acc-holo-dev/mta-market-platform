@@ -1808,6 +1808,13 @@ model ForumReaction {
 }
 
 // M: minimal notification object. Recipient-owned; read state is explicit.
+// PLAN-020 E-002/E-002b: dedupKey makes delivery idempotent at the DATABASE
+// level for notification kinds that must fire once per (recipient, entity) —
+// e.g. version releases (`RESOURCE_UPDATE:resourceVersion:<id>:<recipient>`),
+// regardless of which of the concurrent delivery paths (admin route, outbox
+// worker dispatch, CRON sweep) lands first. NULL (the default) means "not
+// dedupable": kinds that legitimately repeat keep writing freely, because a
+// UNIQUE index ignores NULLs.
 model Notification {
   id          String @id @default(uuid())
   recipientId String
@@ -1816,6 +1823,7 @@ model Notification {
   body        String?
   entityType  String?
   entityId    String?
+  dedupKey    String? @unique
   readAt      TimestamptzString?
   createdAt   TimestamptzString @default(now())
 

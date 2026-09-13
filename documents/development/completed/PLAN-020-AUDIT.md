@@ -100,24 +100,28 @@ Recurring themes:
 
 ## WHAT REMAINS / WHY (deferred with reasons)
 
+Status legend: items below were deferred at the original PLAN-020 run
+(2025-09-13) and were re-triaged afterwards — the marked ones landed in the
+follow-up stabilization change-set (2025-09-13, see change log #27+).
+
 | Item | Verdict | Why it remains |
 | --- | --- | --- |
-| B-004.3 async-refund dead end (PENDING refunds never complete) | FIX (deferred) | Needs a refund-completion design decision (provider poller vs webhook contract) + new tests; refund effects themselves are atomic. Next change-set. |
-| G-006.1 webhook does not dispatch SUBSCRIPTION/AD_CAMPAIGN orders (yookassa transport drops metadata) | FIX (deferred) | Touches provider transport contract + orderRef resolution; must ship with concurrency tests (checkout/webhook races). |
-| G-003.1 PENDING refunds have no completion path | FIX (deferred) | Same design umbrella as B-004.3 (one refund lifecycle change-set). |
-| G-005.1 per-entry ledger idempotency can leave an unbalanced `settle:*` txn after mid-post crash | FIX (deferred) | Correct fix = rework postLedgerEntries idempotency to whole-transaction keys; financial code, needs its own review round. |
+| ~~F-004 no cross-instance scheduler lock~~ | FIX | **landed** — `lib/schedulerLock.ts` `runUnderSchedulerLock` (tx-scoped `pg_try_advisory_xact_lock` per job key, loser skips the tick), wired into all 5 worker schedulers + concurrency tests; scheduler handle exposes `idle()` for deterministic tests. |
+| ~~E-002 notification dedup is check-then-insert~~ | FIX | **landed** — `Notification.dedupKey` (nullable unique) + unique-violation skip in `createNotifications`; all three delivery paths (admin route / outbox worker / CRON sweep) now share one key per (recipient, version). |
+| ~~E-002b triple VERSION_RELEASED delivery~~ | MERGE | **landed** — admin inline path re-keyed to `resourceVersion` entity + the shared dedupKey; the DB index arbitrates across concurrent paths. |
+| ~~G-006.1 webhook does not dispatch SUBSCRIPTION/AD_CAMPAIGN orders~~ | FIX | **landed** — the webhook resolves platform checkout Orders and routes by line tag to `activateSubscriptionPayment` / `completeCampaignPayment` (provider-verified, idempotent); verified by payments-webhook-platform.test.ts (activation, duplicate replay, amount quarantine). |
+| ~~B-004.3 async-refund dead end~~ + ~~G-003.1 PENDING refunds no completion path~~ | FIX | **landed** — `refund.succeeded` / `refund.*` events complete PENDING refunds (CAS-guarded) and apply effects exactly once; payments-refund-webhook.test.ts covers the full journey (PENDING → effects → replay no-op). Provider pollers for webhook-less providers remain DEFERRED until such providers exist. |
+| ~~G-005.1 per-entry ledger idempotency~~ | FIX | **landed** — root-db postings wrapped in ONE transaction under a blocking advisory lock keyed by the ledger transaction id (partial `settle:*` groups are now impossible from the posting path); caller-supplied transactions keep their own atomicity. |
+| ~~O-002/O-003 CI cache + path filters~~ | FIX | **landed** — pnpm store cache in 4 install workflows; PR-level path filters for the module build and browser E2E (full blocking gate unchanged on push/workflow_call); mojibake gate wired (was in #24). |
 | D-001 OpenAPI is an empty stub (`paths: {}`) | REPLACE (deferred) | ~93 endpoints outside the contract; generating the spec from code is a project of its own; the 6 manual inventories are stale and should be deleted with it. |
 | D-003 canonical error envelope (733 legacy `{error}` responses) | FIX (deferred) | Mechanical but repo-wide migration; must land with the API-contract round to avoid two migrations. |
 | D-002 client generation from OpenAPI | REPLACE (deferred) | Blocked by D-001. |
-| E-002b triple VERSION_RELEASED delivery (admin inline / outbox worker / CRON) | MERGE (deferred) | Merging changes user-visible notification behavior; needs a product decision on the dedup key + test updates. |
-| E-002 notification dedup is check-then-insert without unique index | FIX (deferred) | Schema migration (partial unique index) + migration tooling run. |
-| F-004 no cross-instance scheduler lock | FIX (deferred) | Safe under the documented single-worker topology (lib/events.ts:149-151); required before horizontal scaling — pg advisory locks need session-pinned execution in this ORM. |
 | T-001.03 sandbox runner is a pass-through mock feeding the publish gate | REMOVE (deferred) | Product-behavior change (phantom SandboxRun disappears; gate becomes honest PENDING); must ship with E2E for the publication path. |
-| S-001a/S-003a worker-crash & Redis-fail-open tests | FIX (deferred) | Functions not exported / need a dead-port Redis fixture; test-only change-set, no product risk. |
+| S-001a/S-003a worker-crash & Redis-fail-open tests | FIX (partially landed) | Scheduler-lock + notification-dedup + refund/platform webhook tests added (incl. `idle()` exposure); the dead-port Redis fail-open fixture and kill-mid-processing drill remain a test-only change-set. |
 | S-002 / R-001 dynamic drills (DB restart, p50/p95/LCP, load) | DEFER | Require a live bench; methodology documented in audit 08. |
 | P-004 OpenTelemetry | DEFER | No collector/backend exists — adopting OTel now would be observability infrastructure with nowhere to go (explicitly rejected by the plan). |
-| O-002/O-003 CI cache + path filters, image smoke validation | FIX (deferred) | CI-infra change-set; listed as the top of the next CI round (6× install, no path awareness, images not smoke-tested pre-push). |
-| L/M/K frontend findings (bundle, "use client", storage boundary) | triaged 2025-09-13 | **K is clean (KEEP×3)**: artifacts only via `loadArtifactBuffer`, signed URLs TTL-capped 300/900s behind purchase+license gates, no predictable URLs, no `express.static`. Deferred FIXes: L-002 all 37 pages are `"use client"` (RSC migration = per-page product work + E2E), L-005 166 inline query keys vs factory (mechanical, repo-wide), M-003 28 `<img>` without next/image (needs rendering-decision), L-001 dual component homes, L-004 api-ext shim migration (75 importers) — all documented in audit 07 with plans. |
+| L-002/L-005/M-003/L-001/L-004 frontend migrations | DEFER | RSC migration of 37 client pages, query-key factory normalization (166 keys), next/image adoption, component-home consolidation and api-ext migration are mechanical but repo-wide; scheduled as their own change-sets (audit 07 holds the plans). |
+| Reconciliation scan bounding (377-row mismatch scan per cycle, N+1) | SIMPLIFY (deferred) | payment_reconciliation scans all payments; period-bounded scanning is a semantics change that needs its own review round (it now also surfaced as a test-DB slowdown). |
 
 ## Change log
 
@@ -149,6 +153,18 @@ Recurring themes:
 | 24 | T-001 + O-001 | orphaned `scripts/maintenance/cleanup.sh` (superseded by `startup.py clean`) and `scripts/development/seed.py` (superseded by scripts/seed-services.ts); `repair-cyrillic.cjs --check` documented as CI-usable but never wired | REMOVE + FIX | **landed** (2 scripts removed with reference verification; mojibake gate wired into validate.yml; py_compile glob fixed) |
 | 25 | A-003 | `/config/features` re-read + re-validated 3 YAML + JSON schema on EVERY request, bypassing the lib/featureFlags 60s cache | FIX | **landed** (`allFeatureFlags()` through the shared cache; response shape unchanged) |
 | 26 | A-004.01/H-002.1 | legacy `GET /drm/my-licenses` (N+1, 0 consumers) and `DELETE /drm/revoke/:licenseId` (0 consumers, revocation bypassing lib/drm/service.ts) | REMOVE | **landed** (v1 410 tombstones kept; canonical revocation via /drm/v2 + service; 77/77 licenses/authz/contracts) |
+
+### Follow-up stabilization change-set (deferred items → landed, 2025-09-13)
+
+| # | Area | Finding | Verdict | Status |
+| --- | --- | --- | --- | --- |
+| 27 | F-004 | worker schedulers not serialized across instances | FIX | **landed** (`lib/schedulerLock.ts`, advisory xact lock per job key; all 5 jobs wired; scheduler-lock.test.ts 3/3; `idle()` exposed on the scheduler handle) |
+| 28 | E-002 + E-002b | notification dedup check-then-insert; triple VERSION_RELEASED delivery | FIX + MERGE | **landed** (`Notification.dedupKey` nullable-unique via contract migration `notification_dedupKey_key`; shared key across all delivery paths; admin inline path re-keyed to resourceVersion; notification-dedup.test.ts 2/2) |
+| 29 | G-006.1 | captured platform orders (subscriptions/ads) never dispatched by the webhook | FIX | **landed** (Order resolution + line-tag routing to `activateSubscriptionPayment`/`completeCampaignPayment`; platform-webhook.test.ts 3/3: activation, duplicate replay, amount quarantine) |
+| 30 | B-004.3 + G-003.1 | `refund.*` provider events ignored; PENDING refunds never completed | FIX | **landed** (webhook completes PENDING refunds CAS-guarded; full effect journey verified — payment REFUNDED, purchase closed, license revoked, balanced ledger; refund-webhook.test.ts 3/3) |
+| 31 | G-005.1 | root-db ledger postings = per-entry implicit transactions → unbalanceable partial `settle:*` groups | FIX | **landed** (single-transaction posting under blocking advisory lock keyed by transactionId; caller-owned transactions unchanged) |
+| 32 | O-002/O-003 | pnpm cache + PR path filters | FIX | **landed** (4 workflows cached; module/E2E path-filtered on PRs only; full gate unchanged on push/workflow_call) |
+| 33 | S-001a (partial) | reconciliation scheduler exposes `idle()` for deterministic recovery tests | FIX | **landed** (interval scheduler test now awaits cycle completion) |
 
 ## Audit inventory (detailed reports)
 
@@ -186,3 +202,4 @@ Recurring themes:
 | **U-001 clean environment** | `doctor` → `dev` → `status` → health → `stop` → `status` | doctor all-PASS; dev exit 0 with WEB/API/WORKER healthy (:3000/:3001 200); stop clean — **all infra including postgres/redis now governed by startup.py** (post-migration) |
 | U-001 evidence | `/metrics` outbox gauges | `outbox_depth 0 / outbox_dead_letter 0 / outbox_processed 0` = true DB state |
 | **FINAL** | type-check + full test suite (test infra up) | tsc PASS · **682/682 tests, 70 files** (unit 139 + integration 529 + concurrency 14 + retention 2... aggregated run) · module ctest 3/3 · startup-policy 13/13 |
+| follow-up batch (27–33) | tsc + full suite, twice | **693/693 tests, 74 files** × 2 consecutive runs (new: scheduler-lock 3, notification-dedup 2, platform-webhook 3, refund-webhook 3; reconciliation stabilized via `idle()`) |
