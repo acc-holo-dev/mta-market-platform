@@ -4,12 +4,12 @@ Status: **COMPLETE** — all 9 audit passes done (A–T), 26 corrections landed
 and verified, deferred items documented with reasons, U-001 clean-environment
 check passed.
 
-Scope: PLAN-020 (documents/development/active/PLAN-020.md), sections A–T + U.
+Scope: PLAN-020 (documents/development/completed/PLAN-020.md), sections A–T + U.
 
 Method: 9 parallel read-only audit passes (architecture/startup, prisma/data,
 api-contracts, events/redis, money/drm, auth/security, storage/frontend,
 ci/recovery, simplification), detailed findings in
-`documents/development/active/PLAN-020/audit/*.md`, then triage and
+`documents/development/completed/PLAN-020/audit/*.md`, then triage and
 implementation of justified fixes with type-check + test verification.
 
 Baseline (recorded before any change):

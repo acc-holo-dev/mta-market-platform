@@ -2,7 +2,7 @@
 
 Зона: `site/server/src/routes/auth.ts`, `lib/{jwt,cookies,identityProvider,permissions,audit,rateLimit,auth,tokenCrypto,tokenSecurity,logger}.ts`, `middleware/`, `lib/providers/{discord,yandex,google,vk,telegram}.ts`, все admin-роуты (`admin.ts`, `adminPlatform.ts`, `adminAdvertising.ts`, `adminFinance.ts`, `adminPremium.ts`, `adminCommunity.ts`, `adminContent.ts`, `leak.ts`), модель сессии (`Session`), OAuth-токены (`Account`), frontend-авторизация `site/web/src`, `app.ts`, `infrastructure/nginx/nginx.conf`, `config/`, `startup.py`, `.github/`.
 
-Разделы плана: I-001..I-004, J-001..J-004, Q-001..Q-006 (`documents/development/active/PLAN-020.md:718-825,1162-1229`).
+Разделы плана: I-001..I-004, J-001..J-004, Q-001..Q-006 (`documents/development/completed/PLAN-020.md:718-825,1162-1229`).
 
 Метод: чтение кода с фиксацией файл:строка; grep-инвентаризация guard'ов (`requirePermission`, `requireRole`, `adminOnly`) по всем admin-роутам; трассировка жизненного цикла сессии (issue → refresh → reuse → revoke); grep секретов по `site/server/src`, `scripts/`, `.github/`, `config/`, `.env*`, `logs/`; проверка CI-workflow. Файлы репозитория (кроме этого отчёта) не изменялись.
 

@@ -778,6 +778,17 @@ SEED_SCRIPTS = {
     "heartbeat": "scripts/dev-heartbeat.ts",
 }
 
+# PLAN-020 U-004: the admin seeder requires explicit flags; a bare
+# `startup.py db seed admin` must not print a usage error. Defaults are
+# dev-only credentials (env-overridable at the shell).
+SEED_SCRIPTS_ARGS = {
+    "admin": [
+        "--email", os.environ.get("DEV_ADMIN_EMAIL", "admin@mtamarket.dev"),
+        "--username", "admin",
+        "--password", os.environ.get("DEV_ADMIN_PASSWORD", "dev-password-123"),
+    ],
+}
+
 
 def seed_database(targets: list[str]) -> int:
     env = os.environ.copy()
@@ -789,7 +800,10 @@ def seed_database(targets: list[str]) -> int:
             out(f"  {FAIL} unknown seed target: {target}")
             return 2
         out(f"  {INFO} seeding {target} ...")
-        result = subprocess.run([exe("pnpm"), "exec", "tsx", script], cwd=str(SERVER_DIR), env=env)
+        result = subprocess.run(
+            [exe("pnpm"), "exec", "tsx", script, *SEED_SCRIPTS_ARGS.get(target, [])],
+            cwd=str(SERVER_DIR), env=env,
+        )
         rc |= result.returncode
     return rc
 

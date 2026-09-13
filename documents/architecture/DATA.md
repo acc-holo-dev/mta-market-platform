@@ -1,4 +1,4 @@
-﻿# DATA — архитектура данных
+# DATA — архитектура данных
 
 Область: PostgreSQL 16 + Prisma 8 contract ORM + Redis + объектное хранилище.
 Процедура миграций: [DATABASE-MIGRATIONS](../operations/DATABASE-MIGRATIONS.md)
@@ -8,7 +8,7 @@
 ## PostgreSQL через Prisma 8 contract ORM
 
 - **Единственная схема** — `site/server/src/prisma/contract.prisma`:
-  **68 моделей и 44 enum'а**. Из неё генерируются клиент и типы
+  **85 моделей и 64 enum'а**. Из неё генерируются клиент и типы
   (`contract.d.ts` / `contract.json`) командой `pnpm contract:emit`
   (`prisma contract emit`, корневой алиас `pnpm db:emit`).
 - Конфиг: `site/server/prisma.config.ts`
@@ -77,7 +77,7 @@
 Инвариант: paid-артефакты никогда не доступны по постоянному публичному URL;
 nginx-локация `/uploads` отсутствует намеренно (G-006).
 
-## Обзор сущностей (68 моделей, `contract.prisma`)
+## Обзор сущностей (85 моделей, `contract.prisma`)
 
 ### Идентичность и сессии
 

@@ -5,7 +5,7 @@
 исторические планы разработки; имена файлов и describe — доменные
 (PLAN-017 §26).
 
-Единая точка входа — `python startup.py test <tier>`; нижеприведённые
+Единая точка входа — `python3 startup.py test <tier>`; нижеприведённые
 прямые команды — алиасы для отладки.
 
 ## Уровни (tier model, L0–L4)
@@ -78,7 +78,7 @@ tests/
   `http://localhost:3000`); headless Chromium; screenshot only-on-failure,
   trace retain-on-failure; `globalTeardown` — канальная очистка
   `e2e_*`-пользователей и `e2e-*`-сущностей (см. «Гигиена данных»).
-- Команда: `python startup.py test e2e` (поднимет стек, просеет admin) или
+- Команда: `python3 startup.py test e2e` (поднимет стек, просеет admin) или
   вручную `pnpm test:e2e` на уже запущенных dev-серверах.
 
 ### CTest + standalone (модуль)
@@ -88,7 +88,7 @@ tests/
   `module_config_rejects_garbage`.
 - Standalone DRM: `make -f module/src/drm/Makefile test` — канонический JSON,
   Ed25519, AEAD, key store, lease-верификация.
-- Команда: `python startup.py module` (Linux); Windows — не поддерживается
+- Команда: `python3 startup.py module` (Linux); Windows — не поддерживается
   (MODULE.md), честно сообщается doctor'ом.
 
 ## Подключение БД
@@ -117,10 +117,10 @@ tests/
 
 ## Предпосылки E2E (ручной запуск)
 
-1. Dev-серверы: `python startup.py dev` (web :3000, API :3001, PG, Redis).
+1. Dev-серверы: `python3 startup.py dev` (web :3000, API :3001, PG, Redis).
 2. Admin-аккаунт: `pnpm test:e2e:admin` (e2e-admin@mtamarket.local; в
    production отказывается работать без `ALLOW_ADMIN_BOOTSTRAP=true`).
-3. Seed-данные по необходимости: `python startup.py db seed` (маркетплейс,
+3. Seed-данные по необходимости: `python3 startup.py db seed` (маркетплейс,
    серверы, услуги) + `--heartbeat` (симулятор «живого» онлайна — запустить
    заранее для спеков с онлайн-агрегатами).
 4. Mojibake-политика: исходники чисты от двойного кодирования —

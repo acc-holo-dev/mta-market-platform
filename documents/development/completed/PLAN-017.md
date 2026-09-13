@@ -1,3 +1,5 @@
+> **ВЫПОЛНЕН**: коммит `07bb748` (PLAN-017/019/018 execution — consolidation, architecture 2.0, productization wave). Совместная запись исполнения: [EXECUTION-MAP-017-018-019.md](EXECUTION-MAP-017-018-019.md).
+
 # PLAN-017 — Platform Consolidation, Runtime, Admin, Testing & Technical Hardening
 
 **Scope:** code / architecture / runtime / infrastructure / tests / admin / UX fixes / cleanup / incomplete features  

@@ -1,3 +1,5 @@
+> **ВЫПОЛНЕН**: коммит `07bb748`. Пути/файлы в тексте отражают состояние НА МОМЕНТ исполнения (часть ссылок указывает на удалённые в PLAN-020 файлы — это историческая запись).
+
 # EXECUTION MAP — PLAN-017 → PLAN-019 → PLAN-018
 
 Working contract for executing the three active plans. Audits of the full

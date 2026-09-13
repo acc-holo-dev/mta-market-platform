@@ -1,3 +1,5 @@
+> **ВЫПОЛНЕН**: коммиты `575954a` + `af6cadb`. Итоговый отчёт: [PLAN-020-AUDIT.md](PLAN-020-AUDIT.md); детальные отчёты аудита: [PLAN-020/audit/](PLAN-020/audit/).
+
 # PLAN-020 — Architecture Deep Audit & Stabilization
 
 ## TARGET

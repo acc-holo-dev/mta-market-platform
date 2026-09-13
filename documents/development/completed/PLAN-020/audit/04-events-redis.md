@@ -2,7 +2,7 @@
 
 Зона: `site/server/src/worker/index.ts`, `site/server/src/jobs/`, `site/server/src/lib/{events,redis,keyLock,rateLimit,notify,serverMonitoring,priceAlerts}.ts`, `lib/reconciliation/`, `lib/sandbox/` + всё, что пишет/читает outbox или использует Redis (`lib/commerce.ts`, `routes/admin.ts`, `lib/activity.ts`).
 
-Разделы плана: E-001..E-006, F-001..F-004 (`documents/development/active/PLAN-020.md:423-563`).
+Разделы плана: E-001..E-006, F-001..F-004 (`documents/development/completed/PLAN-020.md:423-563`).
 
 Метод: чтение кода, трассировка полного цикла outbox, инвентаризация всех обращений к `redis.*` (grep по `site/server/src`), всех вызовов `emitOutbox`, `withKeyLock`, `bustActivityCache`. Каждое утверждение снабжено файл:строка. Файлов репозитория (кроме данного отчёта) не касались.
 

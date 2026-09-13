@@ -1,3 +1,5 @@
+> **ВЫПОЛНЕН**: коммит `07bb748` (совместно с PLAN-017/019). Совместная запись исполнения: [EXECUTION-MAP-017-018-019.md](EXECUTION-MAP-017-018-019.md).
+
 # PLAN-018 — Productization, Monetization & Closed Beta
 
 ## TARGET

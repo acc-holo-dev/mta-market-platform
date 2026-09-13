@@ -23,9 +23,9 @@ Development Plan — это не просто список задач.
 
 Текущее состояние всегда отражено в [CURRENT.md](CURRENT.md).
 
-Выбор того, какой фазой станет следующий план, фиксируется сопоставительным
-анализом foundational-документов в [NEXT-PHASE.md](NEXT-PHASE.md)
-(анализ ≠ план; план создаётся отдельным решением).
+Выбор того, какой фазой станет следующий план, фиксируется отдельным
+решением владельца (сопоставительный анализ foundational-документов —
+[NEXT-PHASE.md](NEXT-PHASE.md), исторический пример).
 
 ## История планов
 
@@ -48,6 +48,11 @@ Development Plan — это не просто список задач.
 | [PLAN-015](COMPLETED/PLAN-015.md) | IMPLEMENTATION COMPLETE (2026-09-12) | Experience Architecture & Visual System: единый AppShell (Sidebar expanded/collapsed + Topbar), две первоклассные темы (light/dark) с одним переключателем, глобальный поиск-дропдаун над /search, context-aware create, trust-бейджи, placement-архитектура, Home как Discover-поверхность, Маркет с вкладками Ресурсы/Услуги, My MTA + /me/following, кабинет продавца с ?tab=. E2E 59/59, unit 392/392. |
 | PLAN-016 | IMPLEMENTATION COMPLETE (2026-09-12) | Identity Expansion, Multi-Provider Payments & Platform Debt Closure: вход через VK/Google/Yandex/Telegram (discovery + динамические кнопки), /account/identities, шифрование OAuth-токенов, смена пароля; provider-neutral платежи (dispatch, webhook/:provider, T-Bank, crypto RUB-locked, checkout UI, dev-заглушка TEST); долг D-002..D-014 (фокус-трапы, search react-query, admin-валидация, error-страницы, 7d/30d, api-ext модули, E2E-гигиена). E2E 68/68, unit 440/440 (см. completed/PLAN-016.md; спека: PLAN-016-spec.md). |
 
+| PLAN-017 | COMPLETED (2026-09-13) | Architecture consolidation wave: единый конфиг (config/environments + application), канонический startup.py (dev/release/test/db/...), worker runtime (outbox consumer + schedulers), housekeeping. Исполнение: коммит `07bb748` (см. completed/EXECUTION-MAP-017-018-019.md). |
+| PLAN-018 | COMPLETED (2026-09-13) | Productization wave: admin-секции (users/servers/finance/premium/advertising), deals, subscriptions, notifications. Исполнение: `07bb748`. |
+| PLAN-019 | COMPLETED (2026-09-13) | Architecture 2.0: worker outbox + schedulers, productization foundation (см. completed/PLAN-019.md; исполнение — `07bb748`). |
+| [PLAN-020](COMPLETED/PLAN-020-AUDIT.md) | COMPLETED (2026-09-13) | Architecture Deep Audit & Stabilization: 9 аудитов A–T (192 находки), 26 исправлений + follow-up (scheduler lock, notification dedup, webhook dispatch платформенных заказов, refund completion, atomic ledger postings, CI cache/filters). Тесты 693/693 (74 файла); отчёт: completed/PLAN-020-AUDIT.md. |
+
 ## Правила работы с планами
 
 1. Новый цикл разработки = новый план (`PLAN-002`, ...). Один активный план за раз.
@@ -60,40 +65,24 @@ Development Plan — это не просто список задач.
 
 ## Воспроизведение среды разработки и проверки
 
-```sh
-# сервисы
-docker compose -f infrastructure/docker/compose/development.yml up -d
-
-# БД: применить контракт-схему
-cd site/server
-npx prisma contract emit && npx prisma db update --confirm default   # DATABASE_URL из .env
-
-# сервер и фронтенд
-npx tsx watch src/index.ts                 # API :3001
-pnpm --filter @mta-market/web dev          # web :3000
-
-# admin-аккаунт для разработки (G-004; отказ в NODE_ENV=production)
-npx tsx scripts/dev-admin.ts --email admin@dev.local --username admin --password 'dev-password-123'
-
-# PLAN-005: dev-датасет сообщества/серверов + живой онлайн (симулятор интеграции)
-npx tsx scripts/seed-plan005.ts
-npx tsx scripts/dev-heartbeat.ts
-```
-
-Проверка качества:
+Канонический раннер — `startup.py` (см. [../operations/DEVELOPMENT.md](../operations/DEVELOPMENT.md)):
 
 ```sh
-pnpm type-check          # оба приложения
-pnpm --filter @mta-market/server test    # backend tests (337 после PLAN-005)
-pnpm --filter @mta-market/web build      # production build web
-pnpm test:e2e:admin && pnpm test:e2e     # browser E2E — нужны запущенные серверы
-# PLAN-005: серверы/сообщество держат живыми (heartbeat-симулятор в отдельном терминале)
+python3 startup.py doctor            # диагностика окружения
+python3 startup.py dev               # infra -> schema -> backend + worker + web
+python3 startup.py db seed           # dev-датасет: admin + план003 (товары) + план005 (серверы/контент) + услуги
+python3 startup.py db seed admin     # dev-админ (дефолт admin@mtamarket.dev / dev-password-123)
+python3 startup.py test unit         # unit-тесты
+python3 startup.py test integration  # integration + concurrency (тестовая БД поднимается и сносится сама)
+python3 startup.py status            # таблица сервисов
+python3 startup.py logs backend      # логи; stop — остановить всё; clean --destructive --yes — снести дев-БД
 ```
 
-Модуль (Linux x64): `cmake --preset linux-gcc -S module && cmake --build --preset linux-gcc -S module`
-→ `ctest --preset linux-gcc --test-dir module` (3/3) и `make -f module/src/drm/Makefile test`
-→ `ALL TESTS PASSED` (см. [../module/BUILD.md](../module/BUILD.md)).
+Модуль (Linux x64): `python3 startup.py module` (cmake --preset linux-gcc + ctest 3/3;
+см. [../module/BUILD.md](../module/BUILD.md)).
 
-Переменные окружения: `site/server/.env.example` (корневой `.env.example` — полная матрица) (обязательны `DATABASE_URL`, `JWT_SECRET`;
-`ARTIFACT_SIGNING_PRIVATE_KEY` — Ed25519 PKCS8 base64 для подписи артефактов;
-`YOOKASSA_*` опциональны — иначе dev-completion `POST /payments/:id/simulate`).
+Переменные окружения: `site/server/.env.example` (корневой `.env.example` — полная матрица)
+(обязательны `DATABASE_URL`, `JWT_SECRET`; `ARTIFACT_SIGNING_PRIVATE_KEY` — Ed25519 PKCS8 base64
+для подписи артефактов; `YOOKASSA_*` опциональны — иначе dev-completion
+`POST /payments/:id/simulate`).
+

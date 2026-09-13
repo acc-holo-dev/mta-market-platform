@@ -1,6 +1,6 @@
 # MTA Market — документация
 
-Обновлено: 2026-09-11.
+Обновлено: 2026-09-13.
 
 ## Что такое MTA Market
 
@@ -8,9 +8,9 @@ MTA Market — единая цифровая площадка сообществ
 Andreas: сообщество (форум, новости), серверы (профили, мониторинг,
 верификация), контент (статьи), маркет ресурсов и услуг, доверие (отзывы,
 верификации) и идентичность (профили, бейджи). Это **не** «магазин ресурсов
-с немного community» — центральная сущность платформы после PLAN-005 —
-SERVER, а коммерция — одна из опор экосистемы. Полное продуктовое
-описание: [product/PROJECT.md](product/PROJECT.md).
+с немного community» — центральная сущность платформы — SERVER, а коммерция
+— одна из опор экосистемы. Полное продуктовое описание:
+[product/PROJECT.md](product/PROJECT.md).
 
 ## Принцип монорепозитория
 
@@ -26,10 +26,10 @@ SERVER, а коммерция — одна из опор экосистемы. �
 | Каталог | Содержание |
 |---|---|
 | [product/](product/PROJECT.md) | Продукт: PROJECT, VISION, PRODUCT-MODEL, PRODUCT-ARCHITECTURE, PRODUCT-SURFACE-MAP, DAILY-EXPERIENCE. |
-| [development/](development/README.md) | Development Plan system: планы (`active/`, `completed/`), CURRENT.md, NEXT-PHASE.md, замороженные контракты (`reference/old_*`). |
-| [architecture/](architecture/) | Архитектурные документы — каталог зарезервирован, файлов пока нет (2026-09-11). |
+| [development/](development/README.md) | Development Plan system: планы (`active/`, `completed/`), CURRENT.md, NEXT-PHASE.md, замороженные контракты (`reference/`). |
+| [architecture/](architecture/) | Архитектурные документы: SYSTEM, DATA (85 моделей / 64 enum'а), SITE, TESTING, SECURITY, DEPENDENCY-POLICY, DESIGN-SYSTEM, MODULE, TOOLCHAIN. |
+| [api/](api/README.md) | Предметные API-обзоры: AUTH, MARKETPLACE, COMMERCE, SERVERS, COMMUNITY, CONTENT, DRM. Машиночитаемый OpenAPI — отдельная задача (см. development/CURRENT.md). |
 | [adr/](adr/) | Architecture Decision Records: [ADR-001-drm-lease-revocation.md](adr/ADR-001-drm-lease-revocation.md). |
-| [api/](api/) | API-контракты (OpenAPI — P-007, ещё не введён) — каталог зарезервирован, файлов пока нет. |
 | [module/](module/README.md) | Нативный модуль: сборка, рантайм, Lua API, DRM-клиент, гайды. |
 | [drm/](drm/README.md) | Область DRM: протокол v2, безопасность, криптография, ключи. |
 | [operations/](operations/README.md) | Эксплуатация: dev/staging/production, деплой, бэкапы, миграции, инциденты. |
@@ -43,8 +43,7 @@ SERVER, а коммерция — одна из опор экосистемы. �
 2. [development/CURRENT.md](development/CURRENT.md) — текущее состояние,
    последний выполненный план, открытые ограничения.
 3. Архитектурный слой: [product/PRODUCT-ARCHITECTURE.md](product/PRODUCT-ARCHITECTURE.md)
-   (каталог `architecture/` будет наполняться по мере появления
-   архитектурных документов), затем предметные области —
+   и [architecture/](architecture/), затем предметные области —
    [drm/](drm/README.md), [module/](module/README.md),
    [operations/](operations/README.md).
 
@@ -70,12 +69,13 @@ SERVER, а коммерция — одна из опор экосистемы. �
 | Каталог | Назначение |
 |---|---|
 | `documents/` | Вся документация (этот каталог). |
-| `contracts/` | Машиночитаемые межкомпонентные контракты (`contracts/drm/` — схемы протокола DRM v2; каталог создан, наполнение — pending). |
-| `site/` | Веб-приложение: `site/server` (Express API, Prisma contract-ORM, миграции), `site/web` (Next.js), `site/shared`, `site/packages`. |
-| `module/` | Нативный C++ модуль MTA: `module/src` (SDK, DRM-клиент, функции), `module/third_party`, `module/tools`, `module/config`. |
-| `tests/` | Централизованные тесты: `e2e/`, `integration/`, `unit/`, `module/`, `tools/` (единственное место тестов — PLAN-010 Rule 002). |
-| `logs/` | Корневая конвенция логов dev-раннера (в git — только `.gitkeep`; рантайм-логи не коммитятся). |
-| `scripts/` | Скрипты эксплуатации: `deployments/`, `database/`, `maintenance/` (каркасы; перенос из старого репозитория — pending). |
-| `config/` | Конфигурационные файлы платформы (зарезервирован, пуст). |
-| `infrastructure/` | Инфраструктура: `docker/compose/` (development/tests/staging/production), `nginx/`, `database/`, `monitoring/`, `deployments/`. |
-| `.github/` | CI/CD workflows (сейчас пуст — пайплайн описан в [operations/DEPLOYMENT.md](operations/DEPLOYMENT.md)). |
+| `contracts/` | Машиночитаемые межкомпонентные контракты: `contracts/drm/v2/` — протокол DRM v2 (protocol, errors, vectors). |
+| `site/` | Веб-приложение: `site/server` (Express API, Prisma contract-ORM (`@prisma/orm-postgres` 8-rc), миграции), `site/web` (Next.js App Router), `site/shared`. |
+| `module/` | Нативный C++ модуль MTA: `module/src` (SDK, DRM-клиент, функции), `module/third_party`, `module/tools`, `module/config`; пресеты `module/CMakePresets.json`. |
+| `tests/` | Централизованные тесты: `unit/`, `integration/`, `concurrency/`, `e2e/`, `module/`, `tools/` (единственное место тестов — PLAN-010 Rule 002). |
+| `logs/` | Конвенция логов dev-раннера (`logs/development/{backend,worker,web}.log`; в git — только `.gitkeep`). |
+| `scripts/` | Скрипты эксплуатации: `deployments/`, `database/`, `maintenance/` (audit.sh, verify-contracts.sh), `development/` (repair-cyrillic.cjs), `builds/`, `tests/`. |
+| `config/` | Конфигурация платформы: `config/environments/` (development/staging/production/test), `config/application/` (features/limits/logging), `config/schemas/`. |
+| `infrastructure/` | Инфраструктура: `docker/compose/` (development/tests/staging/production), `docker/*.Dockerfile` (образы сайта), `nginx/`, `database/`, `monitoring/`, `deployments/`. |
+| `.github/` | CI/CD: 9 workflows (validate/contracts/security/tests/module/site/e2e/release/ci — оркестратор `ci.yml` с path-фильтрами на PR). |
+| `startup.py` | Каноническая точка входа: `dev` / `release` / `test` / `build` / `module` / `db` / `status` / `logs` / `stop` / `clean` / `doctor` (см. [operations/DEVELOPMENT.md](operations/DEVELOPMENT.md)). |

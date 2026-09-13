@@ -2,7 +2,7 @@
 
 Зона: `.github/workflows/*.yml` (9 файлов), `turbo.json`, `package.json` (root), `vitest.config.ts`, `playwright.config.ts`, `tests/` (unit/site — 10, integration/api — 52, concurrency — 7, e2e — 9 spec, tools — 7), инфраструктура образов (`infrastructure/docker/site/*.Dockerfile`), точки входа recovery (`site/server/src/worker/index.ts`, `lib/events.ts`, `lib/rateLimit.ts`, `lib/idempotency.ts`, `lib/yookassa.ts`).
 
-Разделы плана: O-001..O-004 (`documents/development/active/PLAN-020.md:1041-1096`), R-001..R-003 (`:1233-1281`), S-001..S-004 (`:1283-1333`).
+Разделы плана: O-001..O-004 (`documents/development/completed/PLAN-020.md:1041-1096`), R-001..R-003 (`:1233-1281`), S-001..S-004 (`:1283-1333`).
 
 Метод: чтение всех 9 workflow и root-конфигов; grep-инвентаризация шагов (`pnpm install`, builds, schema apply, кэш, path-фильтры); чтение recovery-кода worker/outbox и ключевых тестов (outbox, payment-transitions, reconciliation, concurrency/*, payments-harness). Проверки, отмеченные «выполнено локально», реально исполнены в этом чекауте (результат и exit code приведены; созданный при проверке артефакт `module/Testing/` удалён, git status не изменён). Файлы репозитория (кроме этого отчёта) не модифицировались.
 
